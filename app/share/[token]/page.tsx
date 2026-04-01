@@ -68,13 +68,30 @@ export default async function SharePage({
     ? `${STORAGE_URL}/${primaryPhoto.storage_path}`
     : null;
 
+  // Units recognised by Bring!'s ingredient parser.
+  // Unrecognised units (piece, tsp, tbsp, cup, pinch, slice, clove, handful…)
+  // get fused into the item name which causes a parser error in the Bring! app.
+  // For those we omit the unit from the JSON-LD string entirely.
+  const BRING_UNITS = new Set([
+    "g", "kg", "mg",
+    "ml", "l", "dl", "cl",
+    "oz", "lb", "fl oz",
+    "cm", "mm",
+    "pack", "packs", "package", "packages",
+    "can", "cans", "jar", "jars", "bottle", "bottles",
+    "bunch", "bunches",
+  ]);
+
   // Build JSON-LD structured data — more reliable than microdata for Bring!'s parser
   const recipeIngredient = ingredients.map((ing: {
     name: string; amount: number | null; unit: string | null
-  }) =>
-    [ing.amount ? String(ing.amount) : null, ing.unit, ing.name]
-      .filter(Boolean).join(" ")
-  );
+  }) => {
+    const unit = ing.unit && BRING_UNITS.has(ing.unit.toLowerCase().trim())
+      ? ing.unit
+      : null; // drop unrecognised unit so parser won't merge it into the name
+    return [ing.amount ? String(ing.amount) : null, unit, ing.name]
+      .filter(Boolean).join(" ");
+  });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -159,9 +176,12 @@ export default async function SharePage({
                 amount: number | null;
                 unit: string | null;
               }) => {
+                const ingUnit = ing.unit && BRING_UNITS.has(ing.unit.toLowerCase().trim())
+                  ? ing.unit
+                  : null;
                 const ingText = [
                   ing.amount ? String(ing.amount) : null,
-                  ing.unit,
+                  ingUnit,
                   ing.name,
                 ]
                   .filter(Boolean)
