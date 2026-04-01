@@ -166,9 +166,8 @@ export default async function RecipeDetailPage({
             {/* Bring! CTA */}
             <div className="mt-4">
               <BringButton
-                recipeId={recipe.id}
+                shareToken={recipe.share_token}
                 servings={recipe.servings ?? 4}
-                baseServings={recipe.servings ?? 4}
               />
             </div>
           </section>
