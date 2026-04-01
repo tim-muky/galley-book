@@ -68,16 +68,34 @@ export default async function SharePage({
     ? `${STORAGE_URL}/${primaryPhoto.storage_path}`
     : null;
 
+  // Build JSON-LD structured data — more reliable than microdata for Bring!'s parser
+  const recipeIngredient = ingredients.map((ing: {
+    name: string; amount: number | null; unit: string | null
+  }) =>
+    [ing.amount ? String(ing.amount) : null, ing.unit, ing.name]
+      .filter(Boolean).join(" ")
+  );
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Recipe",
+    name: recipe.name,
+    description: recipe.description ?? undefined,
+    recipeYield: recipe.servings ? String(recipe.servings) : undefined,
+    totalTime: recipe.prep_time ? `PT${recipe.prep_time}M` : undefined,
+    recipeCategory: recipe.type ?? undefined,
+    image: photoUrl ?? undefined,
+    recipeIngredient,
+  };
+
   return (
-    /**
-     * Schema.org Recipe microdata — required for Bring! to parse ingredients.
-     * Bring!'s parser uses itemtype="http://schema.org/Recipe" and reads:
-     *  - itemprop="name"
-     *  - itemprop="recipeIngredient" (or legacy "ingredients")
-     *  - itemprop="image"
-     *  - itemprop="recipeYield"
-     *  - itemprop="totalTime" (ISO 8601 duration)
-     */
+    <>
+      {/* JSON-LD in <head> — primary method for Bring! to parse ingredients */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
     <div
       itemScope
       itemType="http://schema.org/Recipe"
@@ -201,5 +219,6 @@ export default async function SharePage({
         </p>
       </div>
     </div>
+    </>
   );
 }
