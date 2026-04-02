@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.fbcdn.net",
       },
+      // TikTok CDN (thumbnails returned by oEmbed)
+      {
+        protocol: "https",
+        hostname: "*.tiktokcdn.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.tiktokcdn-us.com",
+      },
     ],
   },
 

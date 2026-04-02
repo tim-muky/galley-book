@@ -37,6 +37,10 @@ function isYouTubeUrl(url: string): boolean {
   return /youtube\.com|youtu\.be/i.test(url);
 }
 
+function isTikTokUrl(url: string): boolean {
+  return /tiktok\.com/i.test(url);
+}
+
 /** Extract og:image or twitter:image from raw HTML */
 function extractImageUrl(html: string): string | null {
   const patterns = [
@@ -117,6 +121,24 @@ async function fetchInstagramThumbnail(url: string): Promise<string | null> {
     }
   }
   return null;
+}
+
+/** TikTok thumbnail + caption — uses public oEmbed endpoint (no auth needed) */
+async function fetchTikTokOEmbed(url: string): Promise<{ thumbnail: string | null; caption: string }> {
+  try {
+    const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        thumbnail: data.thumbnail_url?.startsWith("http") ? (data.thumbnail_url as string) : null,
+        caption: (data.title as string) ?? "",
+      };
+    }
+  } catch {
+    // Fall through
+  }
+  return { thumbnail: null, caption: "" };
 }
 
 /** Try fetching Instagram embed URL (public endpoint that includes post caption) */
@@ -254,6 +276,17 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       return { content, imageUrl: thumbnailUrl };
     }
     return { content: `Recipe from: ${url}`, imageUrl: thumbnailUrl };
+  }
+
+  // TikTok: oEmbed for thumbnail + caption, Perplexity for full recipe content
+  if (isTikTokUrl(url)) {
+    const [{ thumbnail: thumbnailUrl, caption }, perplexityContent] = await Promise.all([
+      fetchTikTokOEmbed(url),
+      process.env.PERPLEXITY_API_KEY ? fetchViaPerplexity(url, false) : Promise.resolve(""),
+    ]);
+    // Combine oEmbed caption (often contains the recipe text) with Perplexity output
+    const content = [caption, perplexityContent].filter(Boolean).join("\n\n");
+    return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl };
   }
 
   // Regular websites: try Perplexity first (gets cleaner content), then direct fetch
