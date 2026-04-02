@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -27,8 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not a member of this galley" }, { status: 403 });
   }
 
-  // Find the user to invite
-  const { data: invitee } = await supabase
+  // Find the user to invite — use service client to bypass RLS so we can
+  // look up any user's row, not just the currently-authenticated user's own.
+  const serviceClient = createServiceClient();
+  const { data: invitee } = await serviceClient
     .from("users")
     .select("id")
     .eq("email", email.trim().toLowerCase())

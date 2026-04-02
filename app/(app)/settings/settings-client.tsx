@@ -231,7 +231,8 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
             <button
               onClick={inviteMember}
               disabled={inviting || !inviteEmail.trim()}
-              className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+              className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
             >
               {inviting ? "Inviting…" : "Send Invite"}
             </button>
