@@ -90,8 +90,8 @@ export default function NewRecipePage() {
         ...emptyForm,
         ...parsed,
         // Assign stable keys so React can reconcile list items correctly
-        ingredients: (parsed.ingredients ?? []).map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
-        steps: (parsed.steps ?? []).map((step) => ({ _key: crypto.randomUUID(), ...step })),
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID() })),
+        steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
         source_url: linkUrl,
       });
       // If parser returned an image URL, show it as preview
@@ -134,8 +134,8 @@ export default function NewRecipePage() {
       setForm({
         ...emptyForm,
         ...parsed,
-        ingredients: (parsed.ingredients ?? []).map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
-        steps: (parsed.steps ?? []).map((step) => ({ _key: crypto.randomUUID(), ...step })),
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID() })),
+        steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
       });
       setShowForm(true);
     } catch (err) {
@@ -200,7 +200,7 @@ export default function NewRecipePage() {
   function updateStep(idx: number, value: string) {
     setForm((prev) => {
       const steps = [...prev.steps];
-      steps[idx] = { instruction: value };
+      steps[idx] = { ...steps[idx], instruction: value };
       return { ...prev, steps };
     });
   }

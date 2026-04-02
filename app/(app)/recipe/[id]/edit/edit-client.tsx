@@ -44,8 +44,8 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   // when items are removed from the middle of the list.
   const [form, setForm] = useState<RecipeForm>(() => ({
     ...initial,
-    ingredients: initial.ingredients.map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
-    steps: initial.steps.map((step) => ({ _key: crypto.randomUUID(), ...step })),
+    ingredients: initial.ingredients.map((ing) => ({ ...ing, _key: crypto.randomUUID() })),
+    steps: initial.steps.map((step) => ({ ...step, _key: crypto.randomUUID() })),
   }));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -83,7 +83,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   function updateStep(idx: number, value: string) {
     setForm((prev) => {
       const steps = [...prev.steps];
-      steps[idx] = { instruction: value };
+      steps[idx] = { ...steps[idx], instruction: value };
       return { ...prev, steps };
     });
   }
