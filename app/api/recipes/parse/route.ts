@@ -53,6 +53,71 @@ function extractImageUrl(html: string): string | null {
   return null;
 }
 
+/** YouTube thumbnail — fully public, no API key needed */
+function extractYouTubeThumbnail(url: string): string | null {
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m?.[1]) {
+      return `https://img.youtube.com/vi/${m[1]}/maxresdefault.jpg`;
+    }
+  }
+  return null;
+}
+
+/** Instagram thumbnail — tries oEmbed API first, then embed HTML scrape */
+async function fetchInstagramThumbnail(url: string): Promise<string | null> {
+  // 1. oEmbed endpoint (public, works for public posts without any auth)
+  try {
+    const oembedUrl = `https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}&fields=thumbnail_url`;
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.thumbnail_url?.startsWith("http")) return data.thumbnail_url;
+    }
+  } catch {
+    // Fall through
+  }
+
+  // 2. Scrape embed HTML for CDN image URLs
+  const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+  const shortcode = match[1];
+
+  for (const embedUrl of [
+    `https://www.instagram.com/reel/${shortcode}/embed/`,
+    `https://www.instagram.com/p/${shortcode}/embed/`,
+  ]) {
+    try {
+      const res = await fetch(embedUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+          Accept: "text/html",
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+
+      // og:image in embed (most reliable)
+      const ogImg = extractImageUrl(html);
+      if (ogImg) return ogImg;
+
+      // CDN image src in embed HTML
+      const cdnMatch = html.match(/src=["'](https:\/\/[^"']+(?:cdninstagram|fbcdn)[^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)/i);
+      if (cdnMatch?.[1]) return cdnMatch[1];
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 /** Try fetching Instagram embed URL (public endpoint that includes post caption) */
 async function fetchInstagramEmbed(url: string): Promise<string> {
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
@@ -151,11 +216,15 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
   const instagram = isInstagramUrl(url);
   const youtube = isYouTubeUrl(url);
 
-  // Instagram: try public embed URL first (contains actual caption/recipe)
+  // Instagram: fetch thumbnail in parallel with content extraction
   if (instagram) {
-    const embedContent = await fetchInstagramEmbed(url);
+    const [embedContent, thumbnailUrl] = await Promise.all([
+      fetchInstagramEmbed(url),
+      fetchInstagramThumbnail(url),
+    ]);
+
     if (embedContent.length > 200) {
-      return { content: embedContent, imageUrl: null };
+      return { content: embedContent, imageUrl: thumbnailUrl };
     }
     // Embed failed — fall back to Perplexity with strict prompt
     if (process.env.PERPLEXITY_API_KEY) {
@@ -167,7 +236,7 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
           error: "Instagram posts require login and cannot be parsed automatically. Please add the recipe manually.",
         };
       }
-      return { content, imageUrl: null };
+      return { content, imageUrl: thumbnailUrl };
     }
     return {
       content: "",
@@ -176,10 +245,14 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     };
   }
 
-  // YouTube: use Perplexity
-  if (youtube && process.env.PERPLEXITY_API_KEY) {
-    const content = await fetchViaPerplexity(url, false);
-    return { content, imageUrl: null };
+  // YouTube: thumbnail is deterministic from the video ID — no network call needed
+  if (youtube) {
+    const thumbnailUrl = extractYouTubeThumbnail(url);
+    if (process.env.PERPLEXITY_API_KEY) {
+      const content = await fetchViaPerplexity(url, false);
+      return { content, imageUrl: thumbnailUrl };
+    }
+    return { content: `Recipe from: ${url}`, imageUrl: thumbnailUrl };
   }
 
   // Regular websites: try Perplexity first (gets cleaner content), then direct fetch
