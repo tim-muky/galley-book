@@ -11,12 +11,14 @@ const TYPES = ["starter", "main", "dessert", "breakfast", "snack", "drink", "sid
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
 interface Ingredient {
+  _key: string; // stable React list key — not sent to the API
   name: string;
   amount: string;
   unit: string;
 }
 
 interface Step {
+  _key: string; // stable React list key — not sent to the API
   instruction: string;
 }
 
@@ -42,8 +44,8 @@ const emptyForm: RecipeForm = {
   type: "main",
   source_url: "",
   image_url: "",
-  ingredients: [{ name: "", amount: "", unit: "g" }],
-  steps: [{ instruction: "" }],
+  ingredients: [{ _key: "ing-init", name: "", amount: "", unit: "g" }],
+  steps: [{ _key: "step-init", instruction: "" }],
 };
 
 export default function NewRecipePage() {
@@ -84,7 +86,14 @@ export default function NewRecipePage() {
       }
 
       const parsed: RecipeForm & { image_url?: string } = await res.json();
-      setForm({ ...emptyForm, ...parsed, source_url: linkUrl });
+      setForm({
+        ...emptyForm,
+        ...parsed,
+        // Assign stable keys so React can reconcile list items correctly
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
+        steps: (parsed.steps ?? []).map((step) => ({ _key: crypto.randomUUID(), ...step })),
+        source_url: linkUrl,
+      });
       // If parser returned an image URL, show it as preview
       if (parsed.image_url) {
         setPhotoPreview(parsed.image_url);
@@ -122,7 +131,12 @@ export default function NewRecipePage() {
       // Use the captured photo as the recipe photo
       setPhotoFile(cameraFile);
       setPhotoPreview(cameraPreview);
-      setForm({ ...emptyForm, ...parsed });
+      setForm({
+        ...emptyForm,
+        ...parsed,
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
+        steps: (parsed.steps ?? []).map((step) => ({ _key: crypto.randomUUID(), ...step })),
+      });
       setShowForm(true);
     } catch (err) {
       setCameraError(err instanceof Error ? err.message : "Parse failed");
@@ -172,7 +186,7 @@ export default function NewRecipePage() {
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { name: "", amount: "", unit: "g" }],
+      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g" }],
     }));
   }
 
@@ -194,7 +208,7 @@ export default function NewRecipePage() {
   function addStep() {
     setForm((prev) => ({
       ...prev,
-      steps: [...prev.steps, { instruction: "" }],
+      steps: [...prev.steps, { _key: crypto.randomUUID(), instruction: "" }],
     }));
   }
 
@@ -574,7 +588,7 @@ export default function NewRecipePage() {
             </div>
             <div className="space-y-2">
               {form.ingredients.map((ing, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
+                <div key={ing._key} className="flex gap-2 items-center">
                   <input
                     value={ing.name}
                     onChange={(e) => updateIngredient(idx, "name", e.target.value)}
@@ -628,7 +642,7 @@ export default function NewRecipePage() {
             </div>
             <div className="space-y-3">
               {form.steps.map((step, idx) => (
-                <div key={idx} className="flex gap-3 items-start">
+                <div key={step._key} className="flex gap-3 items-start">
                   <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-highest flex items-center justify-center mt-2.5">
                     <span className="text-[9px] font-semibold text-anthracite">{idx + 1}</span>
                   </div>

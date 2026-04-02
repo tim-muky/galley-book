@@ -17,6 +17,37 @@ export async function POST(
   const file = formData.get("photo") as File | null;
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
+  // 10 MB hard limit — prevents DoS via oversized uploads
+  const MAX_BYTES = 10 * 1024 * 1024;
+  if (file.size > MAX_BYTES) {
+    return NextResponse.json({ error: "Photo must be under 10 MB." }, { status: 413 });
+  }
+
+  // Content-type must be a real image (client-supplied, but filters obvious misuse)
+  if (!file.type.startsWith("image/")) {
+    return NextResponse.json({ error: "File must be an image." }, { status: 415 });
+  }
+
+  // Ownership check: recipe must belong to the user's galley
+  const { data: membership } = await supabase
+    .from("galley_members")
+    .select("galley_id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (membership) {
+    const { data: recipe } = await supabase
+      .from("recipes")
+      .select("id")
+      .eq("id", id)
+      .eq("galley_id", membership.galley_id)
+      .single();
+
+    if (!recipe) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+  }
+
   const contentType = file.type || "image/jpeg";
   const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
   const storagePath = `${id}/photo-${Date.now()}.${ext}`;

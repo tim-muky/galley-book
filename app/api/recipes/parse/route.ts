@@ -11,6 +11,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isSafeUrl } from "@/lib/utils/url-validation";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -318,6 +319,11 @@ export async function POST(request: Request) {
   const { url } = await request.json();
   if (!url?.trim()) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
+  }
+
+  // SSRF guard — reject private IPs, loopback, cloud metadata endpoints, non-HTTP schemes
+  if (!isSafeUrl(url.trim())) {
+    return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
   }
 
   const { content: pageContent, imageUrl, error: fetchError } = await fetchPageContent(url);

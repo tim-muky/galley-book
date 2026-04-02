@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { isSafeUrl } from "@/lib/utils/url-validation";
 
 /** Extract a source entry from a recipe URL to auto-populate saved_sources */
 function extractSource(url: string): { sourceType: string; handleOrName: string } | null {
@@ -138,8 +139,8 @@ export async function POST(request: Request) {
     }
   }
 
-  // Download & store recipe image if provided
-  if (image_url?.startsWith("http")) {
+  // Download & store recipe image if provided (SSRF-safe: validated before fetch)
+  if (image_url && isSafeUrl(image_url)) {
     try {
       const imgRes = await fetch(image_url, {
         headers: {

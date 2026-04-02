@@ -1,6 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+/** Verify the recipe belongs to the authenticated user's galley. */
+async function assertOwnership(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  userId: string,
+  recipeId: string
+): Promise<boolean> {
+  const { data: membership } = await supabase
+    .from("galley_members")
+    .select("galley_id")
+    .eq("user_id", userId)
+    .single();
+  if (!membership) return false;
+
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("id")
+    .eq("id", recipeId)
+    .eq("galley_id", membership.galley_id)
+    .single();
+
+  return !!recipe;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +35,10 @@ export async function PUT(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!(await assertOwnership(supabase, user.id, id))) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
 
   const body = await request.json();
   const { ingredients, steps, ...recipeFields } = body;
@@ -74,6 +101,10 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  if (!(await assertOwnership(supabase, user.id, id))) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
   const { error } = await supabase
     .from("recipes")
     .update({ deleted_at: new Date().toISOString() })
@@ -93,6 +124,10 @@ export async function PATCH(
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!(await assertOwnership(supabase, user.id, id))) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
 
   const { error } = await supabase
     .from("recipes")

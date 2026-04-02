@@ -10,12 +10,14 @@ const TYPES = ["starter", "main", "dessert", "breakfast", "snack", "drink", "sid
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
 interface Ingredient {
+  _key: string; // stable React list key — not sent to the API
   name: string;
   amount: string;
   unit: string;
 }
 
 interface Step {
+  _key: string; // stable React list key — not sent to the API
   instruction: string;
 }
 
@@ -38,7 +40,13 @@ interface Props {
 }
 
 export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
-  const [form, setForm] = useState<RecipeForm>(initial);
+  // Lazy initialiser: add stable _key to each item so React keys never collide
+  // when items are removed from the middle of the list.
+  const [form, setForm] = useState<RecipeForm>(() => ({
+    ...initial,
+    ingredients: initial.ingredients.map((ing) => ({ _key: crypto.randomUUID(), ...ing })),
+    steps: initial.steps.map((step) => ({ _key: crypto.randomUUID(), ...step })),
+  }));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string>(existingPhotoUrl ?? "");
@@ -61,7 +69,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { name: "", amount: "", unit: "g" }],
+      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g" }],
     }));
   }
 
@@ -83,7 +91,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   function addStep() {
     setForm((prev) => ({
       ...prev,
-      steps: [...prev.steps, { instruction: "" }],
+      steps: [...prev.steps, { _key: crypto.randomUUID(), instruction: "" }],
     }));
   }
 
@@ -334,7 +342,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
           </div>
           <div className="space-y-2">
             {form.ingredients.map((ing, idx) => (
-              <div key={idx} className="flex gap-2 items-center">
+              <div key={ing._key} className="flex gap-2 items-center">
                 <input
                   value={ing.name}
                   onChange={(e) => updateIngredient(idx, "name", e.target.value)}
@@ -387,7 +395,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
           </div>
           <div className="space-y-3">
             {form.steps.map((step, idx) => (
-              <div key={idx} className="flex gap-3 items-start">
+              <div key={step._key} className="flex gap-3 items-start">
                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-highest flex items-center justify-center mt-2.5">
                   <span className="text-[9px] font-semibold text-anthracite">{idx + 1}</span>
                 </div>
