@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 
 export default function LoginPage() {
   async function signInWithGoogle() {
@@ -18,11 +19,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm flex flex-col items-center gap-12">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl bg-[#252729] flex items-center justify-center">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M7 8h14M7 14h10M7 20h7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Galley Book"
+            width={80}
+            height={80}
+            className="object-contain"
+            priority
+          />
           <h1 className="text-2xl font-thin tracking-widest text-anthracite uppercase">
             Galley Book
           </h1>

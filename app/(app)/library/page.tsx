@@ -85,10 +85,10 @@ export default async function LibraryPage({
   }
 
   return (
-    <div className="px-5 pt-12 pb-6">
+    <div className="px-5 pt-8 pb-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <Image
             src="/logo.png"
             alt="Galley Book"
@@ -98,10 +98,13 @@ export default async function LibraryPage({
             priority
           />
         </div>
-        <p className="text-xs font-light tracking-widest uppercase text-on-surface-variant mb-1">
-          {galley.name}
-        </p>
-        <h1 className="text-4xl font-thin text-anthracite leading-tight">Library</h1>
+        {/* Galley name + title on same line, bottom-aligned */}
+        <div className="flex items-end gap-3">
+          <p className="text-xs font-light tracking-widest uppercase text-on-surface-variant leading-none mb-[3px]">
+            {galley.name}
+          </p>
+          <h1 className="text-4xl font-thin text-anthracite leading-none">Library</h1>
+        </div>
 
         {/* Member avatars */}
         {members && members.length > 0 && (
