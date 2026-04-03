@@ -22,8 +22,8 @@ export default function LoginPage() {
           <Image
             src="/logo.png"
             alt="Galley Book"
-            width={160}
-            height={160}
+            width={320}
+            height={320}
             className="object-contain"
             priority
           />
