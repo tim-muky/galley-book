@@ -29,26 +29,18 @@ interface DiscoverResult {
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
-function ThumbsUpIcon({ color = "white" }: { color?: string }) {
+function ThumbsUpIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3m7-10v3a3 3 0 01-3 3H9l-2 7h10a2 2 0 002-2V9a2 2 0 00-2-2h-2.5"
-        stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-      />
-      <path d="M7 11V22" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+      <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
     </svg>
   );
 }
 
-function ThumbsDownIcon({ color = "white" }: { color?: string }) {
+function ThumbsDownIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M17 2h3a2 2 0 012 2v7a2 2 0 01-2 2h-3M10 22v-3a3 3 0 013-3h5l2-7H10a2 2 0 00-2 2v7a2 2 0 002 2z"
-        stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-      />
-      <path d="M17 13V2" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+      <path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/>
     </svg>
   );
 }
@@ -105,13 +97,12 @@ function CookNextCard({
             onClick={onThumbsDown}
             disabled={voted !== null}
             style={{
-              backgroundColor: "#fff",
-              borderColor: "#252729",
+              backgroundColor: "#252729",
               opacity: voted !== null && voted !== "down" ? 0.2 : 1,
             }}
-            className="w-12 h-12 rounded-full border flex items-center justify-center transition-opacity disabled:cursor-not-allowed"
+            className="w-12 h-12 rounded-full flex items-center justify-center transition-opacity disabled:cursor-not-allowed"
           >
-            <ThumbsDownIcon color="#252729" />
+            <ThumbsDownIcon />
           </button>
           <span className="text-[10px] font-light text-on-surface-variant">Not now</span>
         </div>
@@ -121,13 +112,12 @@ function CookNextCard({
             onClick={onThumbsUp}
             disabled={voted !== null}
             style={{
-              backgroundColor: "#fff",
-              borderColor: "#252729",
+              backgroundColor: "#252729",
               opacity: voted !== null && voted !== "up" ? 0.2 : 1,
             }}
-            className="w-12 h-12 rounded-full border flex items-center justify-center transition-opacity disabled:cursor-not-allowed"
+            className="w-12 h-12 rounded-full flex items-center justify-center transition-opacity disabled:cursor-not-allowed"
           >
-            <ThumbsUpIcon color="#252729" />
+            <ThumbsUpIcon />
           </button>
           <span className="text-[10px] font-light text-on-surface-variant">Cook this</span>
         </div>
@@ -186,7 +176,7 @@ function DiscoverCard({
             style={{ backgroundColor: "#252729" }}
             className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-opacity"
           >
-            <ThumbsDownIcon color="white" />
+            <ThumbsDownIcon />
           </button>
           <button
             onClick={onAdd}
@@ -194,7 +184,7 @@ function DiscoverCard({
             style={{ backgroundColor: "#252729", color: "#fff" }}
             className="flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-xs font-light transition-opacity disabled:opacity-40"
           >
-            <ThumbsUpIcon color="white" />
+            <ThumbsUpIcon />
             <span>{adding ? "Parsing…" : "Add to Galley"}</span>
           </button>
         </div>

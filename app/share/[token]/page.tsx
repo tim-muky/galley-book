@@ -10,8 +10,10 @@
  */
 
 import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
@@ -44,6 +46,16 @@ export default async function SharePage({
 }) {
   const { token } = await params;
   const supabase = createServiceClient();
+
+  // Check auth (best-effort — page is public so we don't fail if cookies unavailable)
+  let isLoggedIn = false;
+  try {
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    isLoggedIn = !!user;
+  } catch {
+    // No session — fine, page is public
+  }
 
   const { data: recipe } = await supabase
     .from("recipes")
@@ -237,9 +249,29 @@ export default async function SharePage({
         </section>
       )}
 
-      {/* Branding */}
-      <div className="mt-12 pt-6 border-t border-surface-low text-center">
-        <p className="text-xs font-light text-on-surface-variant">
+      {/* Add to Galley CTA */}
+      <div className="mt-12 pt-6 border-t border-surface-low space-y-3">
+        {isLoggedIn ? (
+          <Link
+            href={`/share/${token}/add`}
+            className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full"
+          >
+            Add to My Galley
+          </Link>
+        ) : (
+          <>
+            <Link
+              href={`/share/${token}/add`}
+              className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full"
+            >
+              Add to My Galley
+            </Link>
+            <p className="text-xs font-light text-on-surface-variant text-center">
+              You&apos;ll be asked to sign in first
+            </p>
+          </>
+        )}
+        <p className="text-xs font-light text-on-surface-variant text-center pt-2">
           Shared from{" "}
           <span className="font-semibold text-anthracite">Galley Book</span>
         </p>

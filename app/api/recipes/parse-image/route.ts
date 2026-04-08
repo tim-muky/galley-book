@@ -2,15 +2,15 @@
  * POST /api/recipes/parse-image
  *
  * Accepts a multipart FormData with a "photo" field (image file).
- * Uses Claude Vision to extract structured recipe data from the image.
+ * Uses Gemini Vision to extract structured recipe data from the image.
  * Supports cookbook pages, handwritten recipes, printed cards, screenshots.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
 const RECIPE_SCHEMA = `{
   "name": "string",
@@ -24,6 +24,10 @@ const RECIPE_SCHEMA = `{
 }`;
 
 export async function POST(request: Request) {
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return NextResponse.json({ error: "Recipe parsing is not configured." }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,27 +48,15 @@ export async function POST(request: Request) {
   const arrayBuffer = await photo.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-  // Map MIME type to what Claude accepts
-  const mediaType = (photo.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp") ?? "image/jpeg";
-
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType,
-              data: base64,
-            },
-          },
-          {
-            type: "text",
-            text: `This image shows a recipe. Extract ALL recipe information and return ONLY valid JSON matching this schema:
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        data: base64,
+        mimeType: photo.type,
+      },
+    },
+    `This image shows a recipe. Extract ALL recipe information and return ONLY valid JSON matching this schema:
 ${RECIPE_SCHEMA}
 
 Rules:
@@ -74,13 +66,9 @@ Rules:
 - prep_time: total time in minutes (combine prep + cooking if both shown)
 - If the image is not a recipe, return { "error": "No recipe found in image" }
 - Return ONLY JSON, no markdown fences, no explanation`,
-          },
-        ],
-      },
-    ],
-  });
+  ]);
 
-  const rawText = message.content[0].type === "text" ? message.content[0].text : "";
+  const rawText = result.response.text();
 
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);

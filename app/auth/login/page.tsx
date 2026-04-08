@@ -1,15 +1,21 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/library";
+
   async function signInWithGoogle() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback`,
+        redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
   }
@@ -18,13 +24,13 @@ export default function LoginPage() {
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-12">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 w-full">
           <Image
             src="/logo.png"
             alt="Galley Book"
-            width={320}
-            height={320}
-            className="object-contain"
+            width={400}
+            height={400}
+            className="w-full h-auto object-contain"
             priority
           />
           <h1 className="text-2xl font-thin tracking-widest text-anthracite uppercase">
@@ -50,10 +56,25 @@ export default function LoginPage() {
         </button>
 
         <p className="text-xs font-light text-on-surface-variant text-center leading-relaxed">
-          By continuing, you agree to Galley Book&apos;s<br />
-          terms of service and privacy policy.
+          By continuing, you agree to Galley Book&apos;s{" "}
+          <Link href="/terms" className="underline underline-offset-2">
+            Terms of Service
+          </Link>
+          {" "}and{" "}
+          <Link href="/privacy" className="underline underline-offset-2">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }

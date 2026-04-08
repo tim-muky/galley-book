@@ -305,6 +305,9 @@ export default function NewRecipePage() {
           {parseError && (
             <p className="text-xs font-light text-red-500">{parseError}</p>
           )}
+          <p className="text-[11px] font-light text-on-surface-variant">
+            Recipe content is sent to Anthropic Claude and Perplexity AI for processing.
+          </p>
           <button
             onClick={handleParseLink}
             disabled={!linkUrl.trim()}
@@ -395,6 +398,10 @@ export default function NewRecipePage() {
               {cameraError && (
                 <p className="text-xs font-light text-red-500">{cameraError}</p>
               )}
+
+              <p className="text-[11px] font-light text-on-surface-variant">
+                Your photo is sent to Anthropic Claude for processing.
+              </p>
 
               <button
                 onClick={handleParsePhoto}

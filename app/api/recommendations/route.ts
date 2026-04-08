@@ -25,7 +25,7 @@ async function searchWithPerplexity(query: string): Promise<Array<{
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "sonar-pro",
+      model: "sonar",
       messages: [
         {
           role: "system",

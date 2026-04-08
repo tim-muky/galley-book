@@ -1,21 +1,19 @@
 /**
  * POST /api/recipes/parse
  *
- * Accepts a URL (Instagram, YouTube, website) and uses Claude to extract
+ * Accepts a URL (Instagram, YouTube, website) and uses Gemini to extract
  * structured recipe data from the page content.
  *
  * - Instagram/YouTube: uses Perplexity sonar (web search) to retrieve content
  * - Regular websites: direct fetch + og:image extraction
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
 const RECIPE_SCHEMA = `{
   "name": "string",
@@ -200,30 +198,12 @@ Return only the raw recipe content, no commentary.`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "sonar-pro",
+      model: "sonar",
       messages: [{ role: "user", content: prompt }],
     }),
   });
 
-  if (!res.ok) {
-    // fallback to sonar if sonar-pro fails
-    const res2 = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    if (res2.ok) {
-      const data = await res2.json();
-      return data.choices?.[0]?.message?.content ?? "";
-    }
-    return "";
-  }
+  if (!res.ok) return "";
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "";
@@ -343,6 +323,10 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
 }
 
 export async function POST(request: Request) {
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return NextResponse.json({ error: "Recipe parsing is not configured." }, { status: 503 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -372,13 +356,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    messages: [
-      {
-        role: "user",
-        content: `Extract the recipe from the following content and return ONLY valid JSON matching this schema:
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const result = await model.generateContent(
+    `Extract the recipe from the following content and return ONLY valid JSON matching this schema:
 ${RECIPE_SCHEMA}
 
 Rules:
@@ -392,13 +372,10 @@ Rules:
 - Return ONLY JSON, no markdown, no explanation
 
 Content:
-${pageContent}`,
-      },
-    ],
-  });
+${pageContent}`
+  );
 
-  const rawText =
-    message.content[0].type === "text" ? message.content[0].text : "";
+  const rawText = result.response.text();
 
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);

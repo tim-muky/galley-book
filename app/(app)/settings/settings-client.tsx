@@ -52,6 +52,9 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [deleted, setDeleted] = useState<DeletedRecipe[]>(deletedRecipes);
   const [restoringId, setRestoringId] = useState<string | null>(null);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   async function saveProfile() {
     setSaving(true);
     await supabase
@@ -65,6 +68,21 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   async function signOut() {
     await supabase.auth.signOut();
     router.push("/auth/login");
+  }
+
+  async function deleteAccount() {
+    setDeleting(true);
+    const res = await fetch("/api/account", { method: "DELETE" });
+    if (res.ok) {
+      // Session is now invalid — sign out client-side and redirect
+      await supabase.auth.signOut();
+      router.push("/auth/login");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error ?? "Failed to delete account. Please try again.");
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   async function inviteMember() {
@@ -355,6 +373,40 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           </svg>
           Sign Out
         </button>
+
+        {/* Delete account — two-step confirmation */}
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-3 py-3 text-sm font-light text-on-surface-variant w-full text-left"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10" stroke="#474747" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Delete Account
+          </button>
+        ) : (
+          <div className="bg-surface-low rounded-md px-4 py-4 space-y-3 mt-1">
+            <p className="text-xs font-light text-anthracite leading-relaxed">
+              This will permanently delete your account, all your recipes, and all your data.
+              This cannot be undone.
+            </p>
+            <button
+              onClick={deleteAccount}
+              disabled={deleting}
+              className="w-full bg-red-500 text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            >
+              {deleting ? "Deleting…" : "Yes, delete my account"}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              style={{ borderColor: "#252729" }}
+              className="w-full border text-anthracite text-sm font-light py-3 rounded-full"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

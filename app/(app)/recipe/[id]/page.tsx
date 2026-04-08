@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BringButton } from "@/components/bring-button";
 import { DeleteRecipeButton } from "./delete-button";
+import { ShareButton } from "@/components/share-button";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
@@ -69,6 +70,11 @@ export default async function RecipeDetailPage({
             <path d="M10 12L6 8l4-4" stroke="#252729" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </Link>
+
+        {/* Share button */}
+        {recipe.share_token && (
+          <ShareButton shareToken={recipe.share_token} recipeName={recipe.name} />
+        )}
 
         {/* Edit button */}
         <Link

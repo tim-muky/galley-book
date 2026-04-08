@@ -88,12 +88,12 @@ export default async function LibraryPage({
     <div className="px-5 pt-4 pb-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <Image
             src="/logo.png"
             alt="Galley Book"
-            width={100}
-            height={100}
+            width={150}
+            height={150}
             className="object-contain"
             priority
           />
@@ -158,9 +158,9 @@ export default async function LibraryPage({
               key={f.value}
               href={f.value ? `/library?filter=${f.value}` : "/library"}
               className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
-            style={active
-              ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
-              : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+              style={active
+                ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
+                : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
             >
               {f.label}
             </Link>
