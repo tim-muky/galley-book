@@ -1,27 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-/** Verify the recipe belongs to the authenticated user's galley. */
+/** Verify the recipe belongs to a galley the authenticated user is a member of. */
 async function assertOwnership(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   userId: string,
   recipeId: string
 ): Promise<boolean> {
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", userId)
-    .single();
-  if (!membership) return false;
-
+  // Get the recipe's galley directly
   const { data: recipe } = await supabase
     .from("recipes")
-    .select("id")
+    .select("galley_id")
     .eq("id", recipeId)
-    .eq("galley_id", membership.galley_id)
+    .single();
+  if (!recipe) return false;
+
+  // Check the user is a member of that galley
+  const { data: membership } = await supabase
+    .from("galley_members")
+    .select("id")
+    .eq("galley_id", recipe.galley_id)
+    .eq("user_id", userId)
     .single();
 
-  return !!recipe;
+  return !!membership;
 }
 
 export async function PUT(

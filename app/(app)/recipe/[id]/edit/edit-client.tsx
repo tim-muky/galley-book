@@ -425,7 +425,8 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
         <button
           onClick={handleSave}
           disabled={saving || !form.name.trim()}
-          className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-anthracite transition-opacity disabled:opacity-40 mt-4"
+          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40 mt-4"
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
