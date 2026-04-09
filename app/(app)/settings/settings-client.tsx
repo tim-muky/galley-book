@@ -40,9 +40,8 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [username, setUsername] = useState(profile?.username ?? "");
   const [saving, setSaving] = useState(false);
 
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteGalleyId, setInviteGalleyId] = useState(memberships[0]?.galley_id ?? "");
-  const [inviting, setInviting] = useState(false);
+  const [inviteGalleyId] = useState(memberships[0]?.galley_id ?? "");
+  const [sharingGalley, setSharingGalley] = useState(false);
 
   const [newSourceUrl, setNewSourceUrl] = useState("");
   const [newSourceType, setNewSourceType] = useState<"instagram" | "youtube" | "tiktok" | "website">("website");
@@ -86,21 +85,36 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
     }
   }
 
-  async function inviteMember() {
-    if (!inviteEmail.trim() || !inviteGalleyId) return;
-    setInviting(true);
-    const res = await fetch("/api/invites", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: inviteEmail, galleyId: inviteGalleyId }),
-    });
-    if (res.ok) {
-      setInviteEmail("");
-      router.refresh();
+  async function shareAppInvite() {
+    const url = window.location.origin;
+    const text = "Join me on Galley Book — a shared recipe library for families.";
+    if (navigator.share) {
+      try { await navigator.share({ title: "Galley Book", text, url }); } catch { /* cancelled */ }
     } else {
-      alert("Could not invite user. Make sure they have a Galley Book account.");
+      await navigator.clipboard.writeText(`${text} ${url}`);
     }
-    setInviting(false);
+  }
+
+  async function shareGalleyInvite() {
+    if (!inviteGalleyId) return;
+    setSharingGalley(true);
+    try {
+      const res = await fetch("/api/invites/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ galleyId: inviteGalleyId }),
+      });
+      if (!res.ok) return;
+      const { url } = await res.json();
+      const galleyName = firstGalley?.name ?? "our galley";
+      if (navigator.share) {
+        try { await navigator.share({ title: "Join our Galley", text: `Join "${galleyName}" on Galley Book`, url }); } catch { /* cancelled */ }
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } finally {
+      setSharingGalley(false);
+    }
   }
 
   async function addSource() {
@@ -238,22 +252,22 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           {/* Invite */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block">
-              Invite Member
+              Invite Someone
             </label>
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="email@example.com"
-              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-            />
             <button
-              onClick={inviteMember}
-              disabled={inviting || !inviteEmail.trim()}
+              onClick={shareAppInvite}
+              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+              className="w-full border text-sm font-light py-3 rounded-full"
+            >
+              Invite to Galley Book
+            </button>
+            <button
+              onClick={shareGalleyInvite}
+              disabled={sharingGalley || !inviteGalleyId}
               style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
               className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
             >
-              {inviting ? "Inviting…" : "Send Invite"}
+              {sharingGalley ? "Creating link…" : "Invite to this Galley"}
             </button>
           </div>
         </section>
