@@ -39,39 +39,51 @@ export async function GET(request: Request) {
   const season = getCurrentSeason();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Get recently shown or thumbs-down'd recipe IDs
+  // Get recently shown and thumbs-down'd recipe IDs separately
   const { data: history } = await supabase
     .from("cook_next_history")
     .select("recipe_id, vote")
     .eq("galley_id", galleyId)
     .or(`shown_at.gte.${sevenDaysAgo},vote.eq.-1`);
 
-  const excludeFromHistory = (history ?? []).map((h) => h.recipe_id);
-  const allExcluded = [...new Set([...excludeIds, ...excludeFromHistory])];
+  const recentlyShownIds = (history ?? [])
+    .filter((h) => h.vote !== -1)
+    .map((h) => h.recipe_id);
+  const thumbsDownIds = (history ?? [])
+    .filter((h) => h.vote === -1)
+    .map((h) => h.recipe_id);
 
-  // Get eligible recipes (matching season or all_year)
+  // Primary exclusion: recently shown + thumbs-downed + caller-excluded
+  const primaryExcluded = [...new Set([...excludeIds, ...recentlyShownIds, ...thumbsDownIds])];
+  // Fallback exclusion: only permanently thumbs-downed (ignore recency)
+  const fallbackExcluded = [...new Set([...excludeIds, ...thumbsDownIds])];
+
+  // Get eligible recipes (matching season or all_year, not deleted)
   let query = supabase
     .from("recipes")
     .select("id, name, prep_time, servings, type, season, recipe_photos(*)")
     .eq("galley_id", galleyId)
+    .is("deleted_at", null)
     .in("season", [season, "all_year"]);
 
-  if (allExcluded.length > 0) {
-    query = query.not("id", "in", `(${allExcluded.join(",")})`);
+  if (primaryExcluded.length > 0) {
+    query = query.not("id", "in", `(${primaryExcluded.join(",")})`);
   }
 
   const { data: eligible } = await query;
 
-  // If not enough seasonal recipes, fall back to all recipes
+  // If not enough seasonal recipes, fall back to all non-deleted recipes
+  // (ignoring recency — only keep thumbs-down excluded)
   let pool = eligible ?? [];
   if (pool.length < 2) {
     let fallback = supabase
       .from("recipes")
       .select("id, name, prep_time, servings, type, season, recipe_photos(*)")
-      .eq("galley_id", galleyId);
+      .eq("galley_id", galleyId)
+      .is("deleted_at", null);
 
-    if (allExcluded.length > 0) {
-      fallback = fallback.not("id", "in", `(${allExcluded.join(",")})`);
+    if (fallbackExcluded.length > 0) {
+      fallback = fallback.not("id", "in", `(${fallbackExcluded.join(",")})`);
     }
     const { data: all } = await fallback;
     pool = all ?? [];
