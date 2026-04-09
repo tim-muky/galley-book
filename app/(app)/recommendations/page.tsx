@@ -207,6 +207,8 @@ export default function RecommendationsPage() {
   const [discoverStarted, setDiscoverStarted] = useState(false);
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [rejectedUrls, setRejectedUrls] = useState<Set<string>>(new Set());
+  const [cuisine, setCuisine] = useState("");
+  const [ingredient, setIngredient] = useState("");
 
   // ── Load Cook Next on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -258,12 +260,16 @@ export default function RecommendationsPage() {
   }
 
   // ── Discover ──────────────────────────────────────────────────────────────
-  async function startDiscover() {
+  async function startDiscover(opts?: { cuisine?: string; ingredient?: string }) {
     setDiscovering(true);
     setDiscoverStarted(true);
     setDiscoverResults([]);
     try {
-      const res = await fetch("/api/recommendations");
+      const params = new URLSearchParams();
+      if (opts?.cuisine) params.set("cuisine", opts.cuisine);
+      if (opts?.ingredient) params.set("ingredient", opts.ingredient);
+      const url = params.toString() ? `/api/recommendations?${params}` : "/api/recommendations";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setDiscoverResults(data.recommendations ?? []);
@@ -372,13 +378,40 @@ export default function RecommendationsPage() {
         </p>
 
         {!discoverStarted ? (
-          <button
-            onClick={startDiscover}
-            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
-            className="w-full border text-sm font-light py-4 rounded-full transition-opacity"
-          >
-            Start Discover
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => startDiscover()}
+              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+              className="w-full border text-sm font-light py-3 rounded-full"
+            >
+              Discover based on Galley
+            </button>
+
+            <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant text-center pt-1">
+              Or search specifically
+            </p>
+
+            <input
+              value={cuisine}
+              onChange={(e) => setCuisine(e.target.value)}
+              placeholder="Cuisine (e.g. Italian, Japanese…)"
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+            />
+            <input
+              value={ingredient}
+              onChange={(e) => setIngredient(e.target.value)}
+              placeholder="Ingredient (e.g. salmon, lentils…)"
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+            />
+            <button
+              onClick={() => startDiscover({ cuisine: cuisine || undefined, ingredient: ingredient || undefined })}
+              disabled={!cuisine.trim() && !ingredient.trim()}
+              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+              className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            >
+              Search
+            </button>
+          </div>
         ) : discovering ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3 py-4">
@@ -406,7 +439,7 @@ export default function RecommendationsPage() {
               No results found. Add sources in Settings or try again.
             </p>
             <button
-              onClick={startDiscover}
+              onClick={() => startDiscover({ cuisine: cuisine || undefined, ingredient: ingredient || undefined })}
               style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
               className="border text-sm font-light px-6 py-2.5 rounded-full"
             >
@@ -426,7 +459,7 @@ export default function RecommendationsPage() {
               />
             ))}
             <button
-              onClick={startDiscover}
+              onClick={() => startDiscover({ cuisine: cuisine || undefined, ingredient: ingredient || undefined })}
               style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
               className="w-full border text-sm font-light py-3 rounded-full mt-2"
             >

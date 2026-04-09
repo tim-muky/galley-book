@@ -55,6 +55,10 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(request.url);
+  const cuisine = searchParams.get("cuisine")?.trim() || null;
+  const ingredient = searchParams.get("ingredient")?.trim() || null;
+
   const { data: membership } = await supabase
     .from("galley_members")
     .select("galley_id")
@@ -66,10 +70,12 @@ export async function GET(request: Request) {
 
   const galleyId = membership.galley_id;
 
-  // Load data in parallel
+  // Load data in parallel — skip saved_sources for custom searches
   const [{ data: recipes }, { data: savedSources }, { data: memory }] = await Promise.all([
     supabase.from("recipes").select("name, type, season").eq("galley_id", galleyId).limit(30),
-    supabase.from("saved_sources").select("*").eq("galley_id", galleyId),
+    cuisine || ingredient
+      ? Promise.resolve({ data: null })
+      : supabase.from("saved_sources").select("*").eq("galley_id", galleyId),
     supabase.from("discover_memory").select("url, title").eq("galley_id", galleyId),
   ]);
 
@@ -80,17 +86,25 @@ export async function GET(request: Request) {
     ? `This family's existing recipe collection includes: ${recipes.map((r) => r.name).slice(0, 15).join(", ")}. Find recipes that complement this collection — avoid duplicates.`
     : "Find popular family-friendly recipes.";
 
-  const sourceContext = savedSources && savedSources.length > 0
-    ? `Search specifically on these sources: ${savedSources.map((s) => s.handle_or_name ?? s.url).join(", ")}.`
-    : "Search popular cooking websites, Instagram food accounts, and YouTube cooking channels.";
-
   const memoryContext = memoryUrls.length > 0
     ? `IMPORTANT: Do NOT include any of these previously rejected recipes: ${memoryTitles.slice(0, 10).join(", ")}. Also avoid these URLs: ${memoryUrls.slice(0, 10).join(", ")}.`
     : "";
 
-  const query = `${recipeContext} ${sourceContext} ${memoryContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
+  let searchQuery: string;
+  if (cuisine || ingredient) {
+    const filters = [
+      cuisine ? `from ${cuisine} cuisine` : null,
+      ingredient ? `featuring "${ingredient}" as a key ingredient` : null,
+    ].filter(Boolean).join(" and ");
+    searchQuery = `Find 6 new recipe recommendations ${filters}. ${recipeContext} ${memoryContext} Include direct URLs to specific recipe pages.`;
+  } else {
+    const sourceContext = savedSources && savedSources.length > 0
+      ? `Search specifically on these sources: ${savedSources.map((s) => s.handle_or_name ?? s.url).join(", ")}.`
+      : "Search popular cooking websites, Instagram food accounts, and YouTube cooking channels.";
+    searchQuery = `${recipeContext} ${sourceContext} ${memoryContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
+  }
 
-  let recommendations = await searchWithPerplexity(query);
+  let recommendations = await searchWithPerplexity(searchQuery);
 
   // Filter out memory URLs client-side as extra safety
   if (memoryUrls.length > 0) {
