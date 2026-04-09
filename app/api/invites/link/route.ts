@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -24,14 +25,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not a member of this galley" }, { status: 403 });
   }
 
-  const { data: invite, error } = await supabase
+  // Use service client for insert — membership already verified above,
+  // and the RLS policy's is_galley_member() helper is not available in this DB.
+  const service = createServiceClient();
+  const { data: invite, error } = await service
     .from("galley_invites")
     .insert({ galley_id: galleyId, created_by: user.id })
     .select("token")
     .single();
 
   if (error || !invite) {
-    return NextResponse.json({ error: "Failed to create invite" }, { status: 500 });
+    return NextResponse.json({ error: error?.message ?? "Failed to create invite" }, { status: 500 });
   }
 
   const { origin } = new URL(request.url);
