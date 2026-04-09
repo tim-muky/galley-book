@@ -104,7 +104,11 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ galleyId: inviteGalleyId }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error ?? "Failed to create invite link. Please try again.");
+        return;
+      }
       const { url } = await res.json();
       const galleyName = firstGalley?.name ?? "our galley";
       if (navigator.share) {
@@ -264,7 +268,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
             <button
               onClick={shareGalleyInvite}
               disabled={sharingGalley || !inviteGalleyId}
-              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
               className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
             >
               {sharingGalley ? "Creating link…" : "Invite to this Galley"}
