@@ -23,6 +23,9 @@ export async function POST(request: Request) {
       handleOrName = parsed.pathname.replace(/^\//, "@").split("/")[0];
     } else if (sourceType === "youtube") {
       handleOrName = parsed.pathname.replace(/^\/@/, "@").split("/")[0];
+    } else if (sourceType === "tiktok") {
+      handleOrName = parsed.pathname.replace(/^\//, "").replace(/^@/, "@").split("/")[0] || "tiktok.com";
+      if (!handleOrName.startsWith("@")) handleOrName = `@${handleOrName}`;
     } else {
       handleOrName = parsed.hostname;
     }

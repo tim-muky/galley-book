@@ -11,7 +11,6 @@ const FILTER_TYPES = [
   { label: "Starter", value: "starter" },
   { label: "Main", value: "main" },
   { label: "Dessert", value: "dessert" },
-  { label: "Plant-based", value: "plant" },
 ] as const;
 
 interface SearchParams {
@@ -32,16 +31,13 @@ export default async function LibraryPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  // Parallel: profile + membership in one round-trip
-  const [{ data: membershipData }] = await Promise.all([
-    supabase
-      .from("galley_members")
-      .select("galley_id")
-      .eq("user_id", user.id)
-      .order("invited_at", { ascending: true })
-      .limit(1)
-      .single(),
-  ]);
+  const { data: membershipData } = await supabase
+    .from("galley_members")
+    .select("galley_id")
+    .eq("user_id", user.id)
+    .order("invited_at", { ascending: true })
+    .limit(1)
+    .single();
 
   if (!membershipData?.galley_id) {
     return <CreateGalleyPrompt />;
@@ -85,16 +81,16 @@ export default async function LibraryPage({
   }
 
   return (
-    <div className="px-5 pt-4 pb-6">
+    <div className="px-5 pt-2 pb-6">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center mb-1">
           <Image
             src="/logo.png"
             alt="Galley Book"
             width={150}
             height={150}
-            className="object-contain"
+            className="object-contain object-left"
             priority
           />
         </div>

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "types": "npx --yes supabase gen types typescript --project-id lgmuazhzipzudtrofxea --schema public > types/database.ts && cat types/app-types.ts >> types/database.ts"
   },
   "dependencies": {
     "@auth/supabase-adapter": "^1.11.1",

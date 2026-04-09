@@ -45,7 +45,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [inviting, setInviting] = useState(false);
 
   const [newSourceUrl, setNewSourceUrl] = useState("");
-  const [newSourceType, setNewSourceType] = useState<"instagram" | "youtube" | "website">("website");
+  const [newSourceType, setNewSourceType] = useState<"instagram" | "youtube" | "tiktok" | "website">("website");
   const [addingSource, setAddingSource] = useState(false);
   const [sources, setSources] = useState<SavedSource[]>(savedSources);
 
@@ -56,11 +56,12 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [deleting, setDeleting] = useState(false);
 
   async function saveProfile() {
+    if (!profile) return;
     setSaving(true);
     await supabase
       .from("users")
       .update({ name, username })
-      .eq("id", profile!.id);
+      .eq("id", profile.id);
     setSaving(false);
     router.refresh();
   }
@@ -264,7 +265,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           Recommendation Sources
         </h2>
         <p className="text-xs font-light text-on-surface-variant mb-4">
-          Add Instagram accounts, YouTube channels, or websites to power your AI recommendations.
+          Add Instagram accounts, YouTube channels, TikTok accounts, or websites to power your AI recommendations. Sources are also added automatically when you import a recipe via link.
         </p>
 
         <div className="space-y-2 mb-4">
@@ -295,11 +296,12 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           <div className="flex gap-2">
             <select
               value={newSourceType}
-              onChange={(e) => setNewSourceType(e.target.value as "instagram" | "youtube" | "website")}
+              onChange={(e) => setNewSourceType(e.target.value as "instagram" | "youtube" | "tiktok" | "website")}
               className="bg-white border border-[#252729] rounded-full px-3 py-3 text-xs font-light text-anthracite outline-none"
             >
               <option value="instagram">Instagram</option>
               <option value="youtube">YouTube</option>
+              <option value="tiktok">TikTok</option>
               <option value="website">Website</option>
             </select>
             <input

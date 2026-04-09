@@ -24,6 +24,12 @@ function extractSource(url: string): { sourceType: string; handleOrName: string 
       return { sourceType: "youtube", handleOrName: handle ? `@${handle}` : "youtube.com" };
     }
 
+    if (hostname.includes("tiktok.com")) {
+      const accountMatch = url.match(/tiktok\.com\/@([^/?#]+)/);
+      const account = accountMatch?.[1];
+      return { sourceType: "tiktok", handleOrName: account ? `@${account}` : "tiktok.com" };
+    }
+
     return { sourceType: "website", handleOrName: hostname };
   } catch {
     return null;
