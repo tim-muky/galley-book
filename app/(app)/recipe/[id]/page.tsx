@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BringButton } from "@/components/bring-button";
 import { DeleteRecipeButton } from "./delete-button";
 import { ShareButton } from "@/components/share-button";
+import { VoteSection } from "./vote-section";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
@@ -212,7 +213,10 @@ export default async function RecipeDetailPage({
         )}
 
         {/* Vote */}
-        <VoteSection recipeId={id} userId={user.id} currentVotes={votes} />
+        <VoteSection
+          recipeId={id}
+          initialVote={votes.find((v: { user_id: string; value: number }) => v.user_id === user.id)?.value ?? null}
+        />
 
         {/* Delete */}
         <div className="pt-4 pb-2">
@@ -223,36 +227,3 @@ export default async function RecipeDetailPage({
   );
 }
 
-function VoteSection({
-  recipeId,
-  userId,
-  currentVotes,
-}: {
-  recipeId: string;
-  userId: string;
-  currentVotes: Array<{ user_id: string; value: number }>;
-}) {
-  const userVote = currentVotes.find((v) => v.user_id === userId);
-
-  return (
-    <section className="pb-6">
-      <h2 className="text-lg font-light text-anthracite mb-3">Rate this recipe</h2>
-      <form action="/api/votes" method="POST" className="flex gap-2">
-        <input type="hidden" name="recipeId" value={recipeId} />
-        {[1, 2, 3, 4, 5].map((val) => (
-          <button
-            key={val}
-            name="value"
-            value={val}
-            type="submit"
-            className={`text-xl transition-opacity ${
-              userVote?.value === val ? "opacity-100" : "opacity-30 hover:opacity-60"
-            }`}
-          >
-            ★
-          </button>
-        ))}
-      </form>
-    </section>
-  );
-}
