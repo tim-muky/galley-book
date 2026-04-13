@@ -2,6 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Early return for public routes — skip session refresh entirely so the
+  // auth callback can never be intercepted or redirected by this middleware.
+  if (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/share") ||
+    pathname.startsWith("/api")
+  ) {
+    return NextResponse.next({ request });
+  }
+
+  // Protected routes — refresh the session cookie and enforce auth.
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,12 +42,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect app routes — allow auth routes and public share pages
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/auth");
-  const isShareRoute = request.nextUrl.pathname.startsWith("/share");
-  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
-
-  if (!user && !isAuthRoute && !isShareRoute && !isApiRoute) {
+  if (!user) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
