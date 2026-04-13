@@ -44,16 +44,9 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* Debug: show auth error or misrouted code */}
         {searchParams.get("error") && (
           <p className="text-xs text-red-500 text-center bg-red-50 rounded-md px-3 py-2">
-            error: {searchParams.get("error")}
-          </p>
-        )}
-        {searchParams.get("code") && (
-          <p className="text-xs text-orange-600 text-center bg-orange-50 rounded-md px-3 py-2">
-            ⚠️ code landed on login page — Supabase Site URL misconfigured<br/>
-            code: {searchParams.get("code")!.substring(0, 8)}…
+            {searchParams.get("error")}
           </p>
         )}
 
