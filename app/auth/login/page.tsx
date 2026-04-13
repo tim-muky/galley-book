@@ -12,10 +12,13 @@ function LoginContent() {
 
   async function signInWithGoogle() {
     const supabase = createClient();
+    // Hardcode www to avoid location.origin returning bare galleybook.com,
+    // which would mismatch Supabase's redirect URL allowlist and fall back
+    // to the Site URL (causing the code to land on the wrong page).
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `https://www.galleybook.com/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
   }
@@ -41,10 +44,16 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* Debug: show auth error if present */}
+        {/* Debug: show auth error or misrouted code */}
         {searchParams.get("error") && (
           <p className="text-xs text-red-500 text-center bg-red-50 rounded-md px-3 py-2">
-            {searchParams.get("error")}
+            error: {searchParams.get("error")}
+          </p>
+        )}
+        {searchParams.get("code") && (
+          <p className="text-xs text-orange-600 text-center bg-orange-50 rounded-md px-3 py-2">
+            ⚠️ code landed on login page — Supabase Site URL misconfigured<br/>
+            code: {searchParams.get("code")!.substring(0, 8)}…
           </p>
         )}
 
