@@ -29,7 +29,10 @@ function CallbackHandler() {
           `/auth/login?error=${encodeURIComponent(error.message)}`
         );
       } else {
-        router.replace(next);
+        // Full page navigation so the browser sends a fresh HTTP request
+        // with the newly-written session cookies — client-side router.replace
+        // can navigate before cookies are visible to the server proxy.
+        window.location.href = next;
       }
     });
   }, []);

@@ -35,9 +35,7 @@ export async function updateSession(request: NextRequest) {
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
 
   if (!user && !isAuthRoute && !isShareRoute && !isApiRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
   return supabaseResponse;
