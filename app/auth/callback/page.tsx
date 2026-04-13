@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Suspense } from "react";
 
 function CallbackHandler() {
   const searchParams = useSearchParams();
+  const [status, setStatus] = useState("Signing in…");
 
   useEffect(() => {
     const rawNext = searchParams.get("next") ?? "/library";
@@ -15,35 +16,25 @@ function CallbackHandler() {
         ? rawNext
         : "/library";
 
-    // createBrowserClient has detectSessionInUrl: true, so it automatically
-    // detects ?code= in the URL and exchanges it via PKCE during initialize().
-    // We must NOT call exchangeCodeForSession() ourselves — doing so races
-    // with auto-init and always fails because the code verifier is already
-    // consumed. Instead, listen for the SIGNED_IN event.
     const supabase = createClient();
 
+    // Handle any auth event that brings a session — covers both
+    // INITIAL_SESSION (if auto-init already ran) and SIGNED_IN.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === "SIGNED_IN") {
+      (event, session) => {
+        setStatus(`${event} · session=${session ? "yes" : "no"}`);
+        if (session) {
           subscription.unsubscribe();
+          setStatus("Redirecting…");
           window.location.href = next;
         }
       }
     );
 
-    // Safety: if auto-init already completed before our listener registered,
-    // check for an existing session.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        subscription.unsubscribe();
-        window.location.href = next;
-      }
-    });
-
-    // Timeout fallback — if nothing happens after 10s, redirect with error
+    // Timeout fallback so the user sees an error instead of a blank page
     const timeout = setTimeout(() => {
       subscription.unsubscribe();
-      window.location.href = "/auth/login?error=timeout";
+      setStatus("Timed out — no session received");
     }, 10000);
 
     return () => {
@@ -53,8 +44,11 @@ function CallbackHandler() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <p className="text-sm font-light text-on-surface-variant">Signing in…</p>
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3 px-6">
+      <p className="text-sm font-light text-on-surface-variant">{status}</p>
+      {status.includes("·") && (
+        <p className="text-xs text-red-500 text-center max-w-xs">{status}</p>
+      )}
     </div>
   );
 }
