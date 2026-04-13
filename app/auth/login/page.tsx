@@ -41,6 +41,13 @@ function LoginContent() {
           </p>
         </div>
 
+        {/* Debug: show auth error if present */}
+        {searchParams.get("error") && (
+          <p className="text-xs text-red-500 text-center bg-red-50 rounded-md px-3 py-2">
+            {searchParams.get("error")}
+          </p>
+        )}
+
         {/* Sign in */}
         <button
           onClick={signInWithGoogle}
