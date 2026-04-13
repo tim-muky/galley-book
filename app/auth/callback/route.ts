@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -6,14 +6,35 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next") ?? "/library";
   // Prevent open-redirect: only allow relative paths that start with a single slash.
-  // e.g. "//evil.com" or "https://evil.com" would otherwise redirect off-site.
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/library";
 
   if (code) {
-    const supabase = await createClient();
+    // Create the redirect response first so we can attach session cookies directly
+    // onto it. Using createClient() from server.ts writes to Next.js's internal
+    // cookie store which does NOT get forwarded onto a NextResponse.redirect(),
+    // causing the browser to follow the redirect without session cookies → login loop.
+    const redirectResponse = NextResponse.redirect(`${origin}${next}`);
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              redirectResponse.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return redirectResponse;
     }
   }
 
