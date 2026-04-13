@@ -2,35 +2,105 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 
+type SourceEntry = { sourceType: string; handleOrName: string; normalizedUrl: string };
+
+/** Fetch author_name from Instagram oEmbed — works for public posts without auth */
+async function instagramAuthor(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}&fields=author_name`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch author_name from YouTube oEmbed — works for all public videos */
+async function youtubeAuthor(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch author info from TikTok oEmbed */
+async function tiktokAuthor(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    // author_url is like https://www.tiktok.com/@username
+    const authorUrl: string = data.author_url ?? "";
+    const handleMatch = authorUrl.match(/tiktok\.com\/@([^/?#]+)/);
+    if (handleMatch?.[1]) return `@${handleMatch[1]}`;
+    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Extract a normalised source entry from a recipe URL to auto-populate saved_sources */
-function extractSource(url: string): { sourceType: string; handleOrName: string; normalizedUrl: string } | null {
+async function extractSource(url: string): Promise<SourceEntry | null> {
   try {
     const parsed = new URL(url);
     const hostname = parsed.hostname.toLowerCase().replace("www.", "");
 
     if (hostname.includes("instagram.com")) {
+      // Try to get account from the URL path first (profile URLs: /username)
       const accountMatch = url.match(/instagram\.com\/([A-Za-z0-9_.]+)\/?(?:[?#]|$)/);
       const account = accountMatch?.[1];
       if (account && !["p", "reel", "tv", "stories", "explore"].includes(account)) {
         return { sourceType: "instagram", handleOrName: `@${account}`, normalizedUrl: `https://instagram.com/${account}` };
       }
+      // Post/reel URL — fetch author via oEmbed
+      const author = await instagramAuthor(url);
+      if (author) {
+        return { sourceType: "instagram", handleOrName: `@${author}`, normalizedUrl: `https://instagram.com/${author}` };
+      }
       return { sourceType: "instagram", handleOrName: "instagram.com", normalizedUrl: "https://instagram.com" };
     }
 
     if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
+      // Try channel/handle from URL first (channel pages: /channel/, /c/, /@)
       const channelMatch = url.match(/youtube\.com\/(?:channel\/|c\/|@)([^/?#]+)/);
       const handle = channelMatch?.[1];
       if (handle) {
         return { sourceType: "youtube", handleOrName: `@${handle}`, normalizedUrl: `https://youtube.com/@${handle}` };
       }
+      // Video URL — fetch channel name via oEmbed
+      const author = await youtubeAuthor(url);
+      if (author) {
+        return { sourceType: "youtube", handleOrName: author, normalizedUrl: `https://youtube.com` };
+      }
       return { sourceType: "youtube", handleOrName: "youtube.com", normalizedUrl: "https://youtube.com" };
     }
 
     if (hostname.includes("tiktok.com")) {
+      // Try @handle from URL first
       const accountMatch = url.match(/tiktok\.com\/@([^/?#]+)/);
       const account = accountMatch?.[1];
       if (account) {
         return { sourceType: "tiktok", handleOrName: `@${account}`, normalizedUrl: `https://tiktok.com/@${account}` };
+      }
+      // Fetch via oEmbed
+      const author = await tiktokAuthor(url);
+      if (author) {
+        const handle = author.startsWith("@") ? author.slice(1) : author;
+        return { sourceType: "tiktok", handleOrName: author, normalizedUrl: `https://tiktok.com/@${handle}` };
       }
       return { sourceType: "tiktok", handleOrName: "tiktok.com", normalizedUrl: "https://tiktok.com" };
     }
@@ -120,7 +190,7 @@ export async function POST(request: Request) {
       instruction: s.instruction.trim(),
     }));
 
-  const extractedSource = source_url?.trim() ? extractSource(source_url.trim()) : null;
+  const extractedSource = source_url?.trim() ? await extractSource(source_url.trim()) : null;
 
   // Insert ingredients, steps, and source in parallel
   await Promise.all([
