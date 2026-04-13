@@ -30,9 +30,10 @@ interface Props {
   allMembers: Member[];
   savedSources: SavedSource[];
   deletedRecipes: DeletedRecipe[];
+  currentUserId: string;
 }
 
-export function SettingsClient({ profile, memberships, allMembers, savedSources, deletedRecipes }: Props) {
+export function SettingsClient({ profile, memberships, allMembers, savedSources, deletedRecipes, currentUserId }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -47,6 +48,9 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [newSourceType, setNewSourceType] = useState<"instagram" | "youtube" | "tiktok" | "website">("website");
   const [addingSource, setAddingSource] = useState(false);
   const [sources, setSources] = useState<SavedSource[]>(savedSources);
+
+  const [members, setMembers] = useState<Member[]>(allMembers);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const [deleted, setDeleted] = useState<DeletedRecipe[]>(deletedRecipes);
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -146,6 +150,19 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
     setSources((prev) => prev.filter((s) => s.id !== id));
   }
 
+  async function removeMember(userId: string) {
+    if (!inviteGalleyId) return;
+    setRemovingMemberId(userId);
+    const res = await fetch(
+      `/api/galleys/members/${userId}?galleyId=${inviteGalleyId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      setMembers((prev) => prev.filter((m) => !(m.galley_id === inviteGalleyId && m.user_id === userId)));
+    }
+    setRemovingMemberId(null);
+  }
+
   async function restoreRecipe(id: string) {
     setRestoringId(id);
     const res = await fetch(`/api/recipes/${id}`, { method: "PATCH" });
@@ -156,7 +173,8 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   }
 
   const firstGalley = memberships[0]?.galleys;
-  const galleyMembers = allMembers.filter((m) => m.galley_id === inviteGalleyId);
+  const isOwner = memberships[0]?.role === "owner";
+  const galleyMembers = members.filter((m) => m.galley_id === inviteGalleyId);
 
   return (
     <div className="px-5 pt-12 pb-8 space-y-10">
@@ -249,6 +267,18 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
                   </p>
                   <p className="text-[10px] font-light text-on-surface-variant capitalize">{m.role}</p>
                 </div>
+                {isOwner && m.user_id !== currentUserId && (
+                  <button
+                    onClick={() => removeMember(m.user_id)}
+                    disabled={removingMemberId === m.user_id}
+                    className="flex-shrink-0 text-on-surface-variant/40 transition-opacity disabled:opacity-40"
+                    aria-label="Remove member"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M10 4L4 10M4 4l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
             ))}
           </div>

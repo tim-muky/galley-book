@@ -18,20 +18,17 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: profileRaw } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // Profile + memberships in parallel — neither depends on the other
+  const [{ data: profileRaw }, { data: membershipsRaw }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase
+      .from("galley_members")
+      .select("galley_id, role, galleys(id, name)")
+      .eq("user_id", user.id)
+      .order("invited_at", { ascending: true }),
+  ]);
 
   const profile = profileRaw as unknown as UserProfile | null;
-
-  const { data: membershipsRaw } = await supabase
-    .from("galley_members")
-    .select("galley_id, role, galleys(id, name)")
-    .eq("user_id", user.id)
-    .order("invited_at", { ascending: true });
-
   const memberships = (membershipsRaw ?? []) as unknown as Array<{
     galley_id: string;
     role: string;
@@ -40,12 +37,27 @@ export default async function SettingsPage() {
 
   const galleyIds = memberships.map((m) => m.galley_id);
 
-  const { data: allMembersRaw } = galleyIds.length
-    ? await supabase
-        .from("galley_members")
-        .select("galley_id, user_id, role, users(name, email, avatar_url)")
-        .in("galley_id", galleyIds)
-    : { data: [] };
+  // All three galley-dependent queries in parallel
+  const [{ data: allMembersRaw }, { data: savedSourcesRaw }, { data: deletedRecipesRaw }] =
+    galleyIds.length
+      ? await Promise.all([
+          supabase
+            .from("galley_members")
+            .select("galley_id, user_id, role, users(name, email, avatar_url)")
+            .in("galley_id", galleyIds),
+          supabase
+            .from("saved_sources")
+            .select("*")
+            .in("galley_id", galleyIds)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("recipes")
+            .select("id, name, deleted_at")
+            .in("galley_id", galleyIds)
+            .not("deleted_at", "is", null)
+            .order("deleted_at", { ascending: false }),
+        ])
+      : [{ data: [] }, { data: [] }, { data: [] }];
 
   const allMembers = (allMembersRaw ?? []) as unknown as Array<{
     galley_id: string;
@@ -53,26 +65,7 @@ export default async function SettingsPage() {
     role: string;
     users: { name: string | null; email: string; avatar_url: string | null } | null;
   }>;
-
-  const { data: savedSourcesRaw } = galleyIds.length
-    ? await supabase
-        .from("saved_sources")
-        .select("*")
-        .in("galley_id", galleyIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
-
   const savedSources = (savedSourcesRaw ?? []) as unknown as SavedSource[];
-
-  const { data: deletedRecipesRaw } = galleyIds.length
-    ? await supabase
-        .from("recipes")
-        .select("id, name, deleted_at")
-        .in("galley_id", galleyIds)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false })
-    : { data: [] };
-
   const deletedRecipes = (deletedRecipesRaw ?? []) as unknown as DeletedRecipe[];
 
   return (
@@ -82,6 +75,7 @@ export default async function SettingsPage() {
       allMembers={allMembers}
       savedSources={savedSources}
       deletedRecipes={deletedRecipes}
+      currentUserId={user.id}
     />
   );
 }

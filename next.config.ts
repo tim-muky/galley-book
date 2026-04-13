@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Prefer AVIF → WebP → original — smaller files, faster loads
+    formats: ["image/avif", "image/webp"],
     // Explicit allowlist — avoids the wildcard "**" that lets attackers
     // trigger image-optimisation fetches for arbitrary external URLs.
     remotePatterns: [

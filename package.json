@@ -15,7 +15,6 @@
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.100.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.7.0",
     "next": "16.2.1",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.4",

@@ -2,35 +2,40 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 
-/** Extract a source entry from a recipe URL to auto-populate saved_sources */
-function extractSource(url: string): { sourceType: string; handleOrName: string } | null {
+/** Extract a normalised source entry from a recipe URL to auto-populate saved_sources */
+function extractSource(url: string): { sourceType: string; handleOrName: string; normalizedUrl: string } | null {
   try {
     const parsed = new URL(url);
     const hostname = parsed.hostname.toLowerCase().replace("www.", "");
 
     if (hostname.includes("instagram.com")) {
-      // Try to get account from profile URL (not post URL)
-      const accountMatch = url.match(/instagram\.com\/([^/?#p\s][^/?#\s]*)\/?(?!\bp\/\b)/);
+      const accountMatch = url.match(/instagram\.com\/([A-Za-z0-9_.]+)\/?(?:[?#]|$)/);
       const account = accountMatch?.[1];
       if (account && !["p", "reel", "tv", "stories", "explore"].includes(account)) {
-        return { sourceType: "instagram", handleOrName: `@${account}` };
+        return { sourceType: "instagram", handleOrName: `@${account}`, normalizedUrl: `https://instagram.com/${account}` };
       }
-      return { sourceType: "instagram", handleOrName: "instagram.com" };
+      return { sourceType: "instagram", handleOrName: "instagram.com", normalizedUrl: "https://instagram.com" };
     }
 
     if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) {
       const channelMatch = url.match(/youtube\.com\/(?:channel\/|c\/|@)([^/?#]+)/);
       const handle = channelMatch?.[1];
-      return { sourceType: "youtube", handleOrName: handle ? `@${handle}` : "youtube.com" };
+      if (handle) {
+        return { sourceType: "youtube", handleOrName: `@${handle}`, normalizedUrl: `https://youtube.com/@${handle}` };
+      }
+      return { sourceType: "youtube", handleOrName: "youtube.com", normalizedUrl: "https://youtube.com" };
     }
 
     if (hostname.includes("tiktok.com")) {
       const accountMatch = url.match(/tiktok\.com\/@([^/?#]+)/);
       const account = accountMatch?.[1];
-      return { sourceType: "tiktok", handleOrName: account ? `@${account}` : "tiktok.com" };
+      if (account) {
+        return { sourceType: "tiktok", handleOrName: `@${account}`, normalizedUrl: `https://tiktok.com/@${account}` };
+      }
+      return { sourceType: "tiktok", handleOrName: "tiktok.com", normalizedUrl: "https://tiktok.com" };
     }
 
-    return { sourceType: "website", handleOrName: hostname };
+    return { sourceType: "website", handleOrName: hostname, normalizedUrl: `https://${hostname}` };
   } catch {
     return null;
   }
@@ -96,54 +101,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create recipe" }, { status: 500 });
   }
 
-  // Insert ingredients
-  if (ingredients.length > 0) {
-    const validIngredients = ingredients
-      .filter((ing: { name?: string }) => ing.name?.trim())
-      .map((ing: { name: string; amount?: string; unit?: string }, idx: number) => ({
-        recipe_id: recipe.id,
-        name: ing.name.trim(),
-        amount: ing.amount ? Number(ing.amount) : null,
-        unit: ing.unit || null,
-        sort_order: idx,
-      }));
+  // Build insert payloads
+  const validIngredients = ingredients
+    .filter((ing: { name?: string }) => ing.name?.trim())
+    .map((ing: { name: string; amount?: string; unit?: string }, idx: number) => ({
+      recipe_id: recipe.id,
+      name: ing.name.trim(),
+      amount: ing.amount ? Number(ing.amount) : null,
+      unit: ing.unit || null,
+      sort_order: idx,
+    }));
 
-    if (validIngredients.length > 0) {
-      await supabase.from("ingredients").insert(validIngredients);
-    }
-  }
+  const validSteps = steps
+    .filter((s: { instruction?: string }) => s.instruction?.trim())
+    .map((s: { instruction: string }, idx: number) => ({
+      recipe_id: recipe.id,
+      step_number: idx + 1,
+      instruction: s.instruction.trim(),
+    }));
 
-  // Insert steps
-  if (steps.length > 0) {
-    const validSteps = steps
-      .filter((s: { instruction?: string }) => s.instruction?.trim())
-      .map((s: { instruction: string }, idx: number) => ({
-        recipe_id: recipe.id,
-        step_number: idx + 1,
-        instruction: s.instruction.trim(),
-      }));
+  const extractedSource = source_url?.trim() ? extractSource(source_url.trim()) : null;
 
-    if (validSteps.length > 0) {
-      await supabase.from("preparation_steps").insert(validSteps);
-    }
-  }
-
-  // Auto-save source from source_url
-  if (source_url?.trim()) {
-    const extracted = extractSource(source_url.trim());
-    if (extracted) {
-      await supabase.from("saved_sources").upsert(
-        {
-          galley_id: membership.galley_id,
-          added_by: user.id,
-          url: source_url.trim(),
-          source_type: extracted.sourceType,
-          handle_or_name: extracted.handleOrName,
-        },
-        { onConflict: "galley_id,url", ignoreDuplicates: true }
-      );
-    }
-  }
+  // Insert ingredients, steps, and source in parallel
+  await Promise.all([
+    validIngredients.length > 0
+      ? supabase.from("ingredients").insert(validIngredients)
+      : Promise.resolve(null),
+    validSteps.length > 0
+      ? supabase.from("preparation_steps").insert(validSteps)
+      : Promise.resolve(null),
+    extractedSource
+      ? supabase.from("saved_sources").upsert(
+          {
+            galley_id: membership.galley_id,
+            added_by: user.id,
+            url: extractedSource.normalizedUrl,
+            source_type: extractedSource.sourceType,
+            handle_or_name: extractedSource.handleOrName,
+          },
+          { onConflict: "galley_id,url", ignoreDuplicates: true }
+        )
+      : Promise.resolve(null),
+  ]);
 
   // Download & store recipe image if provided (SSRF-safe: validated before fetch)
   if (image_url && isSafeUrl(image_url)) {
