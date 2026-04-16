@@ -76,6 +76,7 @@ export default async function SettingsPage() {
       savedSources={savedSources}
       deletedRecipes={deletedRecipes}
       currentUserId={user.id}
+      translationLanguage={(profile as unknown as { translation_language?: string | null })?.translation_language ?? null}
     />
   );
 }

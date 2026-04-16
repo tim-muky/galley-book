@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { RecipeCard } from "@/components/recipe-card";
+import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -66,7 +67,7 @@ export default async function LibraryPage({
     recipesQuery = recipesQuery.ilike("name", `%${params.search}%`);
   }
 
-  const [{ data: galley }, { data: members }, { data: recipes }] = await Promise.all([
+  const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }] = await Promise.all([
     supabase.from("galleys").select("id, name").eq("id", galleyId).single(),
     supabase
       .from("galley_members")
@@ -74,7 +75,10 @@ export default async function LibraryPage({
       .eq("galley_id", galleyId)
       .limit(5),
     recipesQuery,
+    supabase.from("cook_next_list").select("recipe_id").eq("galley_id", galleyId),
   ]);
+
+  const cookNextIds = new Set((cookNextRows ?? []).map((r) => r.recipe_id));
 
   if (!galley) {
     return <CreateGalleyPrompt />;
@@ -88,8 +92,8 @@ export default async function LibraryPage({
           <Image
             src="/logo.png"
             alt="Galley Book"
-            width={150}
-            height={150}
+            width={75}
+            height={75}
             className="object-contain object-left"
             priority
           />
@@ -153,10 +157,9 @@ export default async function LibraryPage({
             <Link
               key={f.value}
               href={f.value ? `/library?filter=${f.value}` : "/library"}
-              className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
-              style={active
-                ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
-                : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors ${
+                active ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
+              }`}
             >
               {f.label}
             </Link>
@@ -180,7 +183,14 @@ export default async function LibraryPage({
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {recipes.map((recipe) => (
-            <RecipeCard key={recipe.id} recipe={recipe} />
+            <div key={recipe.id} className="relative">
+              <RecipeCard recipe={recipe} />
+              <AddToCookNextButton
+                recipeId={recipe.id}
+                initialInList={cookNextIds.has(recipe.id)}
+                className="absolute top-2 right-2 z-10"
+              />
+            </div>
           ))}
         </div>
       )}

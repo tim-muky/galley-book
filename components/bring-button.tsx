@@ -14,13 +14,13 @@ export function BringButton({ shareToken, servings = 4 }: BringButtonProps) {
   return (
     <a
       href={bringUrl}
-      style={{ backgroundColor: "#252729", color: "#fff" }}
-      className="w-full flex items-center justify-center gap-2.5 font-light text-sm rounded-full py-4 px-6 transition-opacity hover:opacity-80 active:opacity-70"
+      style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+      className="w-full border flex items-center justify-center gap-2.5 font-light text-sm rounded-full py-3 px-6 transition-opacity hover:opacity-80 active:opacity-70"
     >
       {/* Bring! shopping bag icon */}
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <path d="M3 5h12l-1.5 9H4.5L3 5z" stroke="white" strokeWidth="1.3" strokeLinejoin="round"/>
-        <path d="M6.5 5V3.5A2.5 2.5 0 0111.5 3.5V5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+        <path d="M3 5h12l-1.5 9H4.5L3 5z" stroke="#252729" strokeWidth="1.3" strokeLinejoin="round"/>
+        <path d="M6.5 5V3.5A2.5 2.5 0 0111.5 3.5V5" stroke="#252729" strokeWidth="1.3" strokeLinecap="round"/>
       </svg>
       Add to Shopping List
     </a>

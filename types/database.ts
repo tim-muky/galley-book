@@ -160,6 +160,7 @@ export type Database = {
         Row: {
           amount: number | null
           created_at: string
+          group_name: string | null
           id: string
           name: string
           recipe_id: string
@@ -169,6 +170,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           created_at?: string
+          group_name?: string | null
           id?: string
           name: string
           recipe_id: string
@@ -178,6 +180,7 @@ export type Database = {
         Update: {
           amount?: number | null
           created_at?: string
+          group_name?: string | null
           id?: string
           name?: string
           recipe_id?: string
@@ -616,6 +619,14 @@ export type GalleyRole = Database["public"]["Enums"]["galley_role"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
 
+export type CookNextListItem = {
+  id: string;
+  galley_id: string;
+  recipe_id: string;
+  added_by: string;
+  added_at: string;
+};
+
 export type Recipe = Database["public"]["Tables"]["recipes"]["Row"];
 export type Ingredient = Database["public"]["Tables"]["ingredients"]["Row"];
 export type PreparationStep = Database["public"]["Tables"]["preparation_steps"]["Row"];
@@ -632,4 +643,16 @@ export interface RecipeWithDetails extends Recipe {
   steps: PreparationStep[];
   votes: Vote[];
   created_by_user?: UserProfile;
+}
+
+export interface RecipeTranslation {
+  id: string;
+  recipe_id: string;
+  language: string;
+  description: string | null;
+  ingredients: { id: string; name: string }[] | null;
+  steps: { id: string; instruction: string }[] | null;
+  translated_by: string | null;
+  created_at: string;
+  updated_at: string;
 }

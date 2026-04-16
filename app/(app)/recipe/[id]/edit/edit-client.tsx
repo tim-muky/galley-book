@@ -14,6 +14,7 @@ interface Ingredient {
   name: string;
   amount: string;
   unit: string;
+  group: string; // ingredient section label (e.g. "Marinade", "Sauce"), empty if ungrouped
 }
 
 interface Step {
@@ -69,7 +70,7 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g" }],
+      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g", group: "" }],
     }));
   }
 
@@ -341,42 +342,53 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
             </button>
           </div>
           <div className="space-y-2">
-            {form.ingredients.map((ing, idx) => (
-              <div key={ing._key} className="flex gap-2 items-center">
-                <input
-                  value={ing.name}
-                  onChange={(e) => updateIngredient(idx, "name", e.target.value)}
-                  placeholder="Ingredient"
-                  className="flex-1 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-                />
-                <input
-                  type="number"
-                  value={ing.amount}
-                  onChange={(e) => updateIngredient(idx, "amount", e.target.value)}
-                  placeholder="Amt"
-                  className="w-16 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-                />
-                <select
-                  value={ing.unit}
-                  onChange={(e) => updateIngredient(idx, "unit", e.target.value)}
-                  className="w-20 bg-surface-highest rounded-sm px-2 py-2.5 text-xs font-light text-anthracite outline-none"
-                >
-                  {UNITS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-                {form.ingredients.length > 1 && (
-                  <button
-                    onClick={() => removeIngredient(idx)}
-                    className="text-on-surface-variant/50 flex-shrink-0"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 8h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-            ))}
+            {form.ingredients.map((ing, idx) => {
+              const prevGroup = idx > 0 ? form.ingredients[idx - 1].group : undefined;
+              const showGroupHeader = !!ing.group && ing.group !== prevGroup;
+              return (
+                <div key={ing._key}>
+                  {showGroupHeader && (
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-3 mb-1.5">
+                      {ing.group}
+                    </p>
+                  )}
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={ing.name}
+                      onChange={(e) => updateIngredient(idx, "name", e.target.value)}
+                      placeholder="Ingredient"
+                      className="flex-1 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+                    />
+                    <input
+                      type="number"
+                      value={ing.amount}
+                      onChange={(e) => updateIngredient(idx, "amount", e.target.value)}
+                      placeholder="Amt"
+                      className="w-16 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+                    />
+                    <select
+                      value={ing.unit}
+                      onChange={(e) => updateIngredient(idx, "unit", e.target.value)}
+                      className="w-20 bg-surface-highest rounded-sm px-2 py-2.5 text-xs font-light text-anthracite outline-none"
+                    >
+                      {UNITS.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                    {form.ingredients.length > 1 && (
+                      <button
+                        onClick={() => removeIngredient(idx)}
+                        className="text-on-surface-variant/50 flex-shrink-0"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 8h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

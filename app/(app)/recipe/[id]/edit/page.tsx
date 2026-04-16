@@ -25,10 +25,11 @@ export default async function EditRecipePage({
 
   const ingredients = (recipe.ingredients ?? [])
     .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
-    .map((ing: { name: string; amount: number | null; unit: string | null }) => ({
+    .map((ing: { name: string; amount: number | null; unit: string | null; group_name: string | null }) => ({
       name: ing.name,
       amount: ing.amount?.toString() ?? "",
       unit: ing.unit ?? "g",
+      group: ing.group_name ?? "",
     }));
 
   const steps = (recipe.preparation_steps ?? [])

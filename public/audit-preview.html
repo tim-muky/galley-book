@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galley Book — Design Audit Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; background: #f9f9f9; color: #252729; -webkit-font-smoothing: antialiased; }
+
+  /* Tokens */
+  :root {
+    --anthracite: #252729;
+    --surface-low: #F3F3F4;
+    --surface-lowest: #FFFFFF;
+    --surface-highest: #E2E2E2;
+    --on-surface-variant: #474747;
+    --outline-variant: #C6C6C6;
+  }
+
+  .page { max-width: 420px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--on-surface-variant); margin-bottom: 32px; }
+
+  .section { margin-bottom: 48px; }
+  .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--anthracite); margin-bottom: 16px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .col-head { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--on-surface-variant); margin-bottom: 10px; }
+
+  /* ─── BEFORE inputs ─── */
+  .input-before {
+    width: 100%;
+    background: var(--surface-highest);
+    border: none;
+    border-radius: 0.5rem; /* rounded-sm */
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .input-before::placeholder { color: rgba(71,71,71,0.4); font-weight: 100; }
+
+  .select-before {
+    width: 100%;
+    background: var(--surface-highest);
+    border: none;
+    border-radius: 0.5rem;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .textarea-before {
+    width: 100%;
+    background: var(--surface-highest);
+    border: none;
+    border-radius: 0.5rem;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    resize: none;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .textarea-before::placeholder { color: rgba(71,71,71,0.4); }
+
+  /* ─── AFTER inputs ─── */
+  .input-after {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--anthracite);
+    border-radius: 9999px; /* rounded-full */
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    margin-bottom: 8px;
+    display: block;
+    transition: box-shadow 0.15s;
+  }
+  .input-after:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--anthracite);
+  }
+  .input-after::placeholder { color: rgba(71,71,71,0.4); font-weight: 100; }
+
+  .select-after {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--anthracite);
+    border-radius: 9999px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .select-after:focus-visible {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--anthracite);
+  }
+
+  .textarea-after {
+    width: 100%;
+    background: #fff;
+    border: 1px solid var(--anthracite);
+    border-radius: 12px; /* rounded-xl — multiline gets a softer corner */
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 300;
+    font-family: inherit;
+    color: var(--anthracite);
+    outline: none;
+    resize: none;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .textarea-after:focus-visible {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--anthracite);
+  }
+  .textarea-after::placeholder { color: rgba(71,71,71,0.4); }
+
+  /* ─── Ingredient row ─── */
+  .ing-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .ing-name-before { flex: 1; background: var(--surface-highest); border: none; border-radius: 0.5rem; padding: 10px 12px; font-size: 14px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+  .ing-name-before::placeholder { color: rgba(71,71,71,0.4); }
+  .ing-amt-before { width: 64px; background: var(--surface-highest); border: none; border-radius: 0.5rem; padding: 10px 12px; font-size: 14px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+  .ing-amt-before::placeholder { color: rgba(71,71,71,0.4); }
+  .ing-unit-before { width: 80px; background: var(--surface-highest); border: none; border-radius: 0.5rem; padding: 10px 8px; font-size: 12px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+
+  .ing-name-after { flex: 1; background: #fff; border: 1px solid var(--anthracite); border-radius: 9999px; padding: 10px 12px; font-size: 14px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+  .ing-name-after::placeholder { color: rgba(71,71,71,0.4); }
+  .ing-amt-after { width: 64px; background: #fff; border: 1px solid var(--anthracite); border-radius: 9999px; padding: 10px 12px; font-size: 14px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+  .ing-amt-after::placeholder { color: rgba(71,71,71,0.4); }
+  .ing-unit-after { width: 80px; background: #fff; border: 1px solid var(--anthracite); border-radius: 9999px; padding: 10px 8px; font-size: 12px; font-weight: 300; font-family: inherit; color: var(--anthracite); outline: none; }
+  .ing-remove { padding: 12px; color: rgba(71,71,71,0.5); border: none; background: none; cursor: pointer; }
+
+  /* ─── Labels ─── */
+  .field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--anthracite); margin-bottom: 6px; display: block; }
+
+  /* ─── Buttons ─── */
+  .btn-primary-before {
+    background: var(--anthracite); color: #fff;
+    border: none; border-radius: 9999px;
+    padding: 14px 24px; width: 100%;
+    font-size: 14px; font-weight: 300; font-family: inherit;
+    cursor: pointer; margin-bottom: 8px; display: block;
+  }
+  .btn-primary-before:focus { outline: none; } /* NO focus ring — the bug */
+
+  .btn-primary-after {
+    background: var(--anthracite); color: #fff;
+    border: none; border-radius: 9999px;
+    padding: 14px 24px; width: 100%;
+    font-size: 14px; font-weight: 300; font-family: inherit;
+    cursor: pointer; margin-bottom: 8px; display: block;
+    transition: opacity 0.15s;
+  }
+  .btn-primary-after:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #f9f9f9, 0 0 0 4px var(--anthracite);
+  }
+
+  /* ─── Hero buttons (recipe detail) ─── */
+  .hero-wrap { position: relative; width: 100%; aspect-ratio: 3/2; background: var(--surface-low); border-radius: 1.5rem; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .hero-placeholder { color: var(--outline-variant); font-size: 12px; font-weight: 300; }
+
+  .hero-btn-before {
+    position: absolute; top: 12px; left: 12px;
+    width: 36px; height: 36px; /* was 36×36 */
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(8px);
+    border-radius: 9999px;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 12px 40px 0 rgba(26,28,28,0.04);
+  }
+  .hero-btn-before:focus { outline: none; }
+
+  .hero-btn-after {
+    position: absolute; top: 12px; left: 12px;
+    width: 44px; height: 44px; /* fixed: 44×44 */
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(8px);
+    border-radius: 9999px;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 12px 40px 0 rgba(26,28,28,0.04);
+  }
+  .hero-btn-after:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.8), 0 0 0 4px var(--anthracite);
+  }
+
+  .badge {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 4px 10px; border-radius: 9999px;
+  }
+  .badge-before { background: #fee2e2; color: #dc2626; }
+  .badge-after { background: #dcfce7; color: #16a34a; }
+
+  /* ─── Divider ─── */
+  .divider { border: none; border-top: 1px solid var(--surface-low); margin: 0 0 32px; }
+
+  /* Tip */
+  .tip { font-size: 11px; font-weight: 300; color: var(--on-surface-variant); margin-top: 4px; margin-bottom: 16px; line-height: 1.5; }
+
+  /* keyboard focus demo note */
+  .focus-note { font-size: 11px; font-weight: 300; color: var(--on-surface-variant); margin-top: 8px; line-height: 1.5; }
+  .focus-note strong { font-weight: 600; color: var(--anthracite); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Design Audit — Before / After</h1>
+
+  <!-- ─── 1. Input Shape ─────────────────── -->
+  <div class="section">
+    <div class="section-label">1. Input shape &amp; focus ring (new/page.tsx, settings)</div>
+    <div class="cols">
+      <div>
+        <div class="col-head">Before</div>
+        <label class="field-label">Recipe Name *</label>
+        <input class="input-before" placeholder="e.g. Heirloom Tomato & Burrata" />
+        <label class="field-label">Season</label>
+        <select class="select-before">
+          <option>all year</option>
+          <option>spring</option>
+        </select>
+        <label class="field-label">Source Link</label>
+        <input class="input-before" placeholder="https://…" />
+      </div>
+      <div>
+        <div class="col-head">After</div>
+        <label class="field-label">Recipe Name *</label>
+        <input class="input-after" placeholder="e.g. Heirloom Tomato & Burrata" />
+        <label class="field-label">Season</label>
+        <select class="select-after">
+          <option>all year</option>
+          <option>spring</option>
+        </select>
+        <label class="field-label">Source Link</label>
+        <input class="input-after" placeholder="https://…" />
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── 2. Ingredient row ─────────────── -->
+  <div class="section">
+    <div class="section-label">2. Ingredient row inputs</div>
+    <div class="cols">
+      <div>
+        <div class="col-head">Before</div>
+        <div class="ing-row">
+          <input class="ing-name-before" placeholder="Ingredient" />
+          <input class="ing-amt-before" placeholder="Amt" />
+          <select class="ing-unit-before"><option>g</option><option>ml</option></select>
+        </div>
+        <div class="ing-row">
+          <input class="ing-name-before" placeholder="Ingredient" />
+          <input class="ing-amt-before" placeholder="Amt" />
+          <select class="ing-unit-before"><option>g</option><option>ml</option></select>
+          <button class="ing-remove" aria-label="Remove">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div>
+        <div class="col-head">After</div>
+        <div class="ing-row">
+          <input class="ing-name-after" placeholder="Ingredient" />
+          <input class="ing-amt-after" placeholder="Amt" />
+          <select class="ing-unit-after"><option>g</option><option>ml</option></select>
+        </div>
+        <div class="ing-row">
+          <input class="ing-name-after" placeholder="Ingredient" />
+          <input class="ing-amt-after" placeholder="Amt" />
+          <select class="ing-unit-after"><option>g</option><option>ml</option></select>
+          <button class="ing-remove" aria-label="Remove ingredient">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── 3. Step textarea ──────────────── -->
+  <div class="section">
+    <div class="section-label">3. Preparation step textarea</div>
+    <div class="cols">
+      <div>
+        <div class="col-head">Before</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="flex-shrink:0;width:24px;height:24px;border-radius:9999px;background:var(--surface-highest);display:flex;align-items:center;justify-content:center;margin-top:10px;">
+            <span style="font-size:9px;font-weight:600;color:var(--anthracite);">1</span>
+          </div>
+          <textarea class="textarea-before" rows="2" placeholder="Describe this step…"></textarea>
+        </div>
+      </div>
+      <div>
+        <div class="col-head">After</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="flex-shrink:0;width:24px;height:24px;border-radius:9999px;background:var(--surface-highest);display:flex;align-items:center;justify-content:center;margin-top:10px;">
+            <span style="font-size:9px;font-weight:600;color:var(--anthracite);">1</span>
+          </div>
+          <textarea class="textarea-after" rows="2" placeholder="Describe this step…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── 4. Focus rings ────────────────── -->
+  <div class="section">
+    <div class="section-label">4. Button focus rings (tab through to see)</div>
+    <div class="cols">
+      <div>
+        <div class="col-head">Before — tab here:</div>
+        <button class="btn-primary-before">Save to Galley</button>
+        <p class="focus-note">No visible ring. Keyboard users see nothing.</p>
+      </div>
+      <div>
+        <div class="col-head">After — tab here:</div>
+        <button class="btn-primary-after">Save to Galley</button>
+        <p class="focus-note"><strong>Tab into it</strong> to see the anthracite ring appear.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ─── 5. Hero buttons ───────────────── -->
+  <div class="section">
+    <div class="section-label">5. Recipe detail back button — touch target size</div>
+    <div class="cols">
+      <div>
+        <div class="col-head">Before — 36×36 px</div>
+        <div class="hero-wrap">
+          <span class="hero-placeholder">Recipe photo</span>
+          <button class="hero-btn-before" title="Back (36×36 — too small)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="#252729" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <span class="badge badge-before">36 px</span>
+        </div>
+      </div>
+      <div>
+        <div class="col-head">After — 44×44 px</div>
+        <div class="hero-wrap">
+          <span class="hero-placeholder">Recipe photo</span>
+          <button class="hero-btn-after" aria-label="Back to library" title="Back (44×44 — meets WCAG)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <span class="badge badge-after">44 px</span>
+        </div>
+      </div>
+    </div>
+    <p class="tip" style="margin-top:12px">The edit button (top right) received the same treatment.</p>
+  </div>
+
+</div>
+</body>
+</html>

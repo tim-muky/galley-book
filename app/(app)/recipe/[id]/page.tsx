@@ -3,10 +3,12 @@ export const dynamic = "force-dynamic";
 import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { BringButton } from "@/components/bring-button";
 import { DeleteRecipeButton } from "./delete-button";
 import { ShareButton } from "@/components/share-button";
 import { VoteSection } from "./vote-section";
+import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
+import { RecipeContent } from "./recipe-content";
+import type { RecipeTranslation } from "@/types/database";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
@@ -23,13 +25,49 @@ export default async function RecipeDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: recipe } = await supabase
-    .from("recipes")
-    .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*), votes(*)`)
-    .eq("id", id)
+  const { data: membership } = await supabase
+    .from("galley_members")
+    .select("galley_id")
+    .eq("user_id", user.id)
+    .order("invited_at", { ascending: true })
+    .limit(1)
     .single();
 
+  const [{ data: recipe }, { data: cookNextRow }, { data: userRow }] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*), votes(*)`)
+      .eq("id", id)
+      .single(),
+    membership?.galley_id
+      ? supabase
+          .from("cook_next_list")
+          .select("id")
+          .eq("galley_id", membership.galley_id)
+          .eq("recipe_id", id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("users").select("translation_language").eq("id", user.id).single(),
+  ]);
+
+  const translationLanguage =
+    (userRow as unknown as { translation_language?: string | null })?.translation_language ?? null;
+
+  // Fetch existing translation for this recipe + language (only if language is set)
+  const { data: translationRaw } = translationLanguage
+    ? await supabase
+        .from("recipe_translations" as never)
+        .select("*")
+        .eq("recipe_id", id)
+        .eq("language", translationLanguage)
+        .maybeSingle()
+    : { data: null };
+
+  const translation = translationRaw as RecipeTranslation | null;
+
   if (!recipe) notFound();
+
+  const isInCookNext = !!cookNextRow;
 
   const photos = (recipe.recipe_photos ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
   const primaryPhoto = photos.find((p: { is_primary: boolean }) => p.is_primary) ?? photos[0];
@@ -65,12 +103,20 @@ export default async function RecipeDetailPage({
         {/* Back button */}
         <Link
           href="/library"
-          className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
+          aria-label="Back to library"
+          className="absolute top-4 left-4 w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M10 12L6 8l4-4" stroke="#252729" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </Link>
+
+        {/* Cook Next button */}
+        <AddToCookNextButton
+          recipeId={id}
+          initialInList={isInCookNext}
+          className="absolute top-4 right-28"
+        />
 
         {/* Share button */}
         {recipe.share_token && (
@@ -80,10 +126,11 @@ export default async function RecipeDetailPage({
         {/* Edit button */}
         <Link
           href={`/recipe/${id}/edit`}
-          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
+          aria-label="Edit recipe"
+          className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
         >
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <path d="M10.5 2.5l2 2-8 8H2.5v-2l8-8z" stroke="#252729" strokeWidth="1.3" strokeLinejoin="round"/>
+            <path d="M10.5 2.5l2 2-8 8H2.5v-2l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
           </svg>
         </Link>
 
@@ -150,67 +197,16 @@ export default async function RecipeDetailPage({
           )}
         </div>
 
-        {/* Ingredients */}
-        {ingredients.length > 0 && (
-          <section>
-            <h2 className="text-lg font-light text-anthracite mb-4">Ingredients</h2>
-            <div className="bg-surface-low rounded-md px-5 py-2">
-              {ingredients.map((ing: { id: string; name: string; amount: number | null; unit: string | null }, idx: number) => (
-                <div
-                  key={ing.id}
-                  className={`flex items-baseline justify-between py-3 ${
-                    idx < ingredients.length - 1 ? "border-b border-surface-highest" : ""
-                  }`}
-                >
-                  <span className="text-sm font-light text-anthracite">{ing.name}</span>
-                  <span className="text-sm font-light text-on-surface-variant ml-4 text-right">
-                    {ing.amount && `${ing.amount} `}{ing.unit}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Bring! CTA */}
-            <div className="mt-4">
-              <BringButton
-                shareToken={recipe.share_token}
-                servings={recipe.servings ?? 4}
-              />
-            </div>
-          </section>
-        )}
-
-        {/* Preparation */}
-        {steps.length > 0 && (
-          <section>
-            <h2 className="text-lg font-light text-anthracite mb-4">Preparation</h2>
-            <div className="space-y-6">
-              {steps.map((step: { id: string; step_number: number; instruction: string; photo_storage_path: string | null }) => (
-                <div key={step.id} className="flex gap-4">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-anthracite flex items-center justify-center">
-                    <span className="text-[10px] font-semibold text-white">{step.step_number}</span>
-                  </div>
-                  <div className="flex-1 pt-0.5">
-                    <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-                      {step.instruction}
-                    </p>
-                    {step.photo_storage_path && (
-                      <div className="mt-3 rounded-md overflow-hidden">
-                        <Image
-                          src={`${STORAGE_URL}/${step.photo_storage_path}`}
-                          alt={`Step ${step.step_number}`}
-                          width={400}
-                          height={250}
-                          className="w-full object-cover rounded-md"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <RecipeContent
+          recipeId={id}
+          description={recipe.description ?? null}
+          ingredients={ingredients}
+          steps={steps}
+          translation={translation}
+          translationLanguage={translationLanguage}
+          shareToken={recipe.share_token}
+          servings={recipe.servings ?? null}
+        />
 
         {/* Vote */}
         <VoteSection

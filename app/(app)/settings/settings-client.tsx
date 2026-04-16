@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { UserProfile, SavedSource } from "@/types/database";
 
 interface Membership {
@@ -24,6 +25,25 @@ interface DeletedRecipe {
   deleted_at: string;
 }
 
+const LANGUAGES = [
+  { code: "de", name: "German" },
+  { code: "fr", name: "French" },
+  { code: "es", name: "Spanish" },
+  { code: "it", name: "Italian" },
+  { code: "pt", name: "Portuguese" },
+  { code: "nl", name: "Dutch" },
+  { code: "sv", name: "Swedish" },
+  { code: "da", name: "Danish" },
+  { code: "no", name: "Norwegian" },
+  { code: "ja", name: "Japanese" },
+  { code: "zh", name: "Chinese (Simplified)" },
+  { code: "ko", name: "Korean" },
+  { code: "ru", name: "Russian" },
+  { code: "ar", name: "Arabic" },
+  { code: "tr", name: "Turkish" },
+  { code: "pl", name: "Polish" },
+];
+
 interface Props {
   profile: UserProfile | null;
   memberships: Membership[];
@@ -31,9 +51,10 @@ interface Props {
   savedSources: SavedSource[];
   deletedRecipes: DeletedRecipe[];
   currentUserId: string;
+  translationLanguage: string | null;
 }
 
-export function SettingsClient({ profile, memberships, allMembers, savedSources, deletedRecipes, currentUserId }: Props) {
+export function SettingsClient({ profile, memberships, allMembers, savedSources, deletedRecipes, currentUserId, translationLanguage: initialTranslationLanguage }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -55,8 +76,13 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [deleted, setDeleted] = useState<DeletedRecipe[]>(deletedRecipes);
   const [restoringId, setRestoringId] = useState<string | null>(null);
 
+  const [translationLanguage, setTranslationLanguage] = useState(initialTranslationLanguage ?? "");
+  const [savingLanguage, setSavingLanguage] = useState(false);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [galleyInviteError, setGalleyInviteError] = useState("");
 
   async function saveProfile() {
     if (!profile) return;
@@ -67,6 +93,16 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
       .eq("id", profile.id);
     setSaving(false);
     router.refresh();
+  }
+
+  async function saveTranslationLanguage() {
+    if (!profile) return;
+    setSavingLanguage(true);
+    await supabase
+      .from("users")
+      .update({ translation_language: translationLanguage || null } as never)
+      .eq("id", profile.id);
+    setSavingLanguage(false);
   }
 
   async function signOut() {
@@ -83,9 +119,8 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
       router.push("/auth/login");
     } else {
       const err = await res.json().catch(() => ({}));
-      alert(err.error ?? "Failed to delete account. Please try again.");
+      setDeleteError(err.error ?? "Failed to delete account. Please try again.");
       setDeleting(false);
-      setShowDeleteConfirm(false);
     }
   }
 
@@ -110,9 +145,10 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error ?? "Failed to create invite link. Please try again.");
+        setGalleyInviteError(err.error ?? "Failed to create invite link. Please try again.");
         return;
       }
+      setGalleyInviteError("");
       const { url } = await res.json();
       const galleyName = firstGalley?.name ?? "our galley";
       if (navigator.share) {
@@ -231,6 +267,42 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
         </div>
       </section>
 
+      {/* Translation */}
+      <section>
+        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
+          Translation
+        </h2>
+        <p className="text-xs font-light text-on-surface-variant mb-4">
+          Choose a language to translate recipe descriptions, ingredients, and steps. Translation is optional and triggered per recipe.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
+              Translation Language
+            </label>
+            <select
+              value={translationLanguage}
+              onChange={(e) => setTranslationLanguage(e.target.value)}
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none"
+            >
+              <option value="">No translation</option>
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={saveTranslationLanguage}
+            disabled={savingLanguage}
+            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+          >
+            {savingLanguage ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </section>
+
       {/* Galley management */}
       {firstGalley && (
         <section>
@@ -290,19 +362,20 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
             </label>
             <button
               onClick={shareAppInvite}
-              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-              className="w-full border text-sm font-light py-3 rounded-full"
+              className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full"
             >
               Invite to Galley Book
             </button>
             <button
               onClick={shareGalleyInvite}
               disabled={sharingGalley || !inviteGalleyId}
-              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-              className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+              className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
             >
               {sharingGalley ? "Creating link…" : "Invite to this Galley"}
             </button>
+            {galleyInviteError && (
+              <p className="text-xs font-light text-red-500">{galleyInviteError}</p>
+            )}
           </div>
         </section>
       )}
@@ -330,7 +403,8 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
               </p>
               <button
                 onClick={() => removeSource(s.id)}
-                className="text-on-surface-variant/40"
+                aria-label="Remove source"
+                className="p-3 -m-3 text-on-surface-variant/40"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M10 4L4 10M4 4l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -385,8 +459,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
                 <button
                   onClick={() => restoreRecipe(r.id)}
                   disabled={restoringId === r.id}
-                  style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-                  className="flex-shrink-0 border text-xs font-light px-3 py-1.5 rounded-full transition-opacity disabled:opacity-40"
+                  className="flex-shrink-0 border border-anthracite bg-white text-anthracite text-xs font-light px-3 py-1.5 rounded-full transition-opacity disabled:opacity-40"
                 >
                   {restoringId === r.id ? "Restoring…" : "Restore"}
                 </button>
@@ -401,19 +474,19 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
         <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
           Preferences & Legal
         </h2>
-        <a href="/help" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
+        <Link href="/help" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="6" stroke="#474747" strokeWidth="1.2"/>
-            <path d="M8 11v-1M8 6.5a1.5 1.5 0 10-1.5 1.5H8" stroke="#474747" strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M8 11v-1M8 6.5a1.5 1.5 0 10-1.5 1.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
           </svg>
           Help Center
-        </a>
-        <a href="/privacy" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
+        </Link>
+        <Link href="/privacy" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4L8 2z" stroke="#474747" strokeWidth="1.2" strokeLinejoin="round"/>
+            <path d="M8 2L3 4v4c0 3 2.5 5.5 5 6 2.5-.5 5-3 5-6V4L8 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
           </svg>
           Legal & Privacy
-        </a>
+        </Link>
         <button
           onClick={signOut}
           className="flex items-center gap-3 py-3 text-sm font-light text-red-500 w-full text-left"
@@ -441,6 +514,9 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
               This will permanently delete your account, all your recipes, and all your data.
               This cannot be undone.
             </p>
+            {deleteError && (
+              <p className="text-xs font-light text-red-500">{deleteError}</p>
+            )}
             <button
               onClick={deleteAccount}
               disabled={deleting}
@@ -450,8 +526,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
             </button>
             <button
               onClick={() => setShowDeleteConfirm(false)}
-              style={{ borderColor: "#252729" }}
-              className="w-full border text-anthracite text-sm font-light py-3 rounded-full"
+              className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full"
             >
               Cancel
             </button>

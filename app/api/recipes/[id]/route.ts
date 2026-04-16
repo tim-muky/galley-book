@@ -68,11 +68,12 @@ export async function PUT(
       await supabase.from("ingredients").delete().eq("recipe_id", id);
       const valid = ingredients
         .filter((ing: { name?: string }) => ing.name?.trim())
-        .map((ing: { name: string; amount?: string; unit?: string }, idx: number) => ({
+        .map((ing: { name: string; amount?: string; unit?: string; group?: string }, idx: number) => ({
           recipe_id: id,
           name: ing.name.trim(),
           amount: ing.amount ? Number(ing.amount) : null,
           unit: ing.unit || null,
+          group_name: ing.group || null,
           sort_order: idx,
         }));
       if (valid.length > 0) await supabase.from("ingredients").insert(valid);

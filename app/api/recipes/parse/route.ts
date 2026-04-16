@@ -9,6 +9,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { YoutubeTranscript } from "youtube-transcript";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
@@ -23,7 +24,7 @@ const RECIPE_SCHEMA = `{
   "season": "all_year" | "spring" | "summer" | "autumn" | "winter",
   "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side",
   "image_url": "string | null (direct image URL if found)",
-  "ingredients": [{ "name": "string", "amount": number | null, "unit": "string | null" }],
+  "ingredients": [{ "name": "string", "amount": number | null, "unit": "string | null", "group": "string | null" }],
   "steps": [{ "instruction": "string" }]
 }`;
 
@@ -121,6 +122,102 @@ async function fetchInstagramThumbnail(url: string): Promise<string | null> {
   return null;
 }
 
+/** Extract Schema.org Recipe from JSON-LD script tags */
+function extractJsonLd(html: string): Record<string, unknown> | null {
+  const scriptMatches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const match of scriptMatches) {
+    try {
+      const data = JSON.parse(match[1]);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const type = (item as Record<string, unknown>)["@type"];
+        if (type === "Recipe" || (Array.isArray(type) && type.includes("Recipe"))) {
+          return item as Record<string, unknown>;
+        }
+        // Some sites wrap recipes in @graph
+        const graph = (item as Record<string, unknown>)["@graph"];
+        if (Array.isArray(graph)) {
+          const recipe = graph.find((g) => {
+            const t = (g as Record<string, unknown>)["@type"];
+            return t === "Recipe" || (Array.isArray(t) && t.includes("Recipe"));
+          });
+          if (recipe) return recipe as Record<string, unknown>;
+        }
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
+/** Serialize JSON-LD Recipe into clean structured text for the model */
+function formatJsonLdForModel(jsonLd: Record<string, unknown>): string {
+  const lines: string[] = [];
+
+  if (jsonLd.name) lines.push(`Recipe: ${jsonLd.name}`);
+  if (jsonLd.description) {
+    const desc = jsonLd.description;
+    lines.push(`Description: ${typeof desc === "string" ? desc : JSON.stringify(desc)}`);
+  }
+
+  const yld = jsonLd.recipeYield;
+  if (yld) lines.push(`Yield: ${Array.isArray(yld) ? yld[0] : yld}`);
+
+  const totalTime = jsonLd.totalTime ?? jsonLd.cookTime ?? jsonLd.prepTime;
+  if (totalTime) lines.push(`Total time: ${totalTime}`);
+
+  const ingredients = jsonLd.recipeIngredient;
+  if (Array.isArray(ingredients) && ingredients.length > 0) {
+    lines.push("\nIngredients:");
+    for (const ing of ingredients) lines.push(`- ${ing}`);
+  }
+
+  const instructions = jsonLd.recipeInstructions;
+  if (Array.isArray(instructions) && instructions.length > 0) {
+    lines.push("\nInstructions:");
+    for (const step of instructions) {
+      if (typeof step === "string") {
+        lines.push(`- ${step}`);
+      } else if (step && typeof step === "object") {
+        const s = step as Record<string, unknown>;
+        if (s["@type"] === "HowToSection") {
+          if (s.name) lines.push(`\n${s.name}:`);
+          const sectionSteps = s.itemListElement;
+          if (Array.isArray(sectionSteps)) {
+            for (const ss of sectionSteps) {
+              const sso = ss as Record<string, unknown>;
+              lines.push(`- ${sso.text ?? sso.name ?? ""}`);
+            }
+          }
+        } else {
+          lines.push(`- ${s.text ?? s.name ?? ""}`);
+        }
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/** Extract image URL from JSON-LD Recipe image field */
+function extractJsonLdImage(jsonLd: Record<string, unknown>): string | null {
+  const img = jsonLd.image;
+  if (!img) return null;
+  if (typeof img === "string") return img.startsWith("http") ? img : null;
+  if (Array.isArray(img) && img.length > 0) {
+    const first = img[0];
+    if (typeof first === "string") return first.startsWith("http") ? first : null;
+    if (first && typeof first === "object") {
+      const url = (first as Record<string, unknown>).url;
+      return typeof url === "string" && url.startsWith("http") ? url : null;
+    }
+  }
+  if (typeof img === "object") {
+    const url = (img as Record<string, unknown>).url;
+    return typeof url === "string" && url.startsWith("http") ? url : null;
+  }
+  return null;
+}
+
 /** TikTok thumbnail + caption — uses public oEmbed endpoint (no auth needed) */
 async function fetchTikTokOEmbed(url: string): Promise<{ thumbnail: string | null; caption: string }> {
   try {
@@ -173,6 +270,52 @@ async function fetchInstagramEmbed(url: string): Promise<string> {
     }
   }
   return "";
+}
+
+/** Extract YouTube video ID from any YouTube URL format */
+function extractYouTubeVideoId(url: string): string | null {
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m?.[1]) return m[1];
+  }
+  return null;
+}
+
+/** Fetch YouTube captions via the public timedtext endpoint — no API key needed */
+async function fetchYouTubeTranscript(url: string): Promise<string | null> {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return null;
+  try {
+    const segments = await YoutubeTranscript.fetchTranscript(videoId);
+    if (!segments.length) return null;
+    // Join into plain text, dropping timestamps — enough for recipe extraction
+    return segments.map((s) => s.text).join(" ").slice(0, 20000);
+  } catch {
+    return null;
+  }
+}
+
+/** Ask Gemini to watch the YouTube video directly and extract the recipe */
+async function analyzeYouTubeVideoWithGemini(url: string): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const result = await model.generateContent([
+    {
+      fileData: {
+        mimeType: "video/mp4",
+        fileUri: url,
+      },
+    },
+    {
+      text: "Watch this cooking video and extract the full recipe. Return: recipe name, all ingredients with exact amounts and units, all preparation steps in order, servings count, and total prep/cook time. Plain text only, no commentary.",
+    },
+  ]);
+  return result.response.text();
 }
 
 /** Use Perplexity to search for recipe content — good for Instagram, YouTube, JS-heavy pages */
@@ -248,13 +391,32 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     };
   }
 
-  // YouTube: thumbnail is deterministic from the video ID — no network call needed
+  // YouTube: 1) transcript (free, no key), 2) Gemini video analysis, 3) Perplexity fallback
   if (youtube) {
     const thumbnailUrl = extractYouTubeThumbnail(url);
+
+    // Route 1: transcript — most videos have captions, near-zero cost
+    const transcript = await fetchYouTubeTranscript(url);
+    if (transcript && transcript.length > 200) {
+      return { content: transcript, imageUrl: thumbnailUrl };
+    }
+
+    // Route 2: Gemini watches the video directly — handles videos without captions
+    try {
+      const videoContent = await analyzeYouTubeVideoWithGemini(url);
+      if (videoContent.length > 200) {
+        return { content: videoContent, imageUrl: thumbnailUrl };
+      }
+    } catch {
+      // Fall through to Perplexity
+    }
+
+    // Route 3: Perplexity web search fallback
     if (process.env.PERPLEXITY_API_KEY) {
       const content = await fetchViaPerplexity(url, false);
       return { content, imageUrl: thumbnailUrl };
     }
+
     return { content: `Recipe from: ${url}`, imageUrl: thumbnailUrl };
   }
 
@@ -269,57 +431,54 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl };
   }
 
-  // Regular websites: try Perplexity first (gets cleaner content), then direct fetch
-  if (process.env.PERPLEXITY_API_KEY) {
-    try {
-      const content = await fetchViaPerplexity(url, false);
-      if (content.length > 200) {
-        // Also try direct fetch to get the og:image
-        let imageUrl: string | null = null;
-        try {
-          const htmlRes = await fetch(url, {
-            headers: { "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)" },
-            signal: AbortSignal.timeout(8000),
-          });
-          if (htmlRes.ok) {
-            const html = await htmlRes.text();
-            imageUrl = extractImageUrl(html);
-          }
-        } catch {
-          // Image extraction failed, continue without it
-        }
-        return { content, imageUrl };
-      }
-    } catch {
-      // Perplexity failed, fall through to direct fetch
-    }
-  }
-
-  // Direct fetch fallback
+  // Regular websites: always do a direct fetch first — JSON-LD gives us exact structured data
   try {
     const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)",
-      },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)" },
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (res.ok) {
+      const html = await res.text();
+      const ogImageUrl = extractImageUrl(html);
+      const jsonLd = extractJsonLd(html);
 
-    const html = await res.text();
-    const imageUrl = extractImageUrl(html);
+      if (jsonLd) {
+        // JSON-LD found — exact structured data, preferred over everything else
+        const jsonLdImage = extractJsonLdImage(jsonLd);
+        return { content: formatJsonLdForModel(jsonLd), imageUrl: jsonLdImage ?? ogImageUrl };
+      }
 
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .slice(0, 15000);
+      // No JSON-LD: try Perplexity for cleaner content on JS-heavy pages
+      if (process.env.PERPLEXITY_API_KEY) {
+        try {
+          const perplexityContent = await fetchViaPerplexity(url, false);
+          if (perplexityContent.length > 200) {
+            return { content: perplexityContent, imageUrl: ogImageUrl };
+          }
+        } catch { /* fall through to stripped HTML */ }
+      }
 
-    return { content: text, imageUrl };
-  } catch {
-    return { content: `Recipe from: ${url}`, imageUrl: null };
+      // Last resort: strip HTML tags
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .slice(0, 15000);
+      return { content: text, imageUrl: ogImageUrl };
+    }
+  } catch { /* fall through */ }
+
+  // Network error — try Perplexity as last resort
+  if (process.env.PERPLEXITY_API_KEY) {
+    try {
+      const content = await fetchViaPerplexity(url, false);
+      if (content.length > 200) return { content, imageUrl: null };
+    } catch { /* give up */ }
   }
+
+  return { content: `Recipe from: ${url}`, imageUrl: null };
 }
 
 export async function POST(request: Request) {
@@ -368,6 +527,7 @@ Rules:
 - season: infer from dish characteristics if not stated
 - type: infer from dish if not stated (default "main")
 - image_url: set to ${imageUrl ? `"${imageUrl}"` : "null"} (use this value as-is)
+- ingredients.group: if ingredients are divided into sections (e.g. "Marinade", "Sauce", "Dressing"), set group to the section name; otherwise null
 - Return null for fields you cannot determine
 - Return ONLY JSON, no markdown, no explanation
 

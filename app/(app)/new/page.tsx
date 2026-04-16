@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { clsx } from "clsx";
 
 type Mode = "link" | "photo" | "manual";
 
@@ -15,6 +16,7 @@ interface Ingredient {
   name: string;
   amount: string;
   unit: string;
+  group: string; // ingredient section label (e.g. "Marinade", "Sauce"), empty if ungrouped
 }
 
 interface Step {
@@ -44,7 +46,7 @@ const emptyForm: RecipeForm = {
   type: "main",
   source_url: "",
   image_url: "",
-  ingredients: [{ _key: "ing-init", name: "", amount: "", unit: "g" }],
+  ingredients: [{ _key: "ing-init", name: "", amount: "", unit: "g", group: "" }],
   steps: [{ _key: "step-init", instruction: "" }],
 };
 
@@ -56,6 +58,7 @@ export default function NewRecipePage() {
   const [form, setForm] = useState<RecipeForm>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +93,7 @@ export default function NewRecipePage() {
         ...emptyForm,
         ...parsed,
         // Assign stable keys so React can reconcile list items correctly
-        ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID() })),
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID(), group: ing.group ?? "" })),
         steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
         source_url: linkUrl,
       });
@@ -186,7 +189,7 @@ export default function NewRecipePage() {
   function addIngredient() {
     setForm((prev) => ({
       ...prev,
-      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g" }],
+      ingredients: [...prev.ingredients, { _key: crypto.randomUUID(), name: "", amount: "", unit: "g", group: "" }],
     }));
   }
 
@@ -223,6 +226,7 @@ export default function NewRecipePage() {
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
+    setSaveError("");
 
     try {
       // Step 1: create recipe (with image_url if parser found one)
@@ -244,7 +248,7 @@ export default function NewRecipePage() {
 
       router.push(`/recipe/${id}`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Save failed");
+      setSaveError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -262,28 +266,28 @@ export default function NewRecipePage() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => { setMode("link"); setShowForm(false); clearCamera(); }}
-          style={mode === "link"
-            ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
-            : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
+          className={clsx(
+            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
+            mode === "link" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
+          )}
         >
           Import Link
         </button>
         <button
           onClick={() => { setMode("photo"); setShowForm(false); }}
-          style={mode === "photo"
-            ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
-            : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
+          className={clsx(
+            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
+            mode === "photo" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
+          )}
         >
           Photo
         </button>
         <button
           onClick={() => { setMode("manual"); setShowForm(true); setForm(emptyForm); setPhotoPreview(""); setPhotoFile(null); clearCamera(); }}
-          style={mode === "manual"
-            ? { backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }
-            : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
+          className={clsx(
+            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
+            mode === "manual" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
+          )}
         >
           Manual
         </button>
@@ -349,8 +353,7 @@ export default function NewRecipePage() {
               {/* Take photo button */}
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
-                className="w-full border rounded-md py-10 flex flex-col items-center gap-3 transition-opacity"
+                className="w-full border border-white bg-anthracite text-white rounded-md py-10 flex flex-col items-center gap-3 transition-opacity"
               >
                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
                   <rect x="2" y="8" width="32" height="22" rx="3" stroke="white" strokeWidth="1.8"/>
@@ -364,8 +367,7 @@ export default function NewRecipePage() {
               {/* Gallery option */}
               <button
                 onClick={() => galleryInputRef.current?.click()}
-                style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-                className="w-full border rounded-md py-4 flex items-center justify-center gap-2 text-sm font-light transition-opacity"
+                className="w-full border border-anthracite bg-white text-anthracite rounded-md py-4 flex items-center justify-center gap-2 text-sm font-light transition-opacity"
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <rect x="1" y="1" width="16" height="16" rx="2" stroke="#252729" strokeWidth="1.3"/>
@@ -406,16 +408,14 @@ export default function NewRecipePage() {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
-                className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
+                className="w-full border border-white bg-anthracite text-white text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
               >
                 {parsing ? "Reading recipe with AI…" : "Parse Recipe from Photo"}
               </button>
 
               <button
                 onClick={clearCamera}
-                style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-                className="w-full border text-sm font-light py-3 rounded-full transition-opacity"
+                className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full transition-opacity"
               >
                 Retake Photo
               </button>
@@ -500,7 +500,7 @@ export default function NewRecipePage() {
               value={form.name}
               onChange={(e) => updateField("name", e.target.value)}
               placeholder="e.g. Heirloom Tomato & Burrata Salad"
-              className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
             />
           </div>
 
@@ -515,7 +515,7 @@ export default function NewRecipePage() {
                 min="1"
                 value={form.servings}
                 onChange={(e) => updateField("servings", e.target.value)}
-                className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite outline-none"
+                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
               />
             </div>
             <div>
@@ -528,7 +528,7 @@ export default function NewRecipePage() {
                 value={form.prep_time}
                 onChange={(e) => updateField("prep_time", e.target.value)}
                 placeholder="30"
-                className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
               />
             </div>
           </div>
@@ -542,7 +542,7 @@ export default function NewRecipePage() {
               <select
                 value={form.season}
                 onChange={(e) => updateField("season", e.target.value)}
-                className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite outline-none"
+                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
               >
                 {SEASONS.map((s) => (
                   <option key={s} value={s}>{s.replace("_", " ")}</option>
@@ -556,7 +556,7 @@ export default function NewRecipePage() {
               <select
                 value={form.type}
                 onChange={(e) => updateField("type", e.target.value)}
-                className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite outline-none"
+                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
@@ -575,7 +575,7 @@ export default function NewRecipePage() {
               value={form.source_url}
               onChange={(e) => updateField("source_url", e.target.value)}
               placeholder="https://…"
-              className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
             />
           </div>
 
@@ -587,49 +587,60 @@ export default function NewRecipePage() {
               </label>
               <button
                 onClick={addIngredient}
-                style={{ color: "#252729", borderColor: "#252729", backgroundColor: "#fff" }}
-                className="text-xs font-light border px-3 py-1 rounded-full"
+                className="text-xs font-light border border-anthracite bg-white text-anthracite px-3 py-1 rounded-full"
               >
                 + Add
               </button>
             </div>
             <div className="space-y-2">
-              {form.ingredients.map((ing, idx) => (
-                <div key={ing._key} className="flex gap-2 items-center">
-                  <input
-                    value={ing.name}
-                    onChange={(e) => updateIngredient(idx, "name", e.target.value)}
-                    placeholder="Ingredient"
-                    className="flex-1 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-                  />
-                  <input
-                    type="number"
-                    value={ing.amount}
-                    onChange={(e) => updateIngredient(idx, "amount", e.target.value)}
-                    placeholder="Amt"
-                    className="w-16 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-                  />
-                  <select
-                    value={ing.unit}
-                    onChange={(e) => updateIngredient(idx, "unit", e.target.value)}
-                    className="w-20 bg-surface-highest rounded-sm px-2 py-2.5 text-xs font-light text-anthracite outline-none"
-                  >
-                    {UNITS.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                  {form.ingredients.length > 1 && (
-                    <button
-                      onClick={() => removeIngredient(idx)}
-                      className="text-on-surface-variant/50 flex-shrink-0"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M4 8h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
+              {form.ingredients.map((ing, idx) => {
+                const prevGroup = idx > 0 ? form.ingredients[idx - 1].group : undefined;
+                const showGroupHeader = !!ing.group && ing.group !== prevGroup;
+                return (
+                  <div key={ing._key}>
+                    {showGroupHeader && (
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-3 mb-1.5">
+                        {ing.group}
+                      </p>
+                    )}
+                    <div className="flex gap-2 items-center">
+                      <input
+                        value={ing.name}
+                        onChange={(e) => updateIngredient(idx, "name", e.target.value)}
+                        placeholder="Ingredient"
+                        className="flex-1 bg-white border border-[#252729] rounded-full px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
+                      />
+                      <input
+                        type="number"
+                        value={ing.amount}
+                        onChange={(e) => updateIngredient(idx, "amount", e.target.value)}
+                        placeholder="Amt"
+                        className="w-16 bg-white border border-[#252729] rounded-full px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
+                      />
+                      <select
+                        value={ing.unit}
+                        onChange={(e) => updateIngredient(idx, "unit", e.target.value)}
+                        className="w-20 bg-white border border-[#252729] rounded-full px-2 py-2.5 text-xs font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
+                      >
+                        {UNITS.map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                      {form.ingredients.length > 1 && (
+                        <button
+                          onClick={() => removeIngredient(idx)}
+                          aria-label="Remove ingredient"
+                          className="p-3 -m-3 text-on-surface-variant/50 flex-shrink-0"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M4 8h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -641,8 +652,7 @@ export default function NewRecipePage() {
               </label>
               <button
                 onClick={addStep}
-                style={{ color: "#252729", borderColor: "#252729", backgroundColor: "#fff" }}
-                className="text-xs font-light border px-3 py-1 rounded-full"
+                className="text-xs font-light border border-anthracite bg-white text-anthracite px-3 py-1 rounded-full"
               >
                 + Add
               </button>
@@ -658,12 +668,13 @@ export default function NewRecipePage() {
                     onChange={(e) => updateStep(idx, e.target.value)}
                     placeholder="Describe this step…"
                     rows={2}
-                    className="flex-1 bg-surface-highest rounded-sm px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none resize-none"
+                    className="flex-1 bg-white border border-[#252729] rounded-xl px-3 py-2.5 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none resize-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2"
                   />
                   {form.steps.length > 1 && (
                     <button
                       onClick={() => removeStep(idx)}
-                      className="text-on-surface-variant/50 mt-2.5"
+                      aria-label="Remove step"
+                      className="p-3 -m-3 text-on-surface-variant/50 mt-2.5"
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M4 8h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -676,11 +687,13 @@ export default function NewRecipePage() {
           </div>
 
           {/* Save */}
+          {saveError && (
+            <p className="text-xs font-light text-red-500">{saveError}</p>
+          )}
           <button
             onClick={handleSave}
             disabled={saving || !form.name.trim()}
-            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
-            className="w-full text-sm font-light py-4 rounded-full border transition-opacity disabled:opacity-40 mt-4"
+            className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-white transition-opacity disabled:opacity-40 mt-4"
           >
             {saving ? "Saving…" : "Save to Galley"}
           </button>

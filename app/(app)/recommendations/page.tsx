@@ -45,6 +45,27 @@ function ThumbsDownIcon() {
   );
 }
 
+// ─── Cook Next icon (C-arc + plus) ────────────────────────────────────────────
+
+function CookNextIcon({ color = "#ffffff" }: { color?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path
+        d="M13.5 3.5A6.5 6.5 0 1 0 13.5 14.5"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9 5.5v7M5.5 9h7"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // ─── Cook Next Card ───────────────────────────────────────────────────────────
 
 function CookNextCard({
@@ -52,11 +73,15 @@ function CookNextCard({
   onThumbsUp,
   onThumbsDown,
   voted,
+  inCookNextList,
+  onAddToCookNext,
 }: {
   recipe: CookNextRecipe;
   onThumbsUp: () => void;
   onThumbsDown: () => void;
   voted: "up" | "down" | null;
+  inCookNextList: boolean;
+  onAddToCookNext: () => void;
 }) {
   const primaryPhoto =
     recipe.recipe_photos?.find((p) => p.is_primary) ?? recipe.recipe_photos?.[0];
@@ -90,8 +115,8 @@ function CookNextCard({
         </div>
       </Link>
 
-      {/* Vote buttons */}
-      <div className="flex items-center justify-center gap-10 px-4 pb-5 pt-3">
+      {/* Vote + Cook Next buttons */}
+      <div className="flex items-center justify-center gap-6 px-4 pb-5 pt-3">
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={onThumbsDown}
@@ -120,6 +145,19 @@ function CookNextCard({
             <ThumbsUpIcon />
           </button>
           <span className="text-[10px] font-light text-on-surface-variant">Cook this</span>
+        </div>
+
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={onAddToCookNext}
+            style={{
+              backgroundColor: inCookNextList ? "#252729" : "rgba(37,39,41,0.10)",
+            }}
+            className="w-12 h-12 rounded-full flex items-center justify-center transition-opacity active:opacity-70"
+          >
+            <CookNextIcon color={inCookNextList ? "#ffffff" : "#252729"} />
+          </button>
+          <span className="text-[10px] font-light text-on-surface-variant">Cook Next</span>
         </div>
       </div>
     </div>
@@ -200,6 +238,7 @@ export default function RecommendationsPage() {
   const [cookNextRecipes, setCookNextRecipes] = useState<CookNextRecipe[]>([]);
   const [cookNextLoading, setCookNextLoading] = useState(true);
   const [votes, setVotes] = useState<Record<string, "up" | "down">>({});
+  const [cookNextListIds, setCookNextListIds] = useState<Set<string>>(new Set());
 
   // Discover state
   const [discoverResults, setDiscoverResults] = useState<DiscoverResult[]>([]);
@@ -213,6 +252,12 @@ export default function RecommendationsPage() {
   // ── Load Cook Next on mount ──────────────────────────────────────────────
   useEffect(() => {
     loadCookNext();
+    fetch("/api/cook-next-list")
+      .then((r) => r.json())
+      .then((d) => {
+        const ids = new Set<string>((d.items ?? []).map((i: { recipe_id: string }) => i.recipe_id));
+        setCookNextListIds(ids);
+      });
   }, []);
 
   async function loadCookNext() {
@@ -225,6 +270,20 @@ export default function RecommendationsPage() {
       }
     } finally {
       setCookNextLoading(false);
+    }
+  }
+
+  async function handleAddToCookNextList(recipe: CookNextRecipe) {
+    if (cookNextListIds.has(recipe.id)) {
+      await fetch(`/api/cook-next-list/${recipe.id}`, { method: "DELETE" });
+      setCookNextListIds((prev) => { const next = new Set(prev); next.delete(recipe.id); return next; });
+    } else {
+      await fetch("/api/cook-next-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId: recipe.id }),
+      });
+      setCookNextListIds((prev) => new Set([...prev, recipe.id]));
     }
   }
 
@@ -361,6 +420,8 @@ export default function RecommendationsPage() {
                 voted={votes[recipe.id] ?? null}
                 onThumbsUp={() => handleCookNextVote(recipe, 1)}
                 onThumbsDown={() => handleCookNextVote(recipe, -1)}
+                inCookNextList={cookNextListIds.has(recipe.id)}
+                onAddToCookNext={() => handleAddToCookNextList(recipe)}
               />
             ))}
           </div>

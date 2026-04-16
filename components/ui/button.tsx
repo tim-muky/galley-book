@@ -12,10 +12,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-light transition-opacity active:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed",
+          "inline-flex items-center justify-center gap-2 font-light transition-opacity active:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2",
           // Variants
           variant === "primary" && "bg-anthracite text-white rounded-full",
-          variant === "ghost" && "bg-transparent border border-[#C6C6C6]/30 text-anthracite rounded-full",
+          variant === "ghost" && "bg-white border border-anthracite text-anthracite rounded-full",
           variant === "tertiary" && "bg-transparent text-anthracite",
           // Sizes
           size === "sm" && "text-xs px-4 py-2",

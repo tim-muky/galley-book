@@ -50,10 +50,6 @@ const config: Config = {
         float:
           "0 12px 40px 0 rgba(26, 28, 28, 0.08)",
       },
-      backgroundImage: {
-        "primary-gradient":
-          "linear-gradient(135deg, #000000 0%, #3A3C3E 100%)",
-      },
     },
   },
   plugins: [],

@@ -172,22 +172,24 @@ In Tailwind: `text-anthracite`, `bg-surface-low`, `bg-surface-lowest`, `bg-surfa
 
 ### Buttons
 
-```tsx
-// Primary
-<button className="bg-anthracite text-white text-sm font-light py-3 rounded-full">
+Two states apply to all pill buttons — activated and unactivated are always the inverse of each other:
 
-// Primary (inline style when Tailwind conflicts)
-style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
+```tsx
+// Unactivated (default / ghost)
+style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
 className="border text-sm font-light py-3 rounded-full"
 
-// Ghost / Secondary
-style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+// Activated (filled / primary)
+style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
 className="border text-sm font-light py-3 rounded-full"
 
 // Destructive
 className="bg-red-500 text-white text-sm font-light py-3 rounded-full"
 ```
 
+- **Unactivated**: white bg, solid anthracite (`#252729`) border, anthracite text
+- **Activated**: anthracite bg, white text — the exact negative of unactivated
+- This rule applies on every page and every button type (filter chips, mode toggles, CTAs, etc.)
 - Border radius is always `rounded-full` for buttons, `rounded-md` for containers
 - Disabled state: always `disabled:opacity-40`
 - Loading state: show text like "Saving…" / "Adding…", never a spinner component

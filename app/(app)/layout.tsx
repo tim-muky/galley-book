@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/bottom-nav";
+import { FeedbackButton } from "@/components/feedback-button";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <BottomNav />
+      <FeedbackButton />
     </div>
   );
 }

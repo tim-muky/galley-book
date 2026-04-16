@@ -174,11 +174,12 @@ export async function POST(request: Request) {
   // Build insert payloads
   const validIngredients = ingredients
     .filter((ing: { name?: string }) => ing.name?.trim())
-    .map((ing: { name: string; amount?: string; unit?: string }, idx: number) => ({
+    .map((ing: { name: string; amount?: string; unit?: string; group?: string }, idx: number) => ({
       recipe_id: recipe.id,
       name: ing.name.trim(),
       amount: ing.amount ? Number(ing.amount) : null,
       unit: ing.unit || null,
+      group_name: ing.group || null,
       sort_order: idx,
     }));
 
