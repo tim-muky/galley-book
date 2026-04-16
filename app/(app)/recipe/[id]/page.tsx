@@ -111,28 +111,22 @@ export default async function RecipeDetailPage({
           </svg>
         </Link>
 
-        {/* Cook Next button */}
-        <AddToCookNextButton
-          recipeId={id}
-          initialInList={isInCookNext}
-          className="absolute top-4 right-28"
-        />
-
-        {/* Share button */}
-        {recipe.share_token && (
-          <ShareButton shareToken={recipe.share_token} recipeName={recipe.name} />
-        )}
-
-        {/* Edit button */}
-        <Link
-          href={`/recipe/${id}/edit`}
-          aria-label="Edit recipe"
-          className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
-        >
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <path d="M10.5 2.5l2 2-8 8H2.5v-2l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-          </svg>
-        </Link>
+        {/* Top-right button group */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <AddToCookNextButton recipeId={id} initialInList={isInCookNext} />
+          {recipe.share_token && (
+            <ShareButton shareToken={recipe.share_token} recipeName={recipe.name} />
+          )}
+          <Link
+            href={`/recipe/${id}/edit`}
+            aria-label="Edit recipe"
+            className="w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <path d="M10.5 2.5l2 2-8 8H2.5v-2l8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+            </svg>
+          </Link>
+        </div>
 
         {/* Title overlay at bottom of hero */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-5 pb-5 pt-12">

@@ -67,7 +67,7 @@ export function AddToCookNextButton({
       onClick={handleToggle}
       disabled={loading}
       aria-label={inList ? "Remove from Cook Next" : "Add to Cook Next"}
-      className={`w-9 h-9 flex items-center justify-center rounded-full shadow-ambient transition-opacity disabled:opacity-40 active:opacity-70 ${className}`}
+      className={`w-11 h-11 flex items-center justify-center rounded-full shadow-ambient transition-opacity disabled:opacity-40 active:opacity-70 ${className}`}
       style={{
         backgroundColor: inList ? "#252729" : "rgba(255,255,255,0.80)",
         backdropFilter: "blur(12px)",

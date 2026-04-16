@@ -29,7 +29,7 @@ export function ShareButton({
   return (
     <button
       onClick={handleShare}
-      className="absolute top-4 right-16 w-9 h-9 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
+      className="w-11 h-11 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-ambient"
       aria-label="Share recipe"
     >
       {copied ? (
