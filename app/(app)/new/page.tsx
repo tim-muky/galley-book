@@ -347,7 +347,8 @@ export default function NewRecipePage() {
               {/* Take photo button */}
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="w-full border border-white bg-anthracite text-white rounded-md py-10 flex flex-col items-center gap-3 transition-opacity"
+                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+                className="w-full border rounded-md py-10 flex flex-col items-center gap-3 transition-opacity"
               >
                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
                   <rect x="2" y="8" width="32" height="22" rx="3" stroke="white" strokeWidth="1.8"/>
@@ -402,7 +403,8 @@ export default function NewRecipePage() {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                className="w-full border border-white bg-anthracite text-white text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+                className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
               >
                 {parsing ? "Reading recipe with AI…" : "Parse Recipe from Photo"}
               </button>
@@ -687,7 +689,8 @@ export default function NewRecipePage() {
           <button
             onClick={handleSave}
             disabled={saving || !form.name.trim()}
-            className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-anthracite transition-opacity disabled:opacity-40 mt-4"
+            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+            className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40 mt-4"
           >
             {saving ? "Saving…" : "Save to Galley"}
           </button>

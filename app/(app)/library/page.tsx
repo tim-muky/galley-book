@@ -174,7 +174,8 @@ export default async function LibraryPage({
           </p>
           <Link
             href="/new"
-            className="bg-anthracite text-white text-sm font-light px-6 py-3 rounded-full border border-anthracite"
+            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+            className="border text-sm font-light px-6 py-3 rounded-full"
           >
             Add your first recipe
           </Link>
@@ -212,7 +213,8 @@ function CreateGalleyPrompt() {
         />
         <button
           type="submit"
-          className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-anthracite"
+          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          className="w-full border text-sm font-light py-4 rounded-full"
         >
           Create Galley
         </button>

@@ -94,7 +94,8 @@ export default async function JoinPage({
         <form action={joinGalley} className="w-full space-y-3">
           <button
             type="submit"
-            className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full"
+            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+            className="w-full border text-sm font-light py-4 rounded-full"
           >
             Join Galley
           </button>
