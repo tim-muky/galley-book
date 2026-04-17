@@ -96,21 +96,15 @@ export function RecipeContent({
               <div className="flex items-center bg-surface-low rounded-full p-0.5">
                 <button
                   onClick={() => setShowTranslated(false)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-light transition-colors ${
-                    !showTranslated
-                      ? "bg-anthracite text-white"
-                      : "text-anthracite"
-                  }`}
+                  style={!showTranslated ? { backgroundColor: "#252729", color: "#fff" } : { color: "#252729" }}
+                  className="px-3 py-1.5 rounded-full text-xs font-light transition-colors"
                 >
                   Original
                 </button>
                 <button
                   onClick={() => setShowTranslated(true)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-light transition-colors ${
-                    showTranslated
-                      ? "bg-anthracite text-white"
-                      : "text-anthracite"
-                  }`}
+                  style={showTranslated ? { backgroundColor: "#252729", color: "#fff" } : { color: "#252729" }}
+                  className="px-3 py-1.5 rounded-full text-xs font-light transition-colors"
                 >
                   {languageName}
                 </button>

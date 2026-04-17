@@ -157,9 +157,8 @@ export default async function LibraryPage({
             <Link
               key={f.value}
               href={f.value ? `/library?filter=${f.value}` : "/library"}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors ${
-                active ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
-              }`}
+              style={active ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+            className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
             >
               {f.label}
             </Link>

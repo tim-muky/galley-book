@@ -52,6 +52,14 @@ const config: Config = {
       },
     },
   },
+  safelist: [
+    "bg-anthracite",
+    "text-white",
+    "border-white",
+    "bg-white",
+    "text-anthracite",
+    "border-anthracite",
+  ],
   plugins: [],
 };
 

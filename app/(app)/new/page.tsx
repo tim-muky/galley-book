@@ -266,28 +266,22 @@ export default function NewRecipePage() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => { setMode("link"); setShowForm(false); clearCamera(); }}
-          className={clsx(
-            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
-            mode === "link" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
-          )}
+          style={mode === "link" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
         >
           Import Link
         </button>
         <button
           onClick={() => { setMode("photo"); setShowForm(false); }}
-          className={clsx(
-            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
-            mode === "photo" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
-          )}
+          style={mode === "photo" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
         >
           Photo
         </button>
         <button
           onClick={() => { setMode("manual"); setShowForm(true); setForm(emptyForm); setPhotoPreview(""); setPhotoFile(null); clearCamera(); }}
-          className={clsx(
-            "flex-1 py-2.5 rounded-full text-sm font-light border transition-colors",
-            mode === "manual" ? "bg-anthracite text-white border-white" : "bg-white text-anthracite border-anthracite"
-          )}
+          style={mode === "manual" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
         >
           Manual
         </button>
