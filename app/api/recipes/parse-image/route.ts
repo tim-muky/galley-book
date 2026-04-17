@@ -9,6 +9,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
   const base64 = Buffer.from(arrayBuffer).toString("base64");
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const t0 = Date.now();
   const result = await model.generateContent([
     {
       inlineData: {
@@ -67,6 +69,7 @@ Rules:
 - If the image is not a recipe, return { "error": "No recipe found in image" }
 - Return ONLY JSON, no markdown fences, no explanation`,
   ]);
+  const duration = Date.now() - t0;
 
   const rawText = result.response.text();
 
@@ -77,11 +80,38 @@ Rules:
     const parsed = JSON.parse(jsonMatch[0]);
 
     if (parsed.error) {
+      logAIUsage({
+        userId: user.id,
+        operation: "parse_image",
+        model: "gemini-2.5-flash",
+        inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+        outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+        durationMs: duration,
+        success: false,
+      });
       return NextResponse.json({ error: parsed.error }, { status: 422 });
     }
 
+    logAIUsage({
+      userId: user.id,
+      operation: "parse_image",
+      model: "gemini-2.5-flash",
+      inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      durationMs: duration,
+      success: true,
+    });
     return NextResponse.json(parsed);
   } catch {
+    logAIUsage({
+      userId: user.id,
+      operation: "parse_image",
+      model: "gemini-2.5-flash",
+      inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      durationMs: duration,
+      success: false,
+    });
     return NextResponse.json(
       { error: "Could not read recipe from this photo. Try a clearer image or add manually." },
       { status: 422 }

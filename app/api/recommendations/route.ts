@@ -7,17 +7,29 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { logAIUsage } from "@/lib/ai-logger";
 
-async function searchWithPerplexity(query: string): Promise<Array<{
+interface RecommendationResult {
   title: string;
   description: string;
   image_url: string | null;
   source_url: string;
   source_type: string;
   source_name: string;
-}>> {
-  if (!process.env.PERPLEXITY_API_KEY) return [];
+}
 
+interface PerplexityResponse {
+  results: RecommendationResult[];
+  inputTokens: number | null;
+  outputTokens: number | null;
+  durationMs: number;
+}
+
+async function searchWithPerplexity(query: string): Promise<PerplexityResponse> {
+  const empty: PerplexityResponse = { results: [], inputTokens: null, outputTokens: null, durationMs: 0 };
+  if (!process.env.PERPLEXITY_API_KEY) return empty;
+
+  const t0 = Date.now();
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: {
@@ -38,15 +50,20 @@ Return exactly 6 results. No markdown, no explanation — only the JSON array.`,
     }),
   });
 
-  if (!res.ok) return [];
+  const durationMs = Date.now() - t0;
+  if (!res.ok) return { ...empty, durationMs };
+
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? "";
+  const inputTokens: number | null = data.usage?.prompt_tokens ?? null;
+  const outputTokens: number | null = data.usage?.completion_tokens ?? null;
+
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
-    return JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) return { results: [], inputTokens, outputTokens, durationMs };
+    return { results: JSON.parse(jsonMatch[0]), inputTokens, outputTokens, durationMs };
   } catch {
-    return [];
+    return { results: [], inputTokens, outputTokens, durationMs };
   }
 }
 
@@ -104,12 +121,21 @@ export async function GET(request: Request) {
     searchQuery = `${recipeContext} ${sourceContext} ${memoryContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
   }
 
-  let recommendations = await searchWithPerplexity(searchQuery);
+  const { results, inputTokens, outputTokens, durationMs } = await searchWithPerplexity(searchQuery);
 
-  // Filter out memory URLs client-side as extra safety
-  if (memoryUrls.length > 0) {
-    recommendations = recommendations.filter((r) => !memoryUrls.includes(r.source_url));
-  }
+  logAIUsage({
+    userId: user.id,
+    operation: "recommendation",
+    model: "perplexity-sonar",
+    inputTokens,
+    outputTokens,
+    durationMs,
+    success: results.length > 0,
+  });
+
+  const recommendations = memoryUrls.length > 0
+    ? results.filter((r) => !memoryUrls.includes(r.source_url))
+    : results;
 
   return NextResponse.json({ recommendations });
 }

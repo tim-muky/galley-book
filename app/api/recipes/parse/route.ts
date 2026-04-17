@@ -13,6 +13,7 @@ import { YoutubeTranscript } from "youtube-transcript";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -516,6 +517,7 @@ export async function POST(request: Request) {
   }
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const t0 = Date.now();
   const result = await model.generateContent(
     `Extract the recipe from the following content and return ONLY valid JSON matching this schema:
 ${RECIPE_SCHEMA}
@@ -534,6 +536,7 @@ Rules:
 Content:
 ${pageContent}`
   );
+  const duration = Date.now() - t0;
 
   const rawText = result.response.text();
 
@@ -542,12 +545,29 @@ ${pageContent}`
     if (!jsonMatch) throw new Error("No JSON found");
 
     const parsed = JSON.parse(jsonMatch[0]);
-    // Ensure image_url is set from our extraction if Claude didn't include it
     if (!parsed.image_url && imageUrl) {
       parsed.image_url = imageUrl;
     }
+    logAIUsage({
+      userId: user.id,
+      operation: "parse_link",
+      model: "gemini-2.5-flash",
+      inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      durationMs: duration,
+      success: true,
+    });
     return NextResponse.json(parsed);
   } catch {
+    logAIUsage({
+      userId: user.id,
+      operation: "parse_link",
+      model: "gemini-2.5-flash",
+      inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      durationMs: duration,
+      success: false,
+    });
     return NextResponse.json(
       { error: "Could not parse recipe from this URL. Try pasting the recipe manually." },
       { status: 422 }
