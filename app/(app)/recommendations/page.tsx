@@ -405,7 +405,7 @@ export default function RecommendationsPage() {
             </p>
             <Link
               href="/new"
-              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#fff" }}
+              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
               className="inline-block border text-sm font-light px-6 py-2.5 rounded-full mt-2"
             >
               Add your first recipe

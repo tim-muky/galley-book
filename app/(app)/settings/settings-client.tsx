@@ -260,7 +260,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           <button
             onClick={saveProfile}
             disabled={saving}
-            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full border border-anthracite transition-opacity disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save Profile"}
           </button>
@@ -296,7 +296,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           <button
             onClick={saveTranslationLanguage}
             disabled={savingLanguage}
-            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full border border-anthracite transition-opacity disabled:opacity-40"
           >
             {savingLanguage ? "Saving…" : "Save"}
           </button>
@@ -436,7 +436,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
           <button
             onClick={addSource}
             disabled={addingSource || !newSourceUrl.trim()}
-            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            className="w-full bg-anthracite text-white text-sm font-light py-3 rounded-full border border-anthracite transition-opacity disabled:opacity-40"
           >
             {addingSource ? "Adding…" : "Add Source"}
           </button>

@@ -254,7 +254,7 @@ export default async function SharePage({
         {isLoggedIn ? (
           <Link
             href={`/share/${token}/add`}
-            className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full"
+            className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full border border-[#252729]"
           >
             Add to My Galley
           </Link>
@@ -262,7 +262,7 @@ export default async function SharePage({
           <>
             <Link
               href={`/share/${token}/add`}
-              className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full"
+              className="block w-full text-center bg-[#252729] text-white text-sm font-light py-4 rounded-full border border-[#252729]"
             >
               Add to My Galley
             </Link>

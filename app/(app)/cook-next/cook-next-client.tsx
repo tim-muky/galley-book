@@ -63,8 +63,8 @@ export function CookNextClient({ initialItems }: { initialItems: CookNextEntry[]
           </p>
           <Link
             href="/library"
-            style={{ backgroundColor: "#252729", color: "#fff" }}
-            className="text-sm font-light px-6 py-3 rounded-full"
+            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+            className="border text-sm font-light px-6 py-3 rounded-full"
           >
             Browse library
           </Link>

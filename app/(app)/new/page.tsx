@@ -693,7 +693,7 @@ export default function NewRecipePage() {
           <button
             onClick={handleSave}
             disabled={saving || !form.name.trim()}
-            className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-white transition-opacity disabled:opacity-40 mt-4"
+            className="w-full bg-anthracite text-white text-sm font-light py-4 rounded-full border border-anthracite transition-opacity disabled:opacity-40 mt-4"
           >
             {saving ? "Saving…" : "Save to Galley"}
           </button>
