@@ -18,7 +18,7 @@ const PRICING: Record<string, { input: number; output: number }> = {
   "perplexity-sonar": { input: 1.0 / 1_000_000, output: 1.0 / 1_000_000 },
 };
 
-export function logAIUsage(params: AIUsageParams): void {
+export async function logAIUsage(params: AIUsageParams): Promise<void> {
   const pricing = PRICING[params.model];
   const costUsd =
     pricing && params.inputTokens != null && params.outputTokens != null
@@ -26,7 +26,7 @@ export function logAIUsage(params: AIUsageParams): void {
       : null;
 
   const supabase = createServiceClient();
-  void supabase.from("ai_usage_logs").insert({
+  await supabase.from("ai_usage_logs").insert({
     user_id: params.userId,
     operation: params.operation,
     model: params.model,

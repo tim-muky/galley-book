@@ -84,6 +84,9 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
   const [deleteError, setDeleteError] = useState("");
   const [galleyInviteError, setGalleyInviteError] = useState("");
 
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [deletedOpen, setDeletedOpen] = useState(false);
+
   async function saveProfile() {
     if (!profile) return;
     setSaving(true);
@@ -268,44 +271,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
         </div>
       </section>
 
-      {/* Translation */}
-      <section>
-        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
-          Translation
-        </h2>
-        <p className="text-xs font-light text-on-surface-variant mb-4">
-          Choose a language to translate recipe descriptions, ingredients, and steps. Translation is optional and triggered per recipe.
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
-              Translation Language
-            </label>
-            <select
-              value={translationLanguage}
-              onChange={(e) => setTranslationLanguage(e.target.value)}
-              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none"
-            >
-              <option value="">No translation</option>
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={saveTranslationLanguage}
-            disabled={savingLanguage}
-            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
-            className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
-          >
-            {savingLanguage ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </section>
-
-      {/* Galley management */}
+      {/* Galley Management */}
       {firstGalley && (
         <section>
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
@@ -316,8 +282,7 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
             <p className="text-sm font-semibold text-anthracite">{firstGalley.name}</p>
           </div>
 
-          {/* Members list */}
-          <div className="space-y-2 mb-5">
+          <div className="space-y-2">
             {galleyMembers.map((m) => (
               <div
                 key={m.user_id}
@@ -356,12 +321,16 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
               </div>
             ))}
           </div>
+        </section>
+      )}
 
-          {/* Invite */}
+      {/* Invite Someone */}
+      {firstGalley && (
+        <section>
+          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
+            Invite Someone
+          </h2>
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block">
-              Invite Someone
-            </label>
             <button
               onClick={shareAppInvite}
               className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full"
@@ -382,95 +351,164 @@ export function SettingsClient({ profile, memberships, allMembers, savedSources,
         </section>
       )}
 
-      {/* Saved sources for recommendations */}
+      {/* Recommendation Sources — collapsible */}
       <section>
-        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
-          Recommendation Sources
-        </h2>
-        <p className="text-xs font-light text-on-surface-variant mb-4">
-          Add Instagram accounts, YouTube channels, TikTok accounts, or websites to power your AI recommendations. Sources are also added automatically when you import a recipe via link.
-        </p>
+        <button
+          onClick={() => setSourcesOpen((o) => !o)}
+          className="w-full flex items-center justify-between mb-4"
+        >
+          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest">
+            Recommendation Sources
+          </h2>
+          <svg
+            width="16" height="16" viewBox="0 0 16 16" fill="none"
+            className={`text-anthracite transition-transform duration-200 ${sourcesOpen ? "rotate-180" : ""}`}
+          >
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
 
-        <div className="space-y-2 mb-4">
-          {sources.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-3 bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
-            >
-              <span className="text-xs font-light text-on-surface-variant capitalize bg-surface-low px-2 py-0.5 rounded-full">
-                {s.source_type}
-              </span>
-              <p className="flex-1 text-sm font-light text-anthracite truncate">
-                {s.handle_or_name ?? s.url}
-              </p>
+        {sourcesOpen && (
+          <>
+            <p className="text-xs font-light text-on-surface-variant mb-4">
+              Add Instagram accounts, YouTube channels, TikTok accounts, or websites to power your AI recommendations. Sources are also added automatically when you import a recipe via link.
+            </p>
+
+            <div className="space-y-2 mb-4">
+              {sources.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-3 bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
+                >
+                  <span className="text-xs font-light text-on-surface-variant capitalize bg-surface-low px-2 py-0.5 rounded-full">
+                    {s.source_type}
+                  </span>
+                  <p className="flex-1 text-sm font-light text-anthracite truncate">
+                    {s.handle_or_name ?? s.url}
+                  </p>
+                  <button
+                    onClick={() => removeSource(s.id)}
+                    aria-label="Remove source"
+                    className="p-3 -m-3 text-on-surface-variant/40"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M10 4L4 10M4 4l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <select
+                  value={newSourceType}
+                  onChange={(e) => setNewSourceType(e.target.value as "instagram" | "youtube" | "tiktok" | "website")}
+                  className="bg-white border border-[#252729] rounded-full px-3 py-3 text-xs font-light text-anthracite outline-none"
+                >
+                  <option value="instagram">Instagram</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="website">Website</option>
+                </select>
+                <input
+                  value={newSourceUrl}
+                  onChange={(e) => setNewSourceUrl(e.target.value)}
+                  placeholder="URL or @handle"
+                  className="flex-1 bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
+                />
+              </div>
               <button
-                onClick={() => removeSource(s.id)}
-                aria-label="Remove source"
-                className="p-3 -m-3 text-on-surface-variant/40"
+                onClick={addSource}
+                disabled={addingSource || !newSourceUrl.trim()}
+                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+                className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M10 4L4 10M4 4l6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                </svg>
+                {addingSource ? "Adding…" : "Add Source"}
               </button>
             </div>
-          ))}
-        </div>
+          </>
+        )}
+      </section>
 
-        <div className="space-y-2">
-          <div className="flex gap-2">
+      {/* Deleted Recipes — collapsible */}
+      <section>
+        <button
+          onClick={() => setDeletedOpen((o) => !o)}
+          className="w-full flex items-center justify-between mb-4"
+        >
+          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest">
+            Deleted Recipes
+          </h2>
+          <svg
+            width="16" height="16" viewBox="0 0 16 16" fill="none"
+            className={`text-anthracite transition-transform duration-200 ${deletedOpen ? "rotate-180" : ""}`}
+          >
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        {deletedOpen && (
+          <div className="space-y-2">
+            {deleted.length === 0 ? (
+              <p className="text-xs font-light text-on-surface-variant">No deleted recipes.</p>
+            ) : (
+              deleted.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-3 bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
+                >
+                  <p className="flex-1 text-sm font-light text-anthracite truncate">{r.name}</p>
+                  <button
+                    onClick={() => restoreRecipe(r.id)}
+                    disabled={restoringId === r.id}
+                    className="flex-shrink-0 border border-anthracite bg-white text-anthracite text-xs font-light px-3 py-1.5 rounded-full transition-opacity disabled:opacity-40"
+                  >
+                    {restoringId === r.id ? "Restoring…" : "Restore"}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Translation */}
+      <section>
+        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
+          Translation
+        </h2>
+        <p className="text-xs font-light text-on-surface-variant mb-4">
+          Choose a language to translate recipe descriptions, ingredients, and steps. Translation is optional and triggered per recipe.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
+              Translation Language
+            </label>
             <select
-              value={newSourceType}
-              onChange={(e) => setNewSourceType(e.target.value as "instagram" | "youtube" | "tiktok" | "website")}
-              className="bg-white border border-[#252729] rounded-full px-3 py-3 text-xs font-light text-anthracite outline-none"
+              value={translationLanguage}
+              onChange={(e) => setTranslationLanguage(e.target.value)}
+              className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none"
             >
-              <option value="instagram">Instagram</option>
-              <option value="youtube">YouTube</option>
-              <option value="tiktok">TikTok</option>
-              <option value="website">Website</option>
+              <option value="">No translation</option>
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
             </select>
-            <input
-              value={newSourceUrl}
-              onChange={(e) => setNewSourceUrl(e.target.value)}
-              placeholder="URL or @handle"
-              className="flex-1 bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-            />
           </div>
           <button
-            onClick={addSource}
-            disabled={addingSource || !newSourceUrl.trim()}
+            onClick={saveTranslationLanguage}
+            disabled={savingLanguage}
             style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
             className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
           >
-            {addingSource ? "Adding…" : "Add Source"}
+            {savingLanguage ? "Saving…" : "Save"}
           </button>
         </div>
       </section>
-
-      {/* Deleted Recipes */}
-      {deleted.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">
-            Deleted Recipes
-          </h2>
-          <div className="space-y-2">
-            {deleted.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center gap-3 bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
-              >
-                <p className="flex-1 text-sm font-light text-anthracite truncate">{r.name}</p>
-                <button
-                  onClick={() => restoreRecipe(r.id)}
-                  disabled={restoringId === r.id}
-                  className="flex-shrink-0 border border-anthracite bg-white text-anthracite text-xs font-light px-3 py-1.5 rounded-full transition-opacity disabled:opacity-40"
-                >
-                  {restoringId === r.id ? "Restoring…" : "Restore"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Preferences & Legal */}
       <section className="space-y-1">

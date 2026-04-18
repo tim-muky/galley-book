@@ -123,7 +123,7 @@ export async function GET(request: Request) {
 
   const { results, inputTokens, outputTokens, durationMs } = await searchWithPerplexity(searchQuery);
 
-  logAIUsage({
+  await logAIUsage({
     userId: user.id,
     operation: "recommendation",
     model: "perplexity-sonar",

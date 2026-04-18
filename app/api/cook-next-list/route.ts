@@ -25,7 +25,8 @@ export async function GET() {
     .from("cook_next_list")
     .select(`id, recipe_id, added_at, recipes(id, name, prep_time, servings, type, recipe_photos(*))`)
     .eq("galley_id", galleyId)
-    .order("added_at", { ascending: false });
+    .order("added_at", { ascending: false })
+    .limit(50);
 
   return NextResponse.json({ items: data ?? [] });
 }

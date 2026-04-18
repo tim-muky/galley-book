@@ -80,7 +80,7 @@ Rules:
     const parsed = JSON.parse(jsonMatch[0]);
 
     if (parsed.error) {
-      logAIUsage({
+      await logAIUsage({
         userId: user.id,
         operation: "parse_image",
         model: "gemini-2.5-flash",
@@ -92,7 +92,7 @@ Rules:
       return NextResponse.json({ error: parsed.error }, { status: 422 });
     }
 
-    logAIUsage({
+    await logAIUsage({
       userId: user.id,
       operation: "parse_image",
       model: "gemini-2.5-flash",
@@ -103,7 +103,7 @@ Rules:
     });
     return NextResponse.json(parsed);
   } catch {
-    logAIUsage({
+    await logAIUsage({
       userId: user.id,
       operation: "parse_image",
       model: "gemini-2.5-flash",

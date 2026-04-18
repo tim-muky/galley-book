@@ -14,6 +14,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
+import { z } from "zod";
+
+const ParseSchema = z.object({
+  url: z.string().min(1).max(2000),
+});
+
+export const maxDuration = 30;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -41,6 +48,13 @@ function isTikTokUrl(url: string): boolean {
   return /tiktok\.com/i.test(url);
 }
 
+/** Normalize protocol-relative URLs to https */
+function normalizeImageUrl(raw: string): string | null {
+  if (raw.startsWith("//")) return `https:${raw}`;
+  if (raw.startsWith("http")) return raw;
+  return null;
+}
+
 /** Extract og:image or twitter:image from raw HTML */
 function extractImageUrl(html: string): string | null {
   const patterns = [
@@ -51,76 +65,121 @@ function extractImageUrl(html: string): string | null {
   ];
   for (const pattern of patterns) {
     const match = html.match(pattern);
-    if (match?.[1] && match[1].startsWith("http")) {
-      return match[1];
+    if (match?.[1]) {
+      const normalized = normalizeImageUrl(match[1]);
+      if (normalized) return normalized;
     }
   }
   return null;
 }
 
-/** YouTube thumbnail — fully public, no API key needed */
-function extractYouTubeThumbnail(url: string): string | null {
+/** YouTube thumbnails — validates each variant, returns cover + up to 3 snapshot frames */
+async function extractYouTubeThumbnails(url: string): Promise<string[]> {
   const patterns = [
     /[?&]v=([a-zA-Z0-9_-]{11})/,
     /youtu\.be\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
   ];
+  let videoId: string | null = null;
   for (const p of patterns) {
     const m = url.match(p);
-    if (m?.[1]) {
-      return `https://img.youtube.com/vi/${m[1]}/maxresdefault.jpg`;
-    }
+    if (m?.[1]) { videoId = m[1]; break; }
   }
-  return null;
+  if (!videoId) return [];
+
+  // Cover frame quality variants (creator-chosen thumbnail at different resolutions)
+  const coverVariants = ["maxresdefault", "sddefault", "hqdefault", "0"];
+  // Auto-generated snapshot frames at ~25%, ~50%, ~75% through the video
+  const snapshotVariants = ["1", "2", "3"];
+
+  const id = videoId;
+  const allUrls = [
+    ...coverVariants.map((v) => `https://img.youtube.com/vi/${id}/${v}.jpg`),
+    ...snapshotVariants.map((v) => `https://img.youtube.com/vi/${id}/${v}.jpg`),
+  ];
+
+  const results = await Promise.allSettled(
+    allUrls.map(async (thumbUrl) => {
+      const res = await fetch(thumbUrl, { method: "HEAD", signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error("not found");
+      return thumbUrl;
+    })
+  );
+
+  const valid = results
+    .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  // Take best available cover quality (first valid from coverVariants), then snapshots
+  const coverUrl = valid.find((u) =>
+    coverVariants.some((v) => u.endsWith(`/${v}.jpg`))
+  );
+  const snapshots = valid.filter((u) => snapshotVariants.some((v) => u.endsWith(`/${v}.jpg`)));
+
+  return [coverUrl, ...snapshots].filter((u): u is string => !!u);
 }
 
-/** Instagram thumbnail — tries oEmbed API first, then embed HTML scrape */
-async function fetchInstagramThumbnail(url: string): Promise<string | null> {
-  // 1. oEmbed endpoint (public, works for public posts without any auth)
+/** Instagram images — tries oEmbed, then scrapes all embed URL variants for CDN image URLs */
+async function fetchInstagramImages(url: string): Promise<string[]> {
+  const candidates: string[] = [];
+
+  // 1. oEmbed endpoint (public, works for some public posts)
   try {
     const oembedUrl = `https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}&fields=thumbnail_url`;
     const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const data = await res.json();
-      if (data.thumbnail_url?.startsWith("http")) return data.thumbnail_url;
+      if (data.thumbnail_url?.startsWith("http")) candidates.push(data.thumbnail_url as string);
     }
   } catch {
     // Fall through
   }
 
-  // 2. Scrape embed HTML for CDN image URLs
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return null;
+  if (!match) return candidates;
   const shortcode = match[1];
 
-  for (const embedUrl of [
-    `https://www.instagram.com/reel/${shortcode}/embed/`,
+  const embedUrls = [
+    `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
+    `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
     `https://www.instagram.com/p/${shortcode}/embed/`,
-  ]) {
-    try {
-      const res = await fetch(embedUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-          Accept: "text/html",
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (!res.ok) continue;
-      const html = await res.text();
+    `https://www.instagram.com/reel/${shortcode}/embed/`,
+  ];
+  const userAgents = [
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  ];
 
-      // og:image in embed (most reliable)
-      const ogImg = extractImageUrl(html);
-      if (ogImg) return ogImg;
+  for (const embedUrl of embedUrls) {
+    for (const ua of userAgents) {
+      try {
+        const res = await fetch(embedUrl, {
+          headers: { "User-Agent": ua, Accept: "text/html,application/xhtml+xml" },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) continue;
+        const html = await res.text();
 
-      // CDN image src in embed HTML
-      const cdnMatch = html.match(/src=["'](https:\/\/[^"']+(?:cdninstagram|fbcdn)[^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)/i);
-      if (cdnMatch?.[1]) return cdnMatch[1];
-    } catch {
-      continue;
+        // og:image
+        const ogImg = extractImageUrl(html);
+        if (ogImg && !candidates.includes(ogImg)) candidates.push(ogImg);
+
+        // All CDN image URLs in the embed HTML (covers carousel images)
+        const cdnPattern = /(?:src|href|content)=["'](https:\/\/[^"']+(?:cdninstagram|fbcdn)[^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)/gi;
+        for (const m of html.matchAll(cdnPattern)) {
+          if (m[1] && !candidates.includes(m[1])) candidates.push(m[1]);
+        }
+
+        if (candidates.length >= 5) break;
+      } catch {
+        continue;
+      }
     }
+    if (candidates.length >= 5) break;
   }
-  return null;
+
+  return candidates.slice(0, 5);
 }
 
 /** Extract Schema.org Recipe from JSON-LD script tags */
@@ -159,12 +218,16 @@ function formatJsonLdForModel(jsonLd: Record<string, unknown>): string {
     const desc = jsonLd.description;
     lines.push(`Description: ${typeof desc === "string" ? desc : JSON.stringify(desc)}`);
   }
+  if (jsonLd.recipeCuisine) lines.push(`Cuisine: ${jsonLd.recipeCuisine}`);
+  if (jsonLd.keywords) lines.push(`Keywords: ${jsonLd.keywords}`);
+  if (jsonLd.recipeCategory) lines.push(`Category: ${jsonLd.recipeCategory}`);
 
   const yld = jsonLd.recipeYield;
   if (yld) lines.push(`Yield: ${Array.isArray(yld) ? yld[0] : yld}`);
 
-  const totalTime = jsonLd.totalTime ?? jsonLd.cookTime ?? jsonLd.prepTime;
-  if (totalTime) lines.push(`Total time: ${totalTime}`);
+  if (jsonLd.prepTime) lines.push(`Prep time: ${jsonLd.prepTime}`);
+  if (jsonLd.cookTime) lines.push(`Cook time: ${jsonLd.cookTime}`);
+  if (jsonLd.totalTime) lines.push(`Total time: ${jsonLd.totalTime}`);
 
   const ingredients = jsonLd.recipeIngredient;
   if (Array.isArray(ingredients) && ingredients.length > 0) {
@@ -203,18 +266,18 @@ function formatJsonLdForModel(jsonLd: Record<string, unknown>): string {
 function extractJsonLdImage(jsonLd: Record<string, unknown>): string | null {
   const img = jsonLd.image;
   if (!img) return null;
-  if (typeof img === "string") return img.startsWith("http") ? img : null;
+  if (typeof img === "string") return normalizeImageUrl(img);
   if (Array.isArray(img) && img.length > 0) {
     const first = img[0];
-    if (typeof first === "string") return first.startsWith("http") ? first : null;
+    if (typeof first === "string") return normalizeImageUrl(first);
     if (first && typeof first === "object") {
       const url = (first as Record<string, unknown>).url;
-      return typeof url === "string" && url.startsWith("http") ? url : null;
+      return typeof url === "string" ? normalizeImageUrl(url) : null;
     }
   }
   if (typeof img === "object") {
     const url = (img as Record<string, unknown>).url;
-    return typeof url === "string" && url.startsWith("http") ? url : null;
+    return typeof url === "string" ? normalizeImageUrl(url) : null;
   }
   return null;
 }
@@ -288,7 +351,11 @@ function extractYouTubeVideoId(url: string): string | null {
   return null;
 }
 
-/** Fetch YouTube captions via the public timedtext endpoint — no API key needed */
+/** Fetch YouTube captions via the public timedtext endpoint — no API key needed.
+ *  Uses youtube-transcript@1.3.0 which relies on undocumented YouTube APIs.
+ *  If this returns null more frequently, fall through to Gemini video analysis.
+ *  Monitor via ai_usage_logs: high gemini parse_link count = transcript is broken.
+ */
 async function fetchYouTubeTranscript(url: string): Promise<string | null> {
   const videoId = extractYouTubeVideoId(url);
   if (!videoId) return null;
@@ -305,16 +372,14 @@ async function fetchYouTubeTranscript(url: string): Promise<string | null> {
 /** Ask Gemini to watch the YouTube video directly and extract the recipe */
 async function analyzeYouTubeVideoWithGemini(url: string): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const result = await model.generateContent([
-    {
-      fileData: {
-        mimeType: "video/mp4",
-        fileUri: url,
-      },
-    },
-    {
-      text: "Watch this cooking video and extract the full recipe. Return: recipe name, all ingredients with exact amounts and units, all preparation steps in order, servings count, and total prep/cook time. Plain text only, no commentary.",
-    },
+  const result = await Promise.race([
+    model.generateContent([
+      { fileData: { mimeType: "video/mp4", fileUri: url } },
+      { text: "Watch this cooking video and extract the full recipe. Return: recipe name, all ingredients with exact amounts and units, all preparation steps in order, servings count, and total prep/cook time. Plain text only, no commentary." },
+    ]),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini video analysis timeout")), 20000)
+    ),
   ]);
   return result.response.text();
 }
@@ -345,6 +410,7 @@ Return only the raw recipe content, no commentary.`;
       model: "sonar",
       messages: [{ role: "user", content: prompt }],
     }),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) return "";
@@ -356,6 +422,7 @@ Return only the raw recipe content, no commentary.`;
 interface FetchResult {
   content: string;
   imageUrl: string | null;
+  imageCandidates: string[];
   error?: string;
 }
 
@@ -363,15 +430,16 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
   const instagram = isInstagramUrl(url);
   const youtube = isYouTubeUrl(url);
 
-  // Instagram: fetch thumbnail in parallel with content extraction
+  // Instagram: fetch images in parallel with content extraction
   if (instagram) {
-    const [embedContent, thumbnailUrl] = await Promise.all([
+    const [embedContent, instagramImages] = await Promise.all([
       fetchInstagramEmbed(url),
-      fetchInstagramThumbnail(url),
+      fetchInstagramImages(url),
     ]);
 
+    const imageUrl = instagramImages[0] ?? null;
     if (embedContent.length > 200) {
-      return { content: embedContent, imageUrl: thumbnailUrl };
+      return { content: embedContent, imageUrl, imageCandidates: instagramImages };
     }
     // Embed failed — fall back to Perplexity with strict prompt
     if (process.env.PERPLEXITY_API_KEY) {
@@ -380,33 +448,39 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
         return {
           content: "",
           imageUrl: null,
+          imageCandidates: [],
           error: "Instagram posts require login and cannot be parsed automatically. Please add the recipe manually.",
         };
       }
-      return { content, imageUrl: thumbnailUrl };
+      return { content, imageUrl, imageCandidates: instagramImages };
     }
     return {
       content: "",
       imageUrl: null,
+      imageCandidates: [],
       error: "Instagram posts cannot be parsed automatically. Please add the recipe manually.",
     };
   }
 
   // YouTube: 1) transcript (free, no key), 2) Gemini video analysis, 3) Perplexity fallback
   if (youtube) {
-    const thumbnailUrl = extractYouTubeThumbnail(url);
+    // Fetch all thumbnail candidates (cover + snapshot frames) in parallel with transcript
+    const [thumbnails, transcript] = await Promise.all([
+      extractYouTubeThumbnails(url),
+      fetchYouTubeTranscript(url),
+    ]);
+    const imageUrl = thumbnails[0] ?? null;
 
     // Route 1: transcript — most videos have captions, near-zero cost
-    const transcript = await fetchYouTubeTranscript(url);
     if (transcript && transcript.length > 200) {
-      return { content: transcript, imageUrl: thumbnailUrl };
+      return { content: transcript, imageUrl, imageCandidates: thumbnails };
     }
 
     // Route 2: Gemini watches the video directly — handles videos without captions
     try {
       const videoContent = await analyzeYouTubeVideoWithGemini(url);
       if (videoContent.length > 200) {
-        return { content: videoContent, imageUrl: thumbnailUrl };
+        return { content: videoContent, imageUrl, imageCandidates: thumbnails };
       }
     } catch {
       // Fall through to Perplexity
@@ -415,10 +489,10 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     // Route 3: Perplexity web search fallback
     if (process.env.PERPLEXITY_API_KEY) {
       const content = await fetchViaPerplexity(url, false);
-      return { content, imageUrl: thumbnailUrl };
+      return { content, imageUrl, imageCandidates: thumbnails };
     }
 
-    return { content: `Recipe from: ${url}`, imageUrl: thumbnailUrl };
+    return { content: `Recipe from: ${url}`, imageUrl, imageCandidates: thumbnails };
   }
 
   // TikTok: oEmbed for thumbnail + caption, Perplexity for full recipe content
@@ -427,15 +501,19 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       fetchTikTokOEmbed(url),
       process.env.PERPLEXITY_API_KEY ? fetchViaPerplexity(url, false) : Promise.resolve(""),
     ]);
-    // Combine oEmbed caption (often contains the recipe text) with Perplexity output
+    const imageCandidates = thumbnailUrl ? [thumbnailUrl] : [];
     const content = [caption, perplexityContent].filter(Boolean).join("\n\n");
-    return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl };
+    return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl, imageCandidates };
   }
 
   // Regular websites: always do a direct fetch first — JSON-LD gives us exact structured data
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "de,en-US;q=0.8,en;q=0.5",
+      },
       signal: AbortSignal.timeout(10000),
     });
 
@@ -445,9 +523,10 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       const jsonLd = extractJsonLd(html);
 
       if (jsonLd) {
-        // JSON-LD found — exact structured data, preferred over everything else
         const jsonLdImage = extractJsonLdImage(jsonLd);
-        return { content: formatJsonLdForModel(jsonLd), imageUrl: jsonLdImage ?? ogImageUrl };
+        const imageUrl = jsonLdImage ?? ogImageUrl;
+        const imageCandidates = imageUrl ? [imageUrl] : [];
+        return { content: formatJsonLdForModel(jsonLd), imageUrl, imageCandidates };
       }
 
       // No JSON-LD: try Perplexity for cleaner content on JS-heavy pages
@@ -455,19 +534,25 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
         try {
           const perplexityContent = await fetchViaPerplexity(url, false);
           if (perplexityContent.length > 200) {
-            return { content: perplexityContent, imageUrl: ogImageUrl };
+            const imageCandidates = ogImageUrl ? [ogImageUrl] : [];
+            return { content: perplexityContent, imageUrl: ogImageUrl, imageCandidates };
           }
         } catch { /* fall through to stripped HTML */ }
       }
 
-      // Last resort: strip HTML tags
+      // Last resort: strip structural/noise elements, then tags
       const text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, "")
+        .replace(/<template[^>]*>[\s\S]*?<\/template>/gi, "")
+        .replace(/<(nav|header|footer|aside)[^>]*>[\s\S]*?<\/\1>/gi, "")
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
+        .trim()
         .slice(0, 15000);
-      return { content: text, imageUrl: ogImageUrl };
+      const imageCandidates = ogImageUrl ? [ogImageUrl] : [];
+      return { content: text, imageUrl: ogImageUrl, imageCandidates };
     }
   } catch { /* fall through */ }
 
@@ -475,11 +560,11 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
   if (process.env.PERPLEXITY_API_KEY) {
     try {
       const content = await fetchViaPerplexity(url, false);
-      if (content.length > 200) return { content, imageUrl: null };
+      if (content.length > 200) return { content, imageUrl: null, imageCandidates: [] };
     } catch { /* give up */ }
   }
 
-  return { content: `Recipe from: ${url}`, imageUrl: null };
+  return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [] };
 }
 
 export async function POST(request: Request) {
@@ -493,17 +578,19 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { url } = await request.json();
-  if (!url?.trim()) {
+  const body = await request.json();
+  const parsed = ParseSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
+  const { url } = parsed.data;
 
   // SSRF guard — reject private IPs, loopback, cloud metadata endpoints, non-HTTP schemes
   if (!isSafeUrl(url.trim())) {
     return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
   }
 
-  const { content: pageContent, imageUrl, error: fetchError } = await fetchPageContent(url);
+  const { content: pageContent, imageUrl, imageCandidates, error: fetchError } = await fetchPageContent(url);
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError }, { status: 422 });
@@ -548,7 +635,8 @@ ${pageContent}`
     if (!parsed.image_url && imageUrl) {
       parsed.image_url = imageUrl;
     }
-    logAIUsage({
+    parsed.image_candidates = imageCandidates;
+    await logAIUsage({
       userId: user.id,
       operation: "parse_link",
       model: "gemini-2.5-flash",
@@ -559,7 +647,7 @@ ${pageContent}`
     });
     return NextResponse.json(parsed);
   } catch {
-    logAIUsage({
+    await logAIUsage({
       userId: user.id,
       operation: "parse_link",
       model: "gemini-2.5-flash",

@@ -61,6 +61,7 @@ export default function NewRecipePage() {
   const [saveError, setSaveError] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const [imageCandidates, setImageCandidates] = useState<string[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
   // Camera / photo parse state
   const [cameraFile, setCameraFile] = useState<File | null>(null);
@@ -88,7 +89,7 @@ export default function NewRecipePage() {
         throw new Error(err.error ?? "Failed to parse recipe");
       }
 
-      const parsed: RecipeForm & { image_url?: string } = await res.json();
+      const parsed: RecipeForm & { image_url?: string; image_candidates?: string[] } = await res.json();
       setForm({
         ...emptyForm,
         ...parsed,
@@ -97,7 +98,8 @@ export default function NewRecipePage() {
         steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
         source_url: linkUrl,
       });
-      // If parser returned an image URL, show it as preview
+      const candidates = parsed.image_candidates ?? (parsed.image_url ? [parsed.image_url] : []);
+      setImageCandidates(candidates);
       if (parsed.image_url) {
         setPhotoPreview(parsed.image_url);
       }
@@ -162,15 +164,21 @@ export default function NewRecipePage() {
     if (!file) return;
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
-    // Clear the image_url from parser since user chose their own
+    setImageCandidates([]);
     setForm((prev) => ({ ...prev, image_url: "" }));
   }
 
   function clearPhoto() {
     setPhotoFile(null);
-    setPhotoPreview("");
-    setForm((prev) => ({ ...prev, image_url: "" }));
     if (photoInputRef.current) photoInputRef.current.value = "";
+    // Fall back to first candidate if available
+    if (imageCandidates.length > 0) {
+      setPhotoPreview(imageCandidates[0]);
+      setForm((prev) => ({ ...prev, image_url: imageCandidates[0] }));
+    } else {
+      setPhotoPreview("");
+      setForm((prev) => ({ ...prev, image_url: "" }));
+    }
   }
 
   // ── Form helpers ─────────────────────────────────────────────
@@ -265,7 +273,7 @@ export default function NewRecipePage() {
       {/* Mode toggle */}
       <div className="flex gap-2 mb-6">
         <button
-          onClick={() => { setMode("link"); setShowForm(false); clearCamera(); }}
+          onClick={() => { setMode("link"); setShowForm(false); clearCamera(); setImageCandidates([]); setPhotoPreview(""); setPhotoFile(null); }}
           style={mode === "link" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
           className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
         >
@@ -279,7 +287,7 @@ export default function NewRecipePage() {
           Photo
         </button>
         <button
-          onClick={() => { setMode("manual"); setShowForm(true); setForm(emptyForm); setPhotoPreview(""); setPhotoFile(null); clearCamera(); }}
+          onClick={() => { setMode("manual"); setShowForm(true); setForm(emptyForm); setPhotoPreview(""); setPhotoFile(null); setImageCandidates([]); clearCamera(); }}
           style={mode === "manual" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
           className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
         >
@@ -443,7 +451,83 @@ export default function NewRecipePage() {
               className="hidden"
               onChange={handlePhotoSelect}
             />
-            {photoPreview ? (
+
+            {/* Case 1: user picked their own file */}
+            {photoFile ? (
+              <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
+                <Image
+                  src={photoPreview}
+                  alt="Recipe photo"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                <div className="absolute inset-0 flex items-end justify-between p-3">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+            /* Case 2: multiple candidates — show picker strip */
+            ) : imageCandidates.length > 1 ? (
+              <div>
+                <div className="flex gap-2 overflow-x-auto pb-2 -mx-5 px-5 snap-x snap-mandatory">
+                  {imageCandidates.map((candidateUrl, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setPhotoPreview(candidateUrl);
+                        setForm((prev) => ({ ...prev, image_url: candidateUrl }));
+                      }}
+                      className={clsx(
+                        "flex-shrink-0 w-28 aspect-square snap-start rounded-md overflow-hidden transition-all",
+                        photoPreview === candidateUrl
+                          ? "ring-2 ring-anthracite ring-offset-1"
+                          : "opacity-50"
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={candidateUrl} alt={`Photo option ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="text-xs font-light text-on-surface-variant"
+                  >
+                    Use my own photo
+                  </button>
+                  {photoPreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setPhotoPreview(""); setForm((prev) => ({ ...prev, image_url: "" })); }}
+                      className="text-xs font-light text-on-surface-variant"
+                    >
+                      No photo
+                    </button>
+                  )}
+                </div>
+              </div>
+
+            /* Case 3: single candidate or manually set preview */
+            ) : photoPreview ? (
               <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
                 <Image
                   src={photoPreview}
@@ -471,6 +555,8 @@ export default function NewRecipePage() {
                   </button>
                 </div>
               </div>
+
+            /* Case 4: nothing — empty state */
             ) : (
               <button
                 type="button"

@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const SourceCreateSchema = z.object({
+  url: z.string().min(1).max(2000),
+  sourceType: z.enum(["instagram", "youtube", "tiktok", "website"]),
+  galleyId: z.string().uuid(),
+});
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -9,11 +16,12 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { url, sourceType, galleyId } = await request.json();
-
-  if (!url?.trim() || !sourceType || !galleyId) {
-    return NextResponse.json({ error: "url, sourceType and galleyId are required" }, { status: 400 });
+  const body = await request.json();
+  const parsed = SourceCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
+  const { url, sourceType, galleyId } = parsed.data;
 
   // Extract a display name from the URL
   let handleOrName: string | null = null;

@@ -1,11 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const rawNext = url.searchParams.get("next") ?? "/library";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/library";
+  const next = safeRedirectPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/auth/login?error=no_code", request.url));

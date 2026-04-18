@@ -1,6 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
+import { z } from "zod";
+
+const IngredientSchema = z.object({
+  name: z.string().min(1).max(200),
+  amount: z.union([z.number().positive(), z.string()]).optional().nullable(),
+  unit: z.string().max(50).optional().nullable(),
+  group: z.string().max(100).optional().nullable(),
+});
+
+const StepSchema = z.object({
+  instruction: z.string().min(1).max(3000),
+});
+
+const RecipeCreateSchema = z.object({
+  name: z.string().min(1).max(300),
+  description: z.string().max(2000).optional().nullable(),
+  servings: z.number().int().min(1).max(100).optional().nullable(),
+  prep_time: z.number().int().min(0).max(10080).optional().nullable(),
+  season: z.enum(["spring", "summer", "autumn", "winter", "all_year"]).optional(),
+  type: z.enum(["starter", "main", "dessert", "breakfast", "snack", "drink", "side"]).optional().nullable(),
+  source_url: z.string().url().max(2000).optional().nullable(),
+  image_url: z.string().url().max(2000).optional().nullable(),
+  ingredients: z.array(IngredientSchema).max(100).default([]),
+  steps: z.array(StepSchema).max(50).default([]),
+});
 
 type SourceEntry = { sourceType: string; handleOrName: string; normalizedUrl: string };
 
@@ -120,22 +145,11 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const {
-    name,
-    description,
-    servings,
-    prep_time,
-    season,
-    type,
-    source_url,
-    image_url,
-    ingredients = [],
-    steps = [],
-  } = body;
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  const parsed = RecipeCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
+  const { name, description, servings, prep_time, season, type, source_url, image_url, ingredients, steps } = parsed.data;
 
   // Get user's galley
   const { data: membership } = await supabase
@@ -173,8 +187,8 @@ export async function POST(request: Request) {
 
   // Build insert payloads
   const validIngredients = ingredients
-    .filter((ing: { name?: string }) => ing.name?.trim())
-    .map((ing: { name: string; amount?: string; unit?: string; group?: string }, idx: number) => ({
+    .filter((ing) => ing.name.trim())
+    .map((ing, idx) => ({
       recipe_id: recipe.id,
       name: ing.name.trim(),
       amount: ing.amount ? Number(ing.amount) : null,
@@ -184,8 +198,8 @@ export async function POST(request: Request) {
     }));
 
   const validSteps = steps
-    .filter((s: { instruction?: string }) => s.instruction?.trim())
-    .map((s: { instruction: string }, idx: number) => ({
+    .filter((s) => s.instruction.trim())
+    .map((s, idx) => ({
       recipe_id: recipe.id,
       step_number: idx + 1,
       instruction: s.instruction.trim(),
@@ -193,27 +207,34 @@ export async function POST(request: Request) {
 
   const extractedSource = source_url?.trim() ? await extractSource(source_url.trim()) : null;
 
-  // Insert ingredients, steps, and source in parallel
-  await Promise.all([
+  // Insert ingredients + steps in parallel — rollback recipe on any failure
+  const [{ error: ingError }, { error: stepError }] = await Promise.all([
     validIngredients.length > 0
       ? supabase.from("ingredients").insert(validIngredients)
-      : Promise.resolve(null),
+      : Promise.resolve({ error: null }),
     validSteps.length > 0
       ? supabase.from("preparation_steps").insert(validSteps)
-      : Promise.resolve(null),
-    extractedSource
-      ? supabase.from("saved_sources").upsert(
-          {
-            galley_id: membership.galley_id,
-            added_by: user.id,
-            url: extractedSource.normalizedUrl,
-            source_type: extractedSource.sourceType,
-            handle_or_name: extractedSource.handleOrName,
-          },
-          { onConflict: "galley_id,url", ignoreDuplicates: true }
-        )
-      : Promise.resolve(null),
+      : Promise.resolve({ error: null }),
   ]);
+
+  if (ingError || stepError) {
+    await supabase.from("recipes").delete().eq("id", recipe.id);
+    return NextResponse.json({ error: "Failed to save recipe. Please try again." }, { status: 500 });
+  }
+
+  // Source upsert — non-critical, don't rollback on failure
+  if (extractedSource) {
+    await supabase.from("saved_sources").upsert(
+      {
+        galley_id: membership.galley_id,
+        added_by: user.id,
+        url: extractedSource.normalizedUrl,
+        source_type: extractedSource.sourceType,
+        handle_or_name: extractedSource.handleOrName,
+      },
+      { onConflict: "galley_id,url", ignoreDuplicates: true }
+    );
+  }
 
   // Download & store recipe image if provided (SSRF-safe: validated before fetch)
   if (image_url && isSafeUrl(image_url)) {
