@@ -18,7 +18,7 @@ function LoginContent() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `https://www.galleybook.com/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `https://app.galleybook.com/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
   }
