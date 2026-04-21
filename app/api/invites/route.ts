@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
+import { sendGalleyInvite } from "@/lib/email";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -28,14 +29,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not a member of this galley" }, { status: 403 });
   }
 
-  // Find the user to invite — use service client to bypass RLS so we can
-  // look up any user's row, not just the currently-authenticated user's own.
+  // Fetch inviter name + galley name in parallel
   const serviceClient = createServiceClient();
-  const { data: invitee } = await serviceClient
-    .from("users")
-    .select("id")
-    .eq("email", email.trim().toLowerCase())
-    .single();
+  const [{ data: inviterUser }, { data: galley }, { data: invitee }] = await Promise.all([
+    serviceClient.from("users").select("name").eq("id", user.id).single(),
+    serviceClient.from("galleys").select("name").eq("id", galleyId).single(),
+    // Find the user to invite — service client bypasses RLS
+    serviceClient.from("users").select("id").eq("email", email.trim().toLowerCase()).single(),
+  ]);
 
   if (!invitee) {
     return NextResponse.json({ error: "User not found. They need to sign up first." }, { status: 404 });
@@ -61,6 +62,14 @@ export async function POST(request: Request) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Send invite notification — fire and forget, don't block the response
+  sendGalleyInvite({
+    inviterName: inviterUser?.name ?? "Someone",
+    galleyName: galley?.name ?? "a galley",
+    inviteUrl: "https://app.galleybook.com/library",
+    toEmail: email.trim().toLowerCase(),
+  }).catch(() => {});
 
   return NextResponse.json({ success: true }, { status: 201 });
 }

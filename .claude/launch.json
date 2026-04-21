@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "galley-book",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/timmeyerdierks/Claude/Galley book/galley-book",
+      "port": 3000
+    }
+  ]
+}

@@ -38,12 +38,17 @@ export function RecipeContextMenu({ recipeId, otherGalleys, className }: Props) 
         }}
         disabled={copying}
         aria-label="Recipe options"
-        className={`w-8 h-8 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full transition-opacity disabled:opacity-40 ${className ?? ""}`}
+        className={`w-11 h-11 flex items-center justify-center rounded-full shadow-ambient transition-opacity disabled:opacity-40 active:opacity-70 ${className ?? ""}`}
+        style={{
+          backgroundColor: "rgba(255,255,255,0.80)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="7" cy="2.5" r="1.2" fill="white" />
-          <circle cx="7" cy="7" r="1.2" fill="white" />
-          <circle cx="7" cy="11.5" r="1.2" fill="white" />
+          <circle cx="7" cy="2.5" r="1.2" fill="#252729" />
+          <circle cx="7" cy="7" r="1.2" fill="#252729" />
+          <circle cx="7" cy="11.5" r="1.2" fill="#252729" />
         </svg>
       </button>
 
@@ -55,7 +60,7 @@ export function RecipeContextMenu({ recipeId, otherGalleys, className }: Props) 
 
       {open && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-[60]"
           onClick={() => setOpen(false)}
         >
           <div
