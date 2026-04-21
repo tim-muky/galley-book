@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { DeleteRecipeButton } from "./delete-button";
+import { CopyMoveButton } from "./copy-move-button";
 import { ShareButton } from "@/components/share-button";
 import { VoteSection } from "./vote-section";
 import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
@@ -25,13 +26,13 @@ export default async function RecipeDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: membership } = await supabase
+  const { data: membershipsRaw } = await supabase
     .from("galley_members")
-    .select("galley_id")
+    .select("galley_id, galleys(id, name)")
     .eq("user_id", user.id)
-    .order("invited_at", { ascending: true })
-    .limit(1)
-    .single();
+    .order("invited_at", { ascending: true });
+
+  const membership = membershipsRaw?.[0];
 
   const [{ data: recipe }, { data: cookNextRow }, { data: userRow }] = await Promise.all([
     supabase
@@ -66,6 +67,14 @@ export default async function RecipeDetailPage({
   const translation = translationRaw as RecipeTranslation | null;
 
   if (!recipe) notFound();
+
+  const otherGalleys = (membershipsRaw ?? [])
+    .filter((m) => m.galley_id !== recipe.galley_id)
+    .flatMap((m) => {
+      const g = m.galleys as unknown as { id: string; name: string } | { id: string; name: string }[] | null;
+      if (!g) return [];
+      return Array.isArray(g) ? g : [g];
+    });
 
   const isInCookNext = !!cookNextRow;
 
@@ -208,8 +217,11 @@ export default async function RecipeDetailPage({
           initialVote={votes.find((v: { user_id: string; value: number }) => v.user_id === user.id)?.value ?? null}
         />
 
-        {/* Delete */}
-        <div className="pt-4 pb-2">
+        {/* Copy / Move + Delete */}
+        <div className="pt-4 pb-2 space-y-3">
+          {otherGalleys.length > 0 && (
+            <CopyMoveButton recipeId={id} otherGalleys={otherGalleys} />
+          )}
           <DeleteRecipeButton recipeId={id} />
         </div>
       </div>

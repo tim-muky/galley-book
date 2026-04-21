@@ -525,7 +525,8 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               </div>
             ) : photoPreview ? (
               <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
-                <Image src={photoPreview} alt="Recipe photo" fill className="object-cover" unoptimized />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photoPreview} alt="Recipe photo" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-end justify-between p-3">
                   <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
                   <button type="button" onClick={clearPhoto} className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm">

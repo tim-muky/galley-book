@@ -339,7 +339,7 @@ export function SettingsClient({ profile, memberships: initialMemberships, allMe
 
       {/* Per-galley management */}
       <section>
-          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">Galleys</h2>
+          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">Galley Management</h2>
           <div className="space-y-3">
             {memberships.map((m) => {
               const galleyId = m.galley_id;
@@ -572,9 +572,14 @@ export function SettingsClient({ profile, memberships: initialMemberships, allMe
             </button>
           )}
 
+      </section>
+
+      {/* Invite Someone */}
+      <section>
+        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">Invite Someone</h2>
         <button
           onClick={shareAppInvite}
-          className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full mt-3"
+          className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full"
         >
           Invite someone to Galley Book
         </button>
