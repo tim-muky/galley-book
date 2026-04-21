@@ -10,6 +10,7 @@ const copy = {
     cta: "Join the waitlist",
     ctaPending: "Joining…",
     ctaDone: "You're on the list",
+    signIn: "Sign in",
     features: [
       {
         title: "Save from anywhere",
@@ -36,6 +37,7 @@ const copy = {
     cta: "Auf die Warteliste",
     ctaPending: "Eintragen…",
     ctaDone: "Du bist dabei",
+    signIn: "Anmelden",
     features: [
       {
         title: "Von überall speichern",
@@ -90,22 +92,33 @@ export default function LandingPage() {
           Galley Book
         </span>
 
-        {/* Language toggle */}
-        <div className="flex items-center gap-1 border rounded-full px-1 py-1" style={{ borderColor: "#252729" }}>
-          {(["en", "de"] as Lang[]).map((l) => (
-            <button
-              key={l}
-              onClick={() => setLang(l)}
-              className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest transition-colors"
-              style={
-                lang === l
-                  ? { backgroundColor: "#252729", color: "#fff" }
-                  : { backgroundColor: "transparent", color: "#252729" }
-              }
-            >
-              {l}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          {/* Sign in button */}
+          <a
+            href="https://app.galleybook.com/auth/login"
+            className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70"
+            style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          >
+            {t.signIn}
+          </a>
+
+          {/* Language toggle */}
+          <div className="flex items-center gap-1 border rounded-full px-1 py-1" style={{ borderColor: "#252729" }}>
+            {(["en", "de"] as Lang[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest transition-colors"
+                style={
+                  lang === l
+                    ? { backgroundColor: "#252729", color: "#fff" }
+                    : { backgroundColor: "transparent", color: "#252729" }
+                }
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
