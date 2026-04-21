@@ -90,6 +90,7 @@ export type Database = {
           galley_id: string
           id: string
           invited_at: string
+          is_default: boolean
           joined_at: string | null
           role: Database["public"]["Enums"]["galley_role"]
           user_id: string
@@ -98,6 +99,7 @@ export type Database = {
           galley_id: string
           id?: string
           invited_at?: string
+          is_default?: boolean
           joined_at?: string | null
           role?: Database["public"]["Enums"]["galley_role"]
           user_id: string
@@ -106,6 +108,7 @@ export type Database = {
           galley_id?: string
           id?: string
           invited_at?: string
+          is_default?: boolean
           joined_at?: string | null
           role?: Database["public"]["Enums"]["galley_role"]
           user_id?: string

@@ -25,6 +25,7 @@ const RecipeCreateSchema = z.object({
   image_url: z.string().url().max(2000).optional().nullable(),
   ingredients: z.array(IngredientSchema).max(100).default([]),
   steps: z.array(StepSchema).max(50).default([]),
+  galleyId: z.string().uuid().optional().nullable(),
 });
 
 type SourceEntry = { sourceType: string; handleOrName: string; normalizedUrl: string };
@@ -149,26 +150,46 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { name, description, servings, prep_time, season, type, source_url, image_url, ingredients, steps } = parsed.data;
+  const { name, description, servings, prep_time, season, type, source_url, image_url, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
 
-  // Get user's galley
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", user.id)
-    .order("invited_at", { ascending: true })
-    .limit(1)
-    .single();
-
-  if (!membership) {
-    return NextResponse.json({ error: "No galley found" }, { status: 400 });
+  // Resolve galley: explicit selection → default → oldest
+  let resolvedGalleyId: string;
+  if (explicitGalleyId) {
+    const { data: m } = await supabase
+      .from("galley_members")
+      .select("galley_id")
+      .eq("galley_id", explicitGalleyId)
+      .eq("user_id", user.id)
+      .single();
+    if (!m) return NextResponse.json({ error: "No galley found" }, { status: 400 });
+    resolvedGalleyId = explicitGalleyId;
+  } else {
+    const { data: defaultM } = await supabase
+      .from("galley_members")
+      .select("galley_id")
+      .eq("user_id", user.id)
+      .eq("is_default", true)
+      .single();
+    if (defaultM) {
+      resolvedGalleyId = defaultM.galley_id;
+    } else {
+      const { data: fallback } = await supabase
+        .from("galley_members")
+        .select("galley_id")
+        .eq("user_id", user.id)
+        .order("invited_at", { ascending: true })
+        .limit(1)
+        .single();
+      if (!fallback) return NextResponse.json({ error: "No galley found" }, { status: 400 });
+      resolvedGalleyId = fallback.galley_id;
+    }
   }
 
   // Create recipe
   const { data: recipe, error: recipeError } = await supabase
     .from("recipes")
     .insert({
-      galley_id: membership.galley_id,
+      galley_id: resolvedGalleyId,
       created_by: user.id,
       name: name.trim(),
       description: description?.trim() || null,
@@ -226,7 +247,7 @@ export async function POST(request: Request) {
   if (extractedSource) {
     await supabase.from("saved_sources").upsert(
       {
-        galley_id: membership.galley_id,
+        galley_id: resolvedGalleyId,
         added_by: user.id,
         url: extractedSource.normalizedUrl,
         source_type: extractedSource.sourceType,

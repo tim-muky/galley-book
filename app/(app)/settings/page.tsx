@@ -23,7 +23,7 @@ export default async function SettingsPage() {
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase
       .from("galley_members")
-      .select("galley_id, role, galleys(id, name)")
+      .select("galley_id, role, is_default, galleys(id, name)")
       .eq("user_id", user.id)
       .order("invited_at", { ascending: true }),
   ]);
@@ -32,6 +32,7 @@ export default async function SettingsPage() {
   const memberships = (membershipsRaw ?? []) as unknown as Array<{
     galley_id: string;
     role: string;
+    is_default: boolean;
     galleys: { id: string; name: string } | null;
   }>;
 

@@ -20,11 +20,58 @@ export async function DELETE(
     return NextResponse.json({ error: "galleyId is required" }, { status: 400 });
   }
 
-  if (userId === user.id) {
-    return NextResponse.json({ error: "Cannot remove yourself" }, { status: 400 });
+  const isSelf = userId === user.id;
+
+  if (isSelf) {
+    const { data: membership } = await supabase
+      .from("galley_members")
+      .select("role, is_default")
+      .eq("galley_id", galleyId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: "Not a member" }, { status: 404 });
+    }
+
+    if (membership.role === "owner") {
+      return NextResponse.json(
+        { error: "Owners cannot leave — delete the galley instead" },
+        { status: 400 }
+      );
+    }
+
+    // Promote another membership to default before leaving
+    if (membership.is_default) {
+      const { data: next } = await supabase
+        .from("galley_members")
+        .select("galley_id")
+        .eq("user_id", user.id)
+        .neq("galley_id", galleyId)
+        .order("invited_at", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (next) {
+        await supabase
+          .from("galley_members")
+          .update({ is_default: true })
+          .eq("galley_id", next.galley_id)
+          .eq("user_id", user.id);
+      }
+    }
+
+    const { error } = await supabase
+      .from("galley_members")
+      .delete()
+      .eq("galley_id", galleyId)
+      .eq("user_id", user.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
   }
 
-  // Verify requester is the owner of this galley
+  // Owner removing another member
   const { data: galley } = await supabase
     .from("galleys")
     .select("id")
@@ -42,9 +89,6 @@ export async function DELETE(
     .eq("galley_id", galleyId)
     .eq("user_id", userId);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

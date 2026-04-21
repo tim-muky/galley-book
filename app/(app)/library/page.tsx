@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { RecipeCard } from "@/components/recipe-card";
 import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
+import { GalleySwitcher } from "@/components/galley-switcher";
+import { RecipeContextMenu } from "@/components/recipe-context-menu";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -32,21 +35,34 @@ export default async function LibraryPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: membershipData } = await supabase
+  // Fetch all memberships so we can drive the switcher
+  const { data: membershipsRaw } = await supabase
     .from("galley_members")
-    .select("galley_id")
+    .select("galley_id, is_default, galleys(id, name)")
     .eq("user_id", user.id)
-    .order("invited_at", { ascending: true })
-    .limit(1)
-    .single();
+    .order("invited_at", { ascending: true });
 
-  if (!membershipData?.galley_id) {
+  type MembershipRow = { galley_id: string; is_default: boolean; galleys: { id: string; name: string } | null };
+  const memberships = (membershipsRaw ?? []) as unknown as MembershipRow[];
+
+  if (memberships.length === 0) {
     return <CreateGalleyPrompt />;
   }
 
-  const galleyId = membershipData.galley_id;
+  // Resolve active galley: cookie → is_default → first
+  const cookieStore = await cookies();
+  const cookieGalleyId = cookieStore.get("active_galley_id")?.value;
+  const validFromCookie = cookieGalleyId ? memberships.find((m) => m.galley_id === cookieGalleyId) : null;
+  const activeMembership = validFromCookie ?? memberships.find((m) => m.is_default) ?? memberships[0];
+  const galleyId = activeMembership.galley_id;
 
-  // Parallel: galley info + members + recipes all at once
+  const galleyOptions = memberships.map((m) => ({
+    id: m.galley_id,
+    name: m.galleys?.name ?? "Unnamed",
+  }));
+  const otherGalleys = galleyOptions.filter((g) => g.id !== galleyId);
+
+  // Parallel: galley info + members + recipes + cook-next list
   let recipesQuery = supabase
     .from("recipes")
     .select(`*, recipe_photos(*)`)
@@ -98,13 +114,17 @@ export default async function LibraryPage({
             priority
           />
         </div>
-        {/* Library + Galley name on same line, bottom-aligned */}
         <div className="flex items-end gap-3">
           <h1 className="text-4xl font-thin text-anthracite leading-none">Library</h1>
           <p className="text-xs font-light tracking-widest uppercase text-on-surface-variant leading-none mb-[3px]">
             {galley.name}
           </p>
         </div>
+
+        {/* Galley switcher — only when user belongs to 2+ galleys */}
+        {memberships.length > 1 && (
+          <GalleySwitcher galleys={galleyOptions} activeGalleyId={galleyId} />
+        )}
 
         {/* Member avatars */}
         {members && members.length > 0 && (
@@ -158,7 +178,7 @@ export default async function LibraryPage({
               key={f.value}
               href={f.value ? `/library?filter=${f.value}` : "/library"}
               style={active ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-            className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
+              className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
             >
               {f.label}
             </Link>
@@ -190,6 +210,13 @@ export default async function LibraryPage({
                 initialInList={cookNextIds.has(recipe.id)}
                 className="absolute top-2 right-2 z-10"
               />
+              {otherGalleys.length > 0 && (
+                <RecipeContextMenu
+                  recipeId={recipe.id}
+                  otherGalleys={otherGalleys}
+                  className="absolute top-2 left-2 z-10"
+                />
+              )}
             </div>
           ))}
         </div>
