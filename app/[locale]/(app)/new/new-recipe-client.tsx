@@ -184,11 +184,9 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     }
   }
 
-  function proxyIfInstagram(url: string): string {
-    if (url.includes("cdninstagram.com") || url.includes("fbcdn.net")) {
-      return `/api/proxy-image?url=${encodeURIComponent(url)}`;
-    }
-    return url;
+  function proxyExternal(url: string): string {
+    if (!url || url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:")) return url;
+    return `/api/proxy-image?url=${encodeURIComponent(url)}`;
   }
 
   function updateField<K extends keyof RecipeForm>(key: K, value: RecipeForm[K]) {
@@ -510,7 +508,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
                     <button key={i} type="button" onClick={() => { setPhotoPreview(candidateUrl); setForm((prev) => ({ ...prev, image_url: candidateUrl })); }}
                       className={clsx("flex-shrink-0 w-28 aspect-square snap-start rounded-md overflow-hidden transition-all", photoPreview === candidateUrl ? "ring-2 ring-anthracite ring-offset-1" : "opacity-50")}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={proxyIfInstagram(candidateUrl)} alt={`Photo option ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={proxyExternal(candidateUrl)} alt={`Photo option ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -524,7 +522,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             ) : photoPreview ? (
               <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={proxyIfInstagram(photoPreview)} alt="Recipe photo" className="w-full h-full object-cover" />
+                <img src={proxyExternal(photoPreview)} alt="Recipe photo" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 flex items-end justify-between p-3">
                   <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
                   <button type="button" onClick={clearPhoto} className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm">
