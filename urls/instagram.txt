@@ -1,0 +1,5 @@
+# Instagram recipe URLs — Phase 1 test batch
+# One URL per line, lines starting with # are ignored
+# Prefer recent posts (< 3 months) from public accounts with visible recipes
+#
+# Run: TEST_SESSION_COOKIE="..." npx tsx scripts/test-import.ts urls/instagram.txt
