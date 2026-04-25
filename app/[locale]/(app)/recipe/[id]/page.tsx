@@ -37,10 +37,10 @@ export default async function RecipeDetailPage({
 
   const membership = membershipsRaw?.[0];
 
-  const [{ data: recipe }, { data: cookNextRow }, { data: userRow }] = await Promise.all([
+  const [{ data: recipe }, { data: cookNextRow }, { data: userRow }, { data: voteSummary }, { data: userVoteRow }] = await Promise.all([
     supabase
       .from("recipes")
-      .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*), votes(value, user_id)`)
+      .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*)`)
       .eq("id", id)
       .single(),
     membership?.galley_id
@@ -52,6 +52,8 @@ export default async function RecipeDetailPage({
           .maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("users").select("translation_language").eq("id", user.id).single(),
+    supabase.from("recipe_vote_summary" as never).select("vote_count, vote_avg").eq("recipe_id", id).maybeSingle(),
+    supabase.from("votes").select("value").eq("recipe_id", id).eq("user_id", user.id).maybeSingle(),
   ]);
 
   const translationLanguage =
@@ -84,10 +86,8 @@ export default async function RecipeDetailPage({
   const primaryPhoto = photos.find((p: { is_primary: boolean }) => p.is_primary) ?? photos[0];
   const ingredients = (recipe.ingredients ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
   const steps = (recipe.preparation_steps ?? []).sort((a: { step_number: number }, b: { step_number: number }) => a.step_number - b.step_number);
-  const votes = recipe.votes ?? [];
-  const avgVote = votes.length
-    ? Math.round((votes.reduce((s: number, v: { value: number }) => s + v.value, 0) / votes.length) * 10) / 10
-    : null;
+  const summary = voteSummary as unknown as { vote_count: number; vote_avg: number } | null;
+  const avgVote = summary?.vote_avg ?? null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -208,7 +208,7 @@ export default async function RecipeDetailPage({
 
         <VoteSection
           recipeId={id}
-          initialVote={votes.find((v: { user_id: string; value: number }) => v.user_id === user.id)?.value ?? null}
+          initialVote={(userVoteRow as unknown as { value: number } | null)?.value ?? null}
         />
 
         <div className="pt-4 pb-2 space-y-3">
