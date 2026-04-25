@@ -39,7 +39,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
         </div>
 
         {/* Info */}
-        <div className="pl-0 pr-4 py-3">
+        <div className="px-4 py-3">
           <h3 className="text-sm font-semibold text-anthracite truncate">{recipe.name}</h3>
           <div className="flex items-center justify-between mt-1">
             <div className="flex items-center gap-3">

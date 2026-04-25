@@ -137,12 +137,7 @@ export default async function LibraryPage({
             priority
           />
         </div>
-        <div className="flex items-end gap-3">
-          <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
-          <p className="text-xs font-light tracking-widest uppercase text-on-surface-variant leading-none mb-[3px]">
-            {galley.name}
-          </p>
-        </div>
+        <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
 
         {memberships.length > 1 && (
           <GalleySwitcher galleys={galleyOptions} activeGalleyId={galleyId} />
