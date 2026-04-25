@@ -41,7 +41,9 @@
       "subtitle": "Créez votre première Galley pour commencer à collecter des recettes.",
       "placeholder": "ex. La cuisine des Dupont",
       "button": "Créer une Galley"
-    }
+    },
+    "loadMore": "Charger plus",
+    "loadMoreLoading": "Chargement…"
   },
   "recipe": {
     "backToLibrary": "Retour à la bibliothèque",

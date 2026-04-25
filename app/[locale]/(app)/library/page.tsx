@@ -5,11 +5,11 @@ import { Link } from "@/i18n/routing";
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { cookies } from "next/headers";
-import { RecipeCard } from "@/components/recipe-card";
-import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
 import { GalleySwitcher } from "@/components/galley-switcher";
-import { RecipeContextMenu } from "@/components/recipe-context-menu";
+import { LibraryRecipes } from "./library-recipes-client";
 import Image from "next/image";
+
+const PAGE_SIZE = 20;
 
 interface SearchParams {
   filter?: string;
@@ -84,10 +84,12 @@ export default async function LibraryPage({
       .select("user_id, users(name, avatar_url)")
       .eq("galley_id", galleyId)
       .limit(5),
-    recipesQuery,
+    recipesQuery.limit(PAGE_SIZE + 1),
     supabase.from("cook_next_list").select("recipe_id").eq("galley_id", galleyId),
   ]);
 
+  const hasMore = (recipes?.length ?? 0) > PAGE_SIZE;
+  const pagedRecipes = hasMore ? recipes!.slice(0, PAGE_SIZE) : (recipes ?? []);
   const cookNextIds = new Set((cookNextRows ?? []).map((r) => r.recipe_id));
 
   const typedMembers = (members ?? []) as unknown as Array<{
@@ -202,7 +204,7 @@ export default async function LibraryPage({
         })}
       </div>
 
-      {!recipes || recipes.length === 0 ? (
+      {pagedRecipes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <p className="text-sm font-light text-on-surface-variant mb-4">
             {t("noRecipes")}
@@ -216,25 +218,15 @@ export default async function LibraryPage({
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {recipes.map((recipe) => (
-            <div key={recipe.id} className="relative">
-              <RecipeCard recipe={recipe} />
-              <AddToCookNextButton
-                recipeId={recipe.id}
-                initialInList={cookNextIds.has(recipe.id)}
-                className="absolute top-2 right-2 z-10"
-              />
-              {otherGalleys.length > 0 && (
-                <RecipeContextMenu
-                  recipeId={recipe.id}
-                  otherGalleys={otherGalleys}
-                  className="absolute top-2 left-2 z-10"
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        <LibraryRecipes
+          initialRecipes={pagedRecipes as never}
+          initialHasMore={hasMore}
+          initialCookNextIds={[...cookNextIds]}
+          galleyId={galleyId}
+          filter={params.filter ?? ""}
+          search={params.search ?? ""}
+          otherGalleys={otherGalleys}
+        />
       )}
     </div>
   );

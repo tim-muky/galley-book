@@ -41,7 +41,9 @@
       "subtitle": "Erstelle deine erste Galley, um Rezepte zu sammeln.",
       "placeholder": "z.B. Die Meyerdierks-Küche",
       "button": "Galley erstellen"
-    }
+    },
+    "loadMore": "Mehr laden",
+    "loadMoreLoading": "Lädt…"
   },
   "recipe": {
     "backToLibrary": "Zurück zur Bibliothek",

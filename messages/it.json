@@ -41,7 +41,9 @@
       "subtitle": "Crea la tua prima Galley per iniziare a raccogliere ricette.",
       "placeholder": "es. La cucina dei Rossi",
       "button": "Crea Galley"
-    }
+    },
+    "loadMore": "Carica altri",
+    "loadMoreLoading": "Caricamento…"
   },
   "recipe": {
     "backToLibrary": "Torna alla biblioteca",

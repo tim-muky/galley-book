@@ -41,7 +41,9 @@
       "subtitle": "Create your first Galley to start collecting recipes.",
       "placeholder": "e.g. The Meyerdierks Kitchen",
       "button": "Create Galley"
-    }
+    },
+    "loadMore": "Load more",
+    "loadMoreLoading": "Loading…"
   },
   "recipe": {
     "backToLibrary": "Back to library",

@@ -137,6 +137,47 @@ async function extractSource(url: string): Promise<SourceEntry | null> {
   }
 }
 
+export async function GET(request: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const galleyId = searchParams.get("galleyId");
+  const cursor = searchParams.get("cursor");
+  const filter = searchParams.get("filter") ?? "";
+  const search = searchParams.get("search") ?? "";
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
+
+  if (!galleyId) return NextResponse.json({ error: "galleyId required" }, { status: 400 });
+
+  let query = supabase
+    .from("recipes")
+    .select("*, recipe_photos(*)")
+    .eq("galley_id", galleyId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) query = query.lt("updated_at", cursor);
+  if (filter === "quick") query = query.lte("prep_time", 30);
+  else if (["starter", "main", "dessert", "breakfast", "snack", "drink", "side"].includes(filter))
+    query = query.eq("type", filter);
+  if (search) query = query.ilike("name", `%${search}%`);
+
+  const { data: recipes } = await query;
+  const hasMore = (recipes?.length ?? 0) > limit;
+  const items = hasMore ? recipes!.slice(0, limit) : (recipes ?? []);
+
+  const recipeIds = items.map((r) => r.id);
+  const { data: cookNextRows } = recipeIds.length > 0
+    ? await supabase.from("cook_next_list").select("recipe_id").eq("galley_id", galleyId).in("recipe_id", recipeIds)
+    : { data: [] };
+  const cookNextIds = (cookNextRows ?? []).map((r) => r.recipe_id);
+
+  return NextResponse.json({ recipes: items, hasMore, cookNextIds });
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
 

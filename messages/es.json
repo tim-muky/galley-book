@@ -41,7 +41,9 @@
       "subtitle": "Crea tu primera Galley para empezar a coleccionar recetas.",
       "placeholder": "ej. La cocina de los García",
       "button": "Crear Galley"
-    }
+    },
+    "loadMore": "Cargar más",
+    "loadMoreLoading": "Cargando…"
   },
   "recipe": {
     "backToLibrary": "Volver a la biblioteca",

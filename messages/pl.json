@@ -41,7 +41,9 @@
       "subtitle": "Utwórz swoją pierwszą Galerię, by zacząć zbierać przepisy.",
       "placeholder": "np. Kuchnia Kowalskich",
       "button": "Utwórz Galerię"
-    }
+    },
+    "loadMore": "Załaduj więcej",
+    "loadMoreLoading": "Ładowanie…"
   },
   "recipe": {
     "backToLibrary": "Wróć do biblioteki",
