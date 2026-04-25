@@ -53,10 +53,10 @@ export async function GET(request: Request) {
     .filter((h) => h.vote === -1)
     .map((h) => h.recipe_id);
 
-  // Primary exclusion: recently shown + thumbs-downed + caller-excluded
-  const primaryExcluded = [...new Set([...excludeIds, ...recentlyShownIds, ...thumbsDownIds])];
+  // Primary exclusion: recently shown + thumbs-downed + caller-excluded (cap to prevent query bloat)
+  const primaryExcluded = [...new Set([...excludeIds, ...recentlyShownIds, ...thumbsDownIds])].slice(-50);
   // Fallback exclusion: only permanently thumbs-downed (ignore recency)
-  const fallbackExcluded = [...new Set([...excludeIds, ...thumbsDownIds])];
+  const fallbackExcluded = [...new Set([...excludeIds, ...thumbsDownIds])].slice(-50);
 
   // Get eligible recipes (matching season or all_year, not deleted)
   let query = supabase

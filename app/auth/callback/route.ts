@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const next = safeRedirectPath(url.searchParams.get("next"));
 
   if (!code) {
-    return NextResponse.redirect(new URL("/auth/login?error=no_code", request.url));
+    return NextResponse.redirect(new URL("/en/auth/login?error=no_code", request.url));
   }
 
   const redirectResponse = NextResponse.redirect(new URL(next, request.url));
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, request.url)
+      new URL(`/en/auth/login?error=${encodeURIComponent(error.message)}`, request.url)
     );
   }
 

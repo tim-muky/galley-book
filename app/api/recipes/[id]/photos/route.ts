@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 export async function POST(
   request: Request,
@@ -28,35 +29,31 @@ export async function POST(
     return NextResponse.json({ error: "File must be an image." }, { status: 415 });
   }
 
-  // Ownership check: recipe must belong to the user's galley
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", user.id)
+  // RLS enforces galley membership — a missing row means no access
+  const { data: recipe } = await supabase
+    .from("recipes")
+    .select("id")
+    .eq("id", id)
+    .is("deleted_at", null)
     .single();
 
-  if (membership) {
-    const { data: recipe } = await supabase
-      .from("recipes")
-      .select("id")
-      .eq("id", id)
-      .eq("galley_id", membership.galley_id)
-      .single();
-
-    if (!recipe) {
-      return NextResponse.json({ error: "Not found." }, { status: 404 });
-    }
+  if (!recipe) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  const contentType = file.type || "image/jpeg";
-  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-  const storagePath = `${id}/photo-${Date.now()}.${ext}`;
+  // Always store as JPEG after resize — consistent format, ~80% smaller than raw phone photos
+  const storagePath = `${id}/photo-${Date.now()}.jpg`;
 
-  const buffer = await file.arrayBuffer();
+  const raw = await file.arrayBuffer();
+  const compressed = await sharp(Buffer.from(raw))
+    .rotate() // honour EXIF orientation before resizing
+    .resize({ width: 1600, withoutEnlargement: true })
+    .jpeg({ quality: 80 })
+    .toBuffer();
 
   const { error: uploadError } = await supabase.storage
     .from("recipe-photos")
-    .upload(storagePath, buffer, { contentType, upsert: false });
+    .upload(storagePath, compressed, { contentType: "image/jpeg", upsert: false });
 
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });

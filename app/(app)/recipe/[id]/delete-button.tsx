@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 
 export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
   const router = useRouter();

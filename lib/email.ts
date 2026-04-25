@@ -1,12 +1,14 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "Galley Book <waiter@galleybook.com>";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 const NOTIFY_EMAIL = "tim@muky-kids.com";
 
 export async function sendWaitlistConfirmation(email: string) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: email,
     subject: "You're on the list — Galley Book",
@@ -26,7 +28,7 @@ export async function sendWaitlistConfirmation(email: string) {
 }
 
 export async function notifyWaitlistSignup(email: string) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: NOTIFY_EMAIL,
     subject: `New waitlist signup: ${email}`,
@@ -45,7 +47,7 @@ export async function sendGalleyInvite({
   inviteUrl: string;
   toEmail: string;
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: toEmail,
     subject: `${inviterName} invited you to ${galleyName}`,

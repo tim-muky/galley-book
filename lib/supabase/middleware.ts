@@ -1,22 +1,27 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(
+  request: NextRequest,
+  baseResponse?: NextResponse
+) {
   const { pathname } = request.nextUrl;
 
-  // Early return for public routes — skip session refresh entirely so the
-  // auth callback can never be intercepted or redirected by this middleware.
+  // Public routes — skip session refresh entirely.
   if (
     pathname.startsWith("/auth") ||
     pathname.startsWith("/share") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/landing")
+    pathname.startsWith("/landing") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/impressum") ||
+    pathname.startsWith("/datenschutz")
   ) {
-    return NextResponse.next({ request });
+    return baseResponse ?? NextResponse.next({ request });
   }
 
-  // Protected routes — refresh the session cookie and enforce auth.
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = baseResponse ?? NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +35,9 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = baseResponse
+            ? supabaseResponse
+            : NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -39,13 +46,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
+  await supabase.auth.getUser();
 
   return supabaseResponse;
 }

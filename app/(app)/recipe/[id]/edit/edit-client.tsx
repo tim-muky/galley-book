@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, Link } from "@/i18n/routing";
 import Image from "next/image";
 
 const SEASONS = ["all_year", "spring", "summer", "autumn", "winter"] as const;

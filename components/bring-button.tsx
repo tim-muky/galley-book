@@ -8,7 +8,7 @@ interface BringButtonProps {
 }
 
 export function BringButton({ shareToken, servings = 4 }: BringButtonProps) {
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/share/${shareToken}`;
+  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://galleybook.com"}/share/${shareToken}`;
   const bringUrl = `${BRING_API}?url=${encodeURIComponent(shareUrl)}&source=web&baseQuantity=${servings}&requestedQuantity=${servings}`;
 
   return (

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__list_issues",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__list_projects",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__list_teams",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__list_issue_statuses",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__get_issue",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__get_project",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__list_milestones",
+      "mcp__03cd2120-65ad-4205-ab84-b61d502a5c72__get_milestone",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__Claude_Preview__preview_console_logs",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Preview__preview_network",
+      "mcp__Claude_Preview__preview_resize",
+      "mcp__Claude_Preview__preview_list",
+      "mcp__6122e3b1-b6ee-4517-bff4-4bf917fd31b3__get_runtime_logs",
+      "mcp__6122e3b1-b6ee-4517-bff4-4bf917fd31b3__list_deployments",
+      "mcp__6122e3b1-b6ee-4517-bff4-4bf917fd31b3__get_deployment_build_logs",
+      "mcp__6122e3b1-b6ee-4517-bff4-4bf917fd31b3__list_projects",
+      "mcp__6122e3b1-b6ee-4517-bff4-4bf917fd31b3__get_project",
+      "Bash(curl -sL *)",
+      "Bash(curl -s *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(vercel logs *)"
+    ]
+  }
+}

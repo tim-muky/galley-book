@@ -21,8 +21,8 @@ const RecipeCreateSchema = z.object({
   prep_time: z.number().int().min(0).max(10080).optional().nullable(),
   season: z.enum(["spring", "summer", "autumn", "winter", "all_year"]).optional(),
   type: z.enum(["starter", "main", "dessert", "breakfast", "snack", "drink", "side"]).optional().nullable(),
-  source_url: z.string().url().max(2000).optional().nullable(),
-  image_url: z.string().url().max(2000).optional().nullable(),
+  source_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
+  image_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
   ingredients: z.array(IngredientSchema).max(100).default([]),
   steps: z.array(StepSchema).max(50).default([]),
   galleyId: z.string().uuid().optional().nullable(),
@@ -260,9 +260,12 @@ export async function POST(request: Request) {
   // Download & store recipe image if provided (SSRF-safe: validated before fetch)
   if (image_url && isSafeUrl(image_url)) {
     try {
+      const isInstagramCdn =
+        image_url.includes("cdninstagram.com") || image_url.includes("fbcdn.net");
       const imgRes = await fetch(image_url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)",
+          ...(isInstagramCdn ? { Referer: "https://www.instagram.com/" } : {}),
         },
         signal: AbortSignal.timeout(12000),
       });

@@ -15,8 +15,9 @@ Mobile-first web app for private family recipe storage. Shared "Galleys" (househ
 | Framework | Next.js 16 App Router |
 | Auth + DB | Supabase (PostgreSQL + RLS + Auth) |
 | Storage | Supabase Storage (`recipe-photos` bucket) |
-| AI — parsing | Anthropic Claude (`claude-sonnet-4-6`) |
+| AI — parsing | Google Gemini (`gemini-2.5-flash`) |
 | AI — recommendations | Perplexity (`sonar`) |
+| AI — translation | Google Gemini (`gemini-2.5-flash`) |
 | Shopping list | Bring! deeplink API |
 | Styling | Tailwind CSS v4 |
 
@@ -220,10 +221,16 @@ className="bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
 
 ## AI Integration
 
-### Recipe parsing (Anthropic)
+### Recipe parsing (Gemini)
 - Endpoint: `POST /api/recipes/parse` (URL) and `POST /api/recipes/parse-image` (photo)
-- Model: `claude-sonnet-4-6`
+- Model: `gemini-2.5-flash` via `@google/generative-ai`
+- URL parsing: tries JSON-LD scrape → youtube-transcript → Perplexity fetch, then Gemini extracts fields
+- Image parsing: Gemini multimodal (photo → recipe fields)
 - Returns `RecipeForm` shape — user reviews before saving
+
+### Translation (Gemini)
+- Endpoint: `POST /api/recipes/[id]/translate`
+- Model: `gemini-2.5-flash`
 
 ### Recommendations (Perplexity)
 - Endpoint: `GET /api/recommendations`
@@ -234,6 +241,20 @@ className="bg-surface-lowest rounded-md px-4 py-3 shadow-ambient"
 When a recipe is saved with a `source_url`, `extractSource()` in `api/recipes/route.ts` detects the platform (Instagram, YouTube, TikTok, website) and upserts a row into `saved_sources` automatically.
 
 ---
+
+## Deployment Workflow
+
+**Always deploy via git, never via `vercel deploy` from a dirty working tree.**
+
+```bash
+git add <files>
+git commit -m "feat/fix: description"
+git push origin main   # Vercel auto-deploys on push
+```
+
+- Never run `vercel deploy` directly — it produces gitDirty deployments where the deployed code and git history diverge
+- Every deployed state must correspond to a git commit
+- The `.next` cache should be excluded via `.gitignore` (already is)
 
 ## What NOT to Do
 

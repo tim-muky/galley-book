@@ -120,66 +120,39 @@ async function extractYouTubeThumbnails(url: string): Promise<string[]> {
   return [coverUrl, ...snapshots].filter((u): u is string => !!u);
 }
 
-/** Instagram images — tries oEmbed, then scrapes all embed URL variants for CDN image URLs */
+/** Instagram images — extracts og:image from the embed page.
+ *  oEmbed thumbnail_url was deprecated by Meta in Nov 2025 (returns the Instagram logo).
+ *  The og:image in the embed HTML is the actual video/photo thumbnail set by the creator.
+ *  These CDN URLs need the Instagram Referer to load — the client proxies them via /api/proxy-image. */
 async function fetchInstagramImages(url: string): Promise<string[]> {
-  const candidates: string[] = [];
-
-  // 1. oEmbed endpoint (public, works for some public posts)
-  try {
-    const oembedUrl = `https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}&fields=thumbnail_url`;
-    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.thumbnail_url?.startsWith("http")) candidates.push(data.thumbnail_url as string);
-    }
-  } catch {
-    // Fall through
-  }
-
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return candidates;
+  if (!match) return [];
   const shortcode = match[1];
 
-  const embedUrls = [
-    `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
+  for (const embedUrl of [
     `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
-    `https://www.instagram.com/p/${shortcode}/embed/`,
+    `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
     `https://www.instagram.com/reel/${shortcode}/embed/`,
-  ];
-  const userAgents = [
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-  ];
-
-  for (const embedUrl of embedUrls) {
-    for (const ua of userAgents) {
-      try {
-        const res = await fetch(embedUrl, {
-          headers: { "User-Agent": ua, Accept: "text/html,application/xhtml+xml" },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (!res.ok) continue;
-        const html = await res.text();
-
-        // og:image
-        const ogImg = extractImageUrl(html);
-        if (ogImg && !candidates.includes(ogImg)) candidates.push(ogImg);
-
-        // All CDN image URLs in the embed HTML (covers carousel images)
-        const cdnPattern = /(?:src|href|content)=["'](https:\/\/[^"']+(?:cdninstagram|fbcdn)[^"']+\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?)/gi;
-        for (const m of html.matchAll(cdnPattern)) {
-          if (m[1] && !candidates.includes(m[1])) candidates.push(m[1]);
-        }
-
-        if (candidates.length >= 5) break;
-      } catch {
-        continue;
-      }
+    `https://www.instagram.com/p/${shortcode}/embed/`,
+  ]) {
+    try {
+      const res = await fetch(embedUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          Accept: "text/html,application/xhtml+xml",
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const ogImg = extractImageUrl(html);
+      if (ogImg) return [ogImg];
+    } catch {
+      continue;
     }
-    if (candidates.length >= 5) break;
   }
-
-  return candidates.slice(0, 5);
+  return [];
 }
 
 /** Extract Schema.org Recipe from JSON-LD script tags */

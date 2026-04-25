@@ -1,29 +1,25 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   images: {
-    // Prefer AVIF → WebP → original — smaller files, faster loads
     formats: ["image/avif", "image/webp"],
-    // Explicit allowlist — avoids the wildcard "**" that lets attackers
-    // trigger image-optimisation fetches for arbitrary external URLs.
     remotePatterns: [
-      // Our Supabase Storage bucket (recipe photos)
       {
         protocol: "https",
         hostname: "lgmuazhzipzudtrofxea.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
-      // YouTube thumbnails (fetched during parse)
       {
         protocol: "https",
         hostname: "img.youtube.com",
       },
-      // Google user-content avatars
       {
         protocol: "https",
         hostname: "*.googleusercontent.com",
       },
-      // Instagram / Facebook CDN (thumbnails returned by oEmbed)
       {
         protocol: "https",
         hostname: "*.cdninstagram.com",
@@ -32,7 +28,6 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.fbcdn.net",
       },
-      // TikTok CDN (thumbnails returned by oEmbed)
       {
         protocol: "https",
         hostname: "*.tiktokcdn.com",
@@ -44,7 +39,6 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Security headers applied to every response
   async headers() {
     return [
       {
@@ -64,4 +58,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

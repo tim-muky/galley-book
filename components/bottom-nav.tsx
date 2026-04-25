@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 import { clsx } from "clsx";
 
 const navItems = [
   {
-    href: "/library",
-    label: "Library",
+    href: "/library" as const,
+    key: "library" as const,
     icon: () => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <rect x="2" y="2" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -18,8 +18,8 @@ const navItems = [
     ),
   },
   {
-    href: "/cook-next",
-    label: "Cook Next",
+    href: "/cook-next" as const,
+    key: "cookNext" as const,
     icon: () => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <path
@@ -38,8 +38,8 @@ const navItems = [
     ),
   },
   {
-    href: "/new",
-    label: "Add",
+    href: "/new" as const,
+    key: "add" as const,
     icon: () => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <circle cx="11" cy="11" r="9" stroke="currentColor" strokeWidth="1.5"/>
@@ -48,8 +48,8 @@ const navItems = [
     ),
   },
   {
-    href: "/recommendations",
-    label: "Discover",
+    href: "/recommendations" as const,
+    key: "discover" as const,
     icon: () => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <path d="M11 2l2.09 6.26L19 11l-5.91 2.74L11 20l-2.09-6.26L3 11l5.91-2.74L11 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -57,8 +57,8 @@ const navItems = [
     ),
   },
   {
-    href: "/settings",
-    label: "Settings",
+    href: "/settings" as const,
+    key: "settings" as const,
     icon: () => (
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <circle cx="11" cy="11" r="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -70,6 +70,7 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-surface-lowest/90 backdrop-blur-xl border-t border-surface-low z-50"
@@ -95,7 +96,7 @@ export function BottomNav() {
                   active ? "font-semibold" : "font-light"
                 )}
               >
-                {item.label}
+                {t(item.key)}
               </span>
             </Link>
           );
