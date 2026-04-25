@@ -154,6 +154,9 @@ export function SettingsClient({
     if (profile) {
       await supabase.from("users").update({ preferred_language: appLocale } as never).eq("id", profile.id);
     }
+    // Persist the choice in a cookie so next-intl picks it up on the next session
+    // instead of falling back to the browser's Accept-Language header.
+    document.cookie = `NEXT_LOCALE=${appLocale}; path=/; max-age=31536000; SameSite=Lax`;
     router.push("/settings", { locale: appLocale });
     setSavingAppLocale(false);
   }

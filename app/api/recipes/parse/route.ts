@@ -437,6 +437,16 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
 
   // YouTube: 1) transcript (free, no key), 2) Gemini video analysis, 3) Perplexity fallback
   if (youtube) {
+    // Community Posts, channel pages, etc. have no video ID — skip video-specific routes
+    // to avoid Gemini video analysis timeout blowing the 30 s maxDuration budget.
+    if (!extractYouTubeVideoId(url)) {
+      if (process.env.PERPLEXITY_API_KEY) {
+        const content = await fetchViaPerplexity(url, false);
+        if (content.length > 200) return { content, imageUrl: null, imageCandidates: [] };
+      }
+      return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [] };
+    }
+
     // Fetch all thumbnail candidates (cover + snapshot frames) in parallel with transcript
     const [thumbnails, transcript] = await Promise.all([
       extractYouTubeThumbnails(url),

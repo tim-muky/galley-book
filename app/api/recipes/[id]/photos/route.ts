@@ -59,11 +59,14 @@ export async function POST(
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  // Mark all existing photos as non-primary, then insert new one as primary
+  // Delete the existing primary photo row, then insert the new one.
+  // An update (is_primary: false) can silently no-op under RLS, leaving two
+  // primary rows and making the detail page show the old photo after upload.
   await supabase
     .from("recipe_photos")
-    .update({ is_primary: false })
-    .eq("recipe_id", id);
+    .delete()
+    .eq("recipe_id", id)
+    .eq("is_primary", true);
 
   await supabase.from("recipe_photos").insert({
     recipe_id: id,
