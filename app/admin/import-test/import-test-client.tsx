@@ -13,6 +13,7 @@ interface RowResult {
   hasPrepTime: boolean;
   ingredientCount: number;
   stepCount: number;
+  recipeId: string | null;
   error?: string;
 }
 
@@ -61,7 +62,7 @@ function parseUrls(raw: string): string[] {
     .filter((l) => l && !l.startsWith("#"));
 }
 
-export function ImportTestClient() {
+export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId: string }) {
   const [urlText, setUrlText] = useState("");
   const [batchLabel, setBatchLabel] = useState("instagram");
   const [rows, setRows] = useState<RowResult[]>([]);
@@ -90,6 +91,7 @@ export function ImportTestClient() {
       hasPrepTime: false,
       ingredientCount: 0,
       stepCount: 0,
+      recipeId: null,
     }));
     setRows(initial);
 
@@ -119,10 +121,37 @@ export function ImportTestClient() {
             const body = await res.json();
             if (body.error) errorMsg = body.error;
           } catch { /* ignore */ }
-          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, error: errorMsg };
+          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, error: errorMsg };
         } else {
           const data = await res.json();
           const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
+
+          // Save parsed recipe to test-kitchen galley
+          let recipeId: string | null = null;
+          try {
+            const saveRes = await fetch("/api/recipes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: name ?? "Untitled",
+                description: data.description ?? null,
+                servings: data.servings ?? null,
+                prep_time: data.prep_time ?? null,
+                season: data.season ?? undefined,
+                type: data.type ?? null,
+                source_url: urls[i],
+                image_url: data.image_url ?? null,
+                ingredients: data.ingredients ?? [],
+                steps: data.steps ?? [],
+                galleyId: testKitchenGalleyId,
+              }),
+            });
+            if (saveRes.ok) {
+              const saved = await saveRes.json();
+              recipeId = saved.id ?? null;
+            }
+          } catch { /* non-blocking — parse result still shown */ }
+
           result = {
             status: scoreResult(data),
             durationMs,
@@ -131,11 +160,12 @@ export function ImportTestClient() {
             hasPrepTime: typeof data.prep_time === "number" && data.prep_time > 0,
             ingredientCount: Array.isArray(data.ingredients) ? data.ingredients.length : 0,
             stepCount: Array.isArray(data.steps) ? data.steps.length : 0,
+            recipeId,
           };
         }
       } catch (err) {
         const durationMs = Date.now() - t0;
-        result = { status: "crashed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, error: err instanceof Error ? err.message : String(err) };
+        result = { status: "crashed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, error: err instanceof Error ? err.message : String(err) };
       }
 
       setRows((prev) =>
@@ -291,6 +321,7 @@ export function ImportTestClient() {
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Ing</th>
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Steps</th>
                   <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">ms</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Recipe</th>
                 </tr>
               </thead>
               <tbody>
@@ -314,6 +345,20 @@ export function ImportTestClient() {
                     <td className="px-4 py-2.5 text-center text-anthracite">{row.status === "pending" || row.status === "running" ? "·" : row.ingredientCount}</td>
                     <td className="px-4 py-2.5 text-center text-anthracite">{row.status === "pending" || row.status === "running" ? "·" : row.stepCount}</td>
                     <td className="px-4 py-2.5 text-right text-on-surface-variant">{row.durationMs != null ? row.durationMs.toLocaleString() : "·"}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      {row.recipeId ? (
+                        <a
+                          href={`/recipe/${row.recipeId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-anthracite underline underline-offset-2"
+                        >
+                          ↗
+                        </a>
+                      ) : (
+                        <span className="text-on-surface-variant">·</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
