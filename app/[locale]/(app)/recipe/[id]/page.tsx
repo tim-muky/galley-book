@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { notFound } from "next/navigation";
@@ -82,25 +83,54 @@ export default async function RecipeDetailPage({
 
   const { data: commentRows } = await supabase
     .from("recipe_comments")
-    .select("id, body, created_at, author_id, users(name, avatar_url)")
+    .select("id, body, created_at, author_id")
     .eq("recipe_id", id)
     .order("created_at", { ascending: true });
 
-  type CommentRow = {
-    id: string;
-    body: string;
-    created_at: string;
-    author_id: string | null;
-    users: { name: string | null; avatar_url: string | null } | null;
-  };
-  const initialComments: CommentItem[] = ((commentRows ?? []) as unknown as CommentRow[]).map((c) => ({
-    id: c.id,
-    body: c.body,
-    created_at: c.created_at,
-    author_id: c.author_id,
-    author_name: c.users?.name ?? null,
-    author_avatar_url: c.users?.avatar_url ?? null,
-  }));
+  type CommentRow = { id: string; body: string; created_at: string; author_id: string | null };
+  const commentList = (commentRows ?? []) as unknown as CommentRow[];
+
+  const authorIds = Array.from(
+    new Set(commentList.map((c) => c.author_id).filter((v): v is string => !!v))
+  );
+  const profileMap = new Map<string, { name: string | null; avatar_url: string | null }>();
+  if (authorIds.length > 0) {
+    const service = createServiceClient();
+    const { data: profiles } = await service
+      .from("users")
+      .select("id, name, avatar_url")
+      .in("id", authorIds);
+    for (const p of (profiles ?? []) as Array<{ id: string; name: string | null; avatar_url: string | null }>) {
+      profileMap.set(p.id, { name: p.name, avatar_url: p.avatar_url });
+    }
+  }
+
+  const initialComments: CommentItem[] = commentList.map((c) => {
+    const profile = c.author_id ? profileMap.get(c.author_id) : null;
+    return {
+      id: c.id,
+      body: c.body,
+      created_at: c.created_at,
+      author_id: c.author_id,
+      author_name: profile?.name ?? null,
+      author_avatar_url: profile?.avatar_url ?? null,
+    };
+  });
+
+  const currentProfile = profileMap.get(user.id) ?? null;
+  let currentUserName = currentProfile?.name ?? null;
+  let currentUserAvatarUrl = currentProfile?.avatar_url ?? null;
+  if (!currentUserName || !currentUserAvatarUrl) {
+    const service = createServiceClient();
+    const { data: me } = await service
+      .from("users")
+      .select("name, avatar_url")
+      .eq("id", user.id)
+      .single();
+    const meRow = me as { name: string | null; avatar_url: string | null } | null;
+    currentUserName = currentUserName ?? meRow?.name ?? null;
+    currentUserAvatarUrl = currentUserAvatarUrl ?? meRow?.avatar_url ?? null;
+  }
 
   const otherGalleys = (membershipsRaw ?? [])
     .filter((m) => m.galley_id !== recipe.galley_id)
@@ -245,6 +275,8 @@ export default async function RecipeDetailPage({
           recipeId={id}
           initialComments={initialComments}
           currentUserId={user.id}
+          currentUserName={currentUserName}
+          currentUserAvatarUrl={currentUserAvatarUrl}
           isGalleyOwner={isGalleyOwner}
           labels={{
             heading: t("comments.heading"),

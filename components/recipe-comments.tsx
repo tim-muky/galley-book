@@ -16,12 +16,16 @@ export function RecipeComments({
   recipeId,
   initialComments,
   currentUserId,
+  currentUserName,
+  currentUserAvatarUrl,
   isGalleyOwner,
   labels,
 }: {
   recipeId: string;
   initialComments: CommentItem[];
   currentUserId: string;
+  currentUserName: string | null;
+  currentUserAvatarUrl: string | null;
   isGalleyOwner: boolean;
   labels: {
     heading: string;
@@ -50,13 +54,12 @@ export function RecipeComments({
     setPosting(false);
     if (!res.ok) return;
     const created = (await res.json()) as Omit<CommentItem, "author_name" | "author_avatar_url">;
-    const me = comments.find((c) => c.author_id === currentUserId);
     setComments([
       ...comments,
       {
         ...created,
-        author_name: me?.author_name ?? null,
-        author_avatar_url: me?.author_avatar_url ?? null,
+        author_name: currentUserName,
+        author_avatar_url: currentUserAvatarUrl,
       },
     ]);
     setBody("");
