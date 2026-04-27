@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
+import { buildRecipePrompt, type ImageSource, type ParsedVia } from "@/lib/recipe-prompts";
 import { z } from "zod";
 
 const ParseSchema = z.object({
@@ -24,18 +25,6 @@ const ParseSchema = z.object({
 export const maxDuration = 30;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
-
-const RECIPE_SCHEMA = `{
-  "name": "string",
-  "description": "string (brief, max 2 sentences)",
-  "servings": number,
-  "prep_time": number (in minutes),
-  "season": "all_year" | "spring" | "summer" | "autumn" | "winter",
-  "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side",
-  "image_url": "string | null (direct image URL if found)",
-  "ingredients": [{ "name": "string", "amount": number | null, "unit": "string | null", "group": "string | null" }],
-  "steps": [{ "instruction": "string" }]
-}`;
 
 function isInstagramUrl(url: string): boolean {
   return /instagram\.com\/(p|reel|tv)\//i.test(url);
@@ -399,26 +388,6 @@ Return only the raw recipe content, no commentary.`;
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-export type ParsedVia =
-  | "instagram_caption"
-  | "instagram_perplexity"
-  | "youtube_transcript"
-  | "youtube_video"
-  | "youtube_perplexity"
-  | "tiktok"
-  | "jsonld"
-  | "perplexity"
-  | "html_text"
-  | "none";
-
-export type ImageSource =
-  | "instagram_embed"
-  | "youtube_thumbnail"
-  | "tiktok_thumbnail"
-  | "jsonld_image"
-  | "og_image"
-  | "none";
-
 interface FetchResult {
   content: string;
   imageUrl: string | null;
@@ -635,25 +604,9 @@ export async function POST(request: Request) {
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const t0 = Date.now();
-  const result = await model.generateContent(
-    `Extract the recipe from the following content and return ONLY valid JSON matching this schema:
-${RECIPE_SCHEMA}
-
-Rules:
-- Convert all ingredient amounts to numbers (e.g. "½" → 0.5, "1/3" → 0.33)
-- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null
-- prep_time: total active + passive cooking time in minutes
-- season: infer from dish characteristics if not stated
-- type: infer from dish if not stated (default "main")
-- image_url: set to ${imageUrl ? `"${imageUrl}"` : "null"} (use this value as-is)
-- ingredients.group: if ingredients are divided into sections (e.g. "Marinade", "Sauce", "Dressing"), set group to the section name; otherwise null
-- Return null for fields you cannot determine
-- Return ONLY JSON, no markdown, no explanation
-
-Content:
-${pageContent}`
-  );
+  const result = await model.generateContent(buildRecipePrompt(parsedVia, pageContent, imageUrl));
   const duration = Date.now() - t0;
+  const operationLabel = `parse_link:${parsedVia}` as const;
 
   const rawText = result.response.text();
 
@@ -670,7 +623,7 @@ ${pageContent}`
     parsed.image_source = imageSource;
     await logAIUsage({
       userId: user.id,
-      operation: "parse_link",
+      operation: operationLabel,
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
       outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
@@ -681,7 +634,7 @@ ${pageContent}`
   } catch {
     await logAIUsage({
       userId: user.id,
-      operation: "parse_link",
+      operation: operationLabel,
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
       outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,

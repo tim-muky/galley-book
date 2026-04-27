@@ -1,6 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/service";
 
-export type AIOperation = "parse_link" | "parse_image" | "recommendation";
+export type AIOperation =
+  | "parse_link"
+  | `parse_link:${string}`
+  | "parse_image"
+  | "recommendation";
 
 interface AIUsageParams {
   userId: string | null;
