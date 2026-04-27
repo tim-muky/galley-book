@@ -192,7 +192,12 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
 
   function proxyExternal(url: string): string {
     if (!url || url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:")) return url;
-    return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    // Only Instagram CDNs require the server-side Referer trick — every other
+    // public host loads fine in <img> directly, so don't burn proxy bandwidth.
+    if (url.includes("cdninstagram.com") || url.includes("fbcdn.net")) {
+      return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    }
+    return url;
   }
 
   function updateField<K extends keyof RecipeForm>(key: K, value: RecipeForm[K]) {
