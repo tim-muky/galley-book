@@ -4,7 +4,8 @@ export type AIOperation =
   | "parse_link"
   | `parse_link:${string}`
   | "parse_image"
-  | "recommendation";
+  | "recommendation"
+  | "translate";
 
 interface AIUsageParams {
   userId: string | null;

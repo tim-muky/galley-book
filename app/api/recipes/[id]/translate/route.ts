@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { checkTranslateLimit } from "@/lib/rate-limit";
+import { logAIUsage } from "@/lib/ai-logger";
+
+export const maxDuration = 30;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -34,6 +38,14 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = await checkTranslateLimit(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${rl.retryAfterSeconds} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
 
   // Get user's translation language
   const { data: userRow } = await supabase
@@ -110,7 +122,11 @@ Steps:
 ${JSON.stringify(steps ?? [])}`;
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const t0 = Date.now();
   const result = await model.generateContent(prompt);
+  const durationMs = Date.now() - t0;
+  const inputTokens = result.response.usageMetadata?.promptTokenCount ?? null;
+  const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? null;
   const text = result.response.text().trim();
 
   let parsed: {
@@ -125,6 +141,15 @@ ${JSON.stringify(steps ?? [])}`;
     // Strip markdown fences if Gemini wrapped the response
     const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (!match) {
+      await logAIUsage({
+        userId: user.id,
+        operation: "translate",
+        model: "gemini-2.5-flash",
+        inputTokens,
+        outputTokens,
+        durationMs,
+        success: false,
+      });
       return NextResponse.json({ error: "Translation failed — invalid response" }, { status: 500 });
     }
     parsed = JSON.parse(match[1]);
@@ -149,8 +174,27 @@ ${JSON.stringify(steps ?? [])}`;
     .single();
 
   if (error) {
+    await logAIUsage({
+      userId: user.id,
+      operation: "translate",
+      model: "gemini-2.5-flash",
+      inputTokens,
+      outputTokens,
+      durationMs,
+      success: false,
+    });
     return NextResponse.json({ error: "Failed to save translation" }, { status: 500 });
   }
+
+  await logAIUsage({
+    userId: user.id,
+    operation: "translate",
+    model: "gemini-2.5-flash",
+    inputTokens,
+    outputTokens,
+    durationMs,
+    success: true,
+  });
 
   return NextResponse.json({ translation }, { status: 200 });
 }
