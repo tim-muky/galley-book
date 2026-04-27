@@ -61,6 +61,14 @@ body {
   border-radius: 2px;
 }
 
+/* Hide scrollbars on horizontally-scrollable rows (filter chips, galley pills, etc.) */
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Remove tap highlight on mobile */
 * {
   -webkit-tap-highlight-color: transparent;

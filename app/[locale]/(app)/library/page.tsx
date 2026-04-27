@@ -158,7 +158,7 @@ export default async function LibraryPage({
       )}
       <div className={`px-5 ${headerImageUrl ? "pt-0" : "pt-2"}`}>
       <div className="mb-6">
-        <div className="flex items-start justify-between mb-1">
+        <div className="flex items-end justify-between mb-5">
           <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
           <Image
             src="/logo.png"
@@ -245,6 +245,7 @@ export default async function LibraryPage({
         </div>
       ) : (
         <LibraryRecipes
+          key={galleyId}
           initialRecipes={pagedRecipes as never}
           initialHasMore={hasMore}
           initialCookNextIds={[...cookNextIds]}
