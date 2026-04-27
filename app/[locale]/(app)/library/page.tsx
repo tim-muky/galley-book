@@ -74,7 +74,7 @@ export default async function LibraryPage({
   const galleyIds = memberships.map((m) => m.galley_id);
 
   const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }, { data: allRecipeCounts }] = await Promise.all([
-    supabase.from("galleys").select("id, name").eq("id", galleyId).single(),
+    supabase.from("galleys").select("id, name, header_image_path").eq("id", galleyId).single(),
     supabase
       .from("galley_members")
       .select("user_id, users(name, avatar_url)")
@@ -125,6 +125,12 @@ export default async function LibraryPage({
     return <CreateGalleyPrompt />;
   }
 
+  const headerImageUrl = (galley as unknown as { header_image_path: string | null }).header_image_path
+    ? supabase.storage
+        .from("recipe-photos")
+        .getPublicUrl((galley as unknown as { header_image_path: string }).header_image_path).data.publicUrl
+    : null;
+
   const FILTER_TYPES = [
     { label: t("filter.all"), value: "" },
     { label: t("filter.quick"), value: "quick" },
@@ -134,7 +140,16 @@ export default async function LibraryPage({
   ];
 
   return (
-    <div className="px-5 pt-2 pb-6">
+    <div className="pb-6">
+      {headerImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={headerImageUrl}
+          alt=""
+          className="w-full h-44 object-cover mb-4"
+        />
+      )}
+      <div className={`px-5 ${headerImageUrl ? "pt-0" : "pt-2"}`}>
       <div className="mb-6">
         <div className="flex items-start justify-between mb-1">
           <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
@@ -232,6 +247,7 @@ export default async function LibraryPage({
           otherGalleys={otherGalleys}
         />
       )}
+      </div>
     </div>
   );
 }

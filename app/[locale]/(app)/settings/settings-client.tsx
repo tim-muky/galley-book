@@ -11,7 +11,7 @@ interface Membership {
   galley_id: string;
   role: string;
   is_default: boolean;
-  galleys: { id: string; name: string } | null;
+  galleys: { id: string; name: string; header_image_path: string | null } | null;
 }
 
 interface Member {
@@ -122,6 +122,21 @@ export function SettingsClient({
   const [newGalleyName, setNewGalleyName] = useState("");
   const [creatingGalley, setCreatingGalley] = useState(false);
   const [createGalleyError, setCreateGalleyError] = useState("");
+
+  const [headerImageUrls, setHeaderImageUrls] = useState<Record<string, string | null>>(() => {
+    const map: Record<string, string | null> = {};
+    for (const m of initialMemberships) {
+      if (m.galleys?.header_image_path) {
+        map[m.galley_id] = supabase.storage
+          .from("recipe-photos")
+          .getPublicUrl(m.galleys.header_image_path).data.publicUrl;
+      } else {
+        map[m.galley_id] = null;
+      }
+    }
+    return map;
+  });
+  const [headerImageUploading, setHeaderImageUploading] = useState<Record<string, boolean>>({});
 
   const defaultGalleyId = memberships.find((m) => m.is_default)?.galley_id ?? memberships[0]?.galley_id ?? "";
 
@@ -256,7 +271,7 @@ export function SettingsClient({
       setMemberships((prev) =>
         prev.map((m) =>
           m.galley_id === galleyId
-            ? { ...m, galleys: { ...m.galleys!, name: editingGalleyName.trim() } }
+            ? { ...m, galleys: { ...m.galleys!, name: editingGalleyName.trim(), header_image_path: m.galleys?.header_image_path ?? null } }
             : m
         )
       );
@@ -316,7 +331,7 @@ export function SettingsClient({
       const isFirst = memberships.length === 0;
       setMemberships((prev) => [
         ...prev,
-        { galley_id: id, role: "owner", is_default: isFirst, galleys: { id, name: newGalleyName.trim() } },
+        { galley_id: id, role: "owner", is_default: isFirst, galleys: { id, name: newGalleyName.trim(), header_image_path: null } },
       ]);
       setOpenGalleys((prev) => new Set([...prev, id]));
       setNewGalleyName("");
@@ -326,6 +341,18 @@ export function SettingsClient({
       setCreateGalleyError(err.error ?? "Failed to create galley.");
     }
     setCreatingGalley(false);
+  }
+
+  async function uploadHeaderImage(galleyId: string, file: File) {
+    setHeaderImageUploading((prev) => ({ ...prev, [galleyId]: true }));
+    const form = new FormData();
+    form.append("image", file);
+    const res = await fetch(`/api/galleys/${galleyId}/header-image`, { method: "POST", body: form });
+    if (res.ok) {
+      const { url } = await res.json();
+      setHeaderImageUrls((prev) => ({ ...prev, [galleyId]: url }));
+    }
+    setHeaderImageUploading((prev) => ({ ...prev, [galleyId]: false }));
   }
 
   return (
@@ -475,6 +502,32 @@ export function SettingsClient({
                     )}
 
                     <div className="space-y-2 pt-1">
+                      {isOwner && (
+                        <div className="space-y-2">
+                          {headerImageUrls[galleyId] && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={headerImageUrls[galleyId]!}
+                              alt=""
+                              className="w-full h-20 object-cover rounded-md"
+                            />
+                          )}
+                          <label className={`w-full flex items-center justify-center border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full transition-opacity ${headerImageUploading[galleyId] ? "opacity-40 pointer-events-none" : "cursor-pointer"}`}>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadHeaderImage(galleyId, file);
+                                e.target.value = "";
+                              }}
+                            />
+                            {headerImageUploading[galleyId] ? t("uploadingImage") : headerImageUrls[galleyId] ? t("changeHeaderImage") : t("addHeaderImage")}
+                          </label>
+                        </div>
+                      )}
+
                       <button
                         onClick={() => shareGalleyInvite(galleyId, galleyName)}
                         disabled={sharingGalleyId === galleyId}

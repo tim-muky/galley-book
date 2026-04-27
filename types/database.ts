@@ -133,18 +133,21 @@ export type Database = {
       galleys: {
         Row: {
           created_at: string
+          header_image_path: string | null
           id: string
           name: string
           owner_id: string
         }
         Insert: {
           created_at?: string
+          header_image_path?: string | null
           id?: string
           name: string
           owner_id: string
         }
         Update: {
           created_at?: string
+          header_image_path?: string | null
           id?: string
           name?: string
           owner_id?: string

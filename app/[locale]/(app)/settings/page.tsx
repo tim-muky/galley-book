@@ -24,7 +24,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase
       .from("galley_members")
-      .select("galley_id, role, is_default, galleys(id, name)")
+      .select("galley_id, role, is_default, galleys(id, name, header_image_path)")
       .eq("user_id", user.id)
       .order("invited_at", { ascending: true }),
   ]);
@@ -34,7 +34,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
     galley_id: string;
     role: string;
     is_default: boolean;
-    galleys: { id: string; name: string } | null;
+    galleys: { id: string; name: string; header_image_path: string | null } | null;
   }>;
 
   const galleyIds = memberships.map((m) => m.galley_id);
