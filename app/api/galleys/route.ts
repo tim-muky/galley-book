@@ -32,17 +32,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .rpc("create_galley", { galley_name: name.trim(), owner: user.id });
+  const trimmedName = name.trim();
 
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "Failed to create galley" }, { status: 500 });
+  const { data: existing } = await supabase
+    .from("galleys")
+    .select("id")
+    .eq("owner_id", user.id)
+    .ilike("name", trimmedName)
+    .limit(1)
+    .maybeSingle();
+
+  let galleyId: string;
+  let isNew = false;
+
+  if (existing) {
+    galleyId = existing.id;
+  } else {
+    const { data, error } = await supabase
+      .rpc("create_galley", { galley_name: trimmedName, owner: user.id });
+
+    if (error?.code === "23505") {
+      const { data: raced } = await supabase
+        .from("galleys")
+        .select("id")
+        .eq("owner_id", user.id)
+        .ilike("name", trimmedName)
+        .limit(1)
+        .maybeSingle();
+      if (!raced) {
+        return NextResponse.json({ error: "Failed to create galley" }, { status: 500 });
+      }
+      galleyId = raced.id;
+    } else if (error || !data) {
+      return NextResponse.json({ error: error?.message ?? "Failed to create galley" }, { status: 500 });
+    } else {
+      galleyId = data as string;
+      isNew = true;
+    }
   }
 
-  const galleyId = data as string;
-
-  // Seed default recipes for new users
-  await seedDefaultRecipes(supabase, galleyId, user.id);
+  if (isNew) {
+    await seedDefaultRecipes(supabase, galleyId, user.id);
+  }
 
   if (!contentType.includes("application/json")) {
     return new Response(null, { status: 303, headers: { Location: "/library" } });

@@ -7,6 +7,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { GalleySwitcher } from "@/components/galley-switcher";
 import { LibraryRecipes } from "./library-recipes-client";
+import { CreateGalleyForm } from "./create-galley-form";
 import Image from "next/image";
 
 const PAGE_SIZE = 20;
@@ -260,20 +261,7 @@ async function CreateGalleyPrompt() {
     <div className="px-5 pt-12 min-h-screen flex flex-col">
       <h1 className="text-4xl font-thin text-anthracite mb-2">{t("title")}</h1>
       <p className="text-sm font-light text-on-surface-variant mb-8">{t("subtitle")}</p>
-      <form action="/api/galleys" method="POST">
-        <input
-          name="name"
-          placeholder={t("placeholder")}
-          className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none mb-4"
-        />
-        <button
-          type="submit"
-          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
-          className="w-full border text-sm font-light py-4 rounded-full"
-        >
-          {t("button")}
-        </button>
-      </form>
+      <CreateGalleyForm placeholder={t("placeholder")} buttonLabel={t("button")} />
     </div>
   );
 }
