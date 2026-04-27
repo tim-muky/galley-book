@@ -11,6 +11,7 @@ import { ShareButton } from "@/components/share-button";
 import { VoteSection } from "@/app/(app)/recipe/[id]/vote-section";
 import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
 import { RecipeContent } from "@/app/(app)/recipe/[id]/recipe-content";
+import { RecipeComments, type CommentItem } from "@/components/recipe-comments";
 import type { RecipeTranslation } from "@/types/database";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
@@ -71,6 +72,35 @@ export default async function RecipeDetailPage({
   const translation = translationRaw as RecipeTranslation | null;
 
   if (!recipe) notFound();
+
+  const { data: galleyRow } = await supabase
+    .from("galleys")
+    .select("owner_id")
+    .eq("id", recipe.galley_id)
+    .single();
+  const isGalleyOwner = (galleyRow as { owner_id: string } | null)?.owner_id === user.id;
+
+  const { data: commentRows } = await supabase
+    .from("recipe_comments")
+    .select("id, body, created_at, author_id, users(name, avatar_url)")
+    .eq("recipe_id", id)
+    .order("created_at", { ascending: true });
+
+  type CommentRow = {
+    id: string;
+    body: string;
+    created_at: string;
+    author_id: string | null;
+    users: { name: string | null; avatar_url: string | null } | null;
+  };
+  const initialComments: CommentItem[] = ((commentRows ?? []) as unknown as CommentRow[]).map((c) => ({
+    id: c.id,
+    body: c.body,
+    created_at: c.created_at,
+    author_id: c.author_id,
+    author_name: c.users?.name ?? null,
+    author_avatar_url: c.users?.avatar_url ?? null,
+  }));
 
   const otherGalleys = (membershipsRaw ?? [])
     .filter((m) => m.galley_id !== recipe.galley_id)
@@ -209,6 +239,21 @@ export default async function RecipeDetailPage({
         <VoteSection
           recipeId={id}
           initialVote={(userVoteRow as unknown as { value: number } | null)?.value ?? null}
+        />
+
+        <RecipeComments
+          recipeId={id}
+          initialComments={initialComments}
+          currentUserId={user.id}
+          isGalleyOwner={isGalleyOwner}
+          labels={{
+            heading: t("comments.heading"),
+            placeholder: t("comments.placeholder"),
+            post: t("comments.post"),
+            posting: t("comments.posting"),
+            delete: t("comments.delete"),
+            empty: t("comments.empty"),
+          }}
         />
 
         <div className="pt-4 pb-2 space-y-3">

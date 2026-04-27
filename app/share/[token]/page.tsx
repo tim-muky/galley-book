@@ -65,6 +65,20 @@ export default async function SharePage({
 
   if (!recipe) notFound();
 
+  const { data: commentRowsRaw } = await supabase
+    .from("recipe_comments")
+    .select("id, body, created_at, users(name, avatar_url)")
+    .eq("recipe_id", recipe.id)
+    .order("created_at", { ascending: true });
+
+  type ShareCommentRow = {
+    id: string;
+    body: string;
+    created_at: string;
+    users: { name: string | null; avatar_url: string | null } | null;
+  };
+  const shareComments = (commentRowsRaw ?? []) as unknown as ShareCommentRow[];
+
   const photos = (recipe.recipe_photos ?? []).sort(
     (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
   );
@@ -246,6 +260,43 @@ export default async function SharePage({
               )
             )}
           </ol>
+        </section>
+      )}
+
+      {shareComments.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-lg font-light text-anthracite mb-3">Comments</h2>
+          <ul className="space-y-4">
+            {shareComments.map((c) => (
+              <li key={c.id} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-surface-low overflow-hidden flex-shrink-0">
+                  {c.users?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.users.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-surface-highest">
+                      <span className="text-[10px] font-semibold text-anthracite">
+                        {c.users?.name?.[0]?.toUpperCase() ?? "?"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold text-anthracite">
+                      {c.users?.name ?? "—"}
+                    </span>
+                    <time className="text-[10px] font-light text-on-surface-variant/60">
+                      {new Date(c.created_at).toLocaleDateString()}
+                    </time>
+                  </div>
+                  <p className="text-sm font-light text-anthracite/80 mt-1 whitespace-pre-wrap break-words">
+                    {c.body}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

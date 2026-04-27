@@ -52,7 +52,15 @@
     "ingredients": "Ingredients",
     "preparation": "Preparation",
     "servings": "Serves {n}",
-    "prepTime": "{n} min"
+    "prepTime": "{n} min",
+    "comments": {
+      "heading": "Comments",
+      "placeholder": "Write a comment…",
+      "post": "Post",
+      "posting": "Posting…",
+      "delete": "Delete",
+      "empty": "No comments yet."
+    }
   },
   "newRecipe": {
     "title": "Add New Recipe",

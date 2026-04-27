@@ -52,7 +52,15 @@
     "ingredients": "Ingrédients",
     "preparation": "Préparation",
     "servings": "{n} portions",
-    "prepTime": "{n} min"
+    "prepTime": "{n} min",
+    "comments": {
+      "heading": "Commentaires",
+      "placeholder": "Écrire un commentaire…",
+      "post": "Publier",
+      "posting": "Envoi…",
+      "delete": "Supprimer",
+      "empty": "Aucun commentaire."
+    }
   },
   "newRecipe": {
     "title": "Nouvelle recette",
