@@ -9,7 +9,6 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { YoutubeTranscript } from "youtube-transcript";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
@@ -516,26 +515,76 @@ function descriptionLooksLikeRecipe(description: string): boolean {
   return false;
 }
 
-/** Fetch YouTube captions via the public timedtext endpoint — no API key needed.
- *  Uses youtube-transcript@1.3.0 which relies on undocumented YouTube APIs.
- *  If this returns null more frequently, fall through to Gemini video analysis.
- *  Monitor via ai_usage_logs: high gemini parse_link count = transcript is broken.
- */
+/** Fetch YouTube captions by scraping the watch page for caption tracks and
+ *  fetching the timedtext JSON directly. Replaces the old `youtube-transcript`
+ *  dep which broke when YouTube changed their endpoints. No external library —
+ *  same consent-cookie strategy as fetchYouTubeWatchPageMeta. */
 async function fetchYouTubeTranscript(url: string): Promise<string | null> {
   const videoId = extractYouTubeVideoId(url);
   if (!videoId) return null;
+  const watchUrl = canonicalYouTubeUrl(url);
+  const consentCookie = "CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAI";
+
   try {
-    const segments = await YoutubeTranscript.fetchTranscript(videoId);
-    if (!segments.length) return null;
-    // Join into plain text, dropping timestamps — enough for recipe extraction
-    return segments.map((s) => s.text).join(" ").slice(0, 20000);
+    const pageRes = await fetch(`${watchUrl}&hl=en&persist_hl=1`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        Cookie: consentCookie,
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!pageRes.ok) return null;
+    const html = await pageRes.text();
+
+    // Caption tracks live inside ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks[]
+    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
+    if (!playerMatch) return null;
+    let player: Record<string, unknown>;
+    try {
+      player = JSON.parse(playerMatch[1]) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+    const captions = (player.captions as Record<string, unknown> | undefined)
+      ?.playerCaptionsTracklistRenderer as Record<string, unknown> | undefined;
+    const tracks = captions?.captionTracks as Array<Record<string, unknown>> | undefined;
+    if (!tracks || tracks.length === 0) return null;
+
+    // Pick best track: English manual first, then English auto-generated, then any English, then first available
+    const isEn = (t: Record<string, unknown>) => /^en/i.test(String(t.languageCode ?? ""));
+    const isAsr = (t: Record<string, unknown>) => String(t.kind ?? "") === "asr";
+    const track =
+      tracks.find((t) => isEn(t) && !isAsr(t)) ??
+      tracks.find((t) => isEn(t)) ??
+      tracks[0];
+    const baseUrl = typeof track.baseUrl === "string" ? track.baseUrl : null;
+    if (!baseUrl) return null;
+
+    // Request fmt=json3 for clean JSON instead of XML.
+    const trackUrl = baseUrl + (baseUrl.includes("fmt=") ? "" : "&fmt=json3");
+    const captionsRes = await fetch(trackUrl, { signal: AbortSignal.timeout(5000) });
+    if (!captionsRes.ok) return null;
+    const data = (await captionsRes.json()) as {
+      events?: Array<{ segs?: Array<{ utf8?: string }> }>;
+    };
+    const text = (data.events ?? [])
+      .flatMap((e) => e.segs ?? [])
+      .map((s) => s.utf8 ?? "")
+      .join("")
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length < 50) return null;
+    return text.slice(0, 20000);
   } catch {
     return null;
   }
 }
 
 /** Ask Gemini to watch the YouTube video directly and extract the recipe */
-async function analyzeYouTubeVideoWithGemini(url: string, timeoutMs = 15000): Promise<string> {
+async function analyzeYouTubeVideoWithGemini(url: string, timeoutMs = 25000): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const result = await Promise.race([
     model.generateContent([
