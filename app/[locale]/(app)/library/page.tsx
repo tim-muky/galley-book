@@ -51,12 +51,6 @@ export default async function LibraryPage({
   const activeMembership = validFromCookie ?? memberships.find((m) => m.is_default) ?? memberships[0];
   const galleyId = activeMembership.galley_id;
 
-  const galleyOptions = memberships.map((m) => ({
-    id: m.galley_id,
-    name: m.galleys?.name ?? "Unnamed",
-  }));
-  const otherGalleys = galleyOptions.filter((g) => g.id !== galleyId);
-
   let recipesQuery = supabase
     .from("recipes")
     .select(`*, recipe_photos(*)`)
@@ -77,7 +71,9 @@ export default async function LibraryPage({
     recipesQuery = recipesQuery.ilike("name", `%${params.search}%`);
   }
 
-  const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }] = await Promise.all([
+  const galleyIds = memberships.map((m) => m.galley_id);
+
+  const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }, { data: allRecipeCounts }] = await Promise.all([
     supabase.from("galleys").select("id, name").eq("id", galleyId).single(),
     supabase
       .from("galley_members")
@@ -86,7 +82,20 @@ export default async function LibraryPage({
       .limit(5),
     recipesQuery.limit(PAGE_SIZE + 1),
     supabase.from("cook_next_list").select("recipe_id").eq("galley_id", galleyId),
+    supabase.from("recipes").select("galley_id").in("galley_id", galleyIds).is("deleted_at", null),
   ]);
+
+  const recipeCountByGalley: Record<string, number> = {};
+  for (const row of allRecipeCounts ?? []) {
+    recipeCountByGalley[row.galley_id] = (recipeCountByGalley[row.galley_id] ?? 0) + 1;
+  }
+
+  const galleyOptions = memberships.map((m) => ({
+    id: m.galley_id,
+    name: m.galleys?.name ?? "Unnamed",
+    recipeCount: recipeCountByGalley[m.galley_id] ?? 0,
+  }));
+  const otherGalleys = galleyOptions.filter((g) => g.id !== galleyId).map(({ id, name }) => ({ id, name }));
 
   const hasMore = (recipes?.length ?? 0) > PAGE_SIZE;
   const pagedRecipes = hasMore ? recipes!.slice(0, PAGE_SIZE) : (recipes ?? []);
