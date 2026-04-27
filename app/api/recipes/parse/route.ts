@@ -15,6 +15,7 @@ import { isSafeUrl } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt, type ImageSource, type ParsedVia } from "@/lib/recipe-prompts";
+import { fetchOEmbed } from "@/lib/oembed";
 import { z } from "zod";
 
 const ParseSchema = z.object({
@@ -274,20 +275,12 @@ function extractJsonLdImage(jsonLd: Record<string, unknown>): string | null {
 
 /** TikTok thumbnail + caption — uses public oEmbed endpoint (no auth needed) */
 async function fetchTikTokOEmbed(url: string): Promise<{ thumbnail: string | null; caption: string }> {
-  try {
-    const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
-    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        thumbnail: data.thumbnail_url?.startsWith("http") ? (data.thumbnail_url as string) : null,
-        caption: (data.title as string) ?? "",
-      };
-    }
-  } catch {
-    // Fall through
-  }
-  return { thumbnail: null, caption: "" };
+  const data = await fetchOEmbed("tiktok", url, 5000);
+  if (!data) return { thumbnail: null, caption: "" };
+  return {
+    thumbnail: data.thumbnail_url?.startsWith("http") ? data.thumbnail_url : null,
+    caption: data.title ?? "",
+  };
 }
 
 /** Try fetching Instagram embed URL (public endpoint that includes post caption) */

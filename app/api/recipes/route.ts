@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
+import { fetchAuthor } from "@/lib/oembed";
 import { z } from "zod";
 
 const IngredientSchema = z.object({
@@ -30,55 +31,6 @@ const RecipeCreateSchema = z.object({
 
 type SourceEntry = { sourceType: string; handleOrName: string; normalizedUrl: string };
 
-/** Fetch author_name from Instagram oEmbed — works for public posts without auth */
-async function instagramAuthor(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://api.instagram.com/oembed/?url=${encodeURIComponent(url)}&fields=author_name`,
-      { signal: AbortSignal.timeout(4000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Fetch author_name from YouTube oEmbed — works for all public videos */
-async function youtubeAuthor(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
-      { signal: AbortSignal.timeout(4000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Fetch author info from TikTok oEmbed */
-async function tiktokAuthor(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`,
-      { signal: AbortSignal.timeout(4000) }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    // author_url is like https://www.tiktok.com/@username
-    const authorUrl: string = data.author_url ?? "";
-    const handleMatch = authorUrl.match(/tiktok\.com\/@([^/?#]+)/);
-    if (handleMatch?.[1]) return `@${handleMatch[1]}`;
-    return typeof data.author_name === "string" && data.author_name ? data.author_name : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Extract a normalised source entry from a recipe URL to auto-populate saved_sources */
 async function extractSource(url: string): Promise<SourceEntry | null> {
   try {
@@ -93,7 +45,7 @@ async function extractSource(url: string): Promise<SourceEntry | null> {
         return { sourceType: "instagram", handleOrName: `@${account}`, normalizedUrl: `https://instagram.com/${account}` };
       }
       // Post/reel URL — fetch author via oEmbed
-      const author = await instagramAuthor(url);
+      const author = await fetchAuthor("instagram", url);
       if (author) {
         return { sourceType: "instagram", handleOrName: `@${author}`, normalizedUrl: `https://instagram.com/${author}` };
       }
@@ -108,7 +60,7 @@ async function extractSource(url: string): Promise<SourceEntry | null> {
         return { sourceType: "youtube", handleOrName: `@${handle}`, normalizedUrl: `https://youtube.com/@${handle}` };
       }
       // Video URL — fetch channel name via oEmbed
-      const author = await youtubeAuthor(url);
+      const author = await fetchAuthor("youtube", url);
       if (author) {
         return { sourceType: "youtube", handleOrName: author, normalizedUrl: `https://youtube.com` };
       }
@@ -123,7 +75,7 @@ async function extractSource(url: string): Promise<SourceEntry | null> {
         return { sourceType: "tiktok", handleOrName: `@${account}`, normalizedUrl: `https://tiktok.com/@${account}` };
       }
       // Fetch via oEmbed
-      const author = await tiktokAuthor(url);
+      const author = await fetchAuthor("tiktok", url);
       if (author) {
         const handle = author.startsWith("@") ? author.slice(1) : author;
         return { sourceType: "tiktok", handleOrName: author, normalizedUrl: `https://tiktok.com/@${handle}` };
