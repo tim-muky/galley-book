@@ -14,6 +14,8 @@ interface RowResult {
   ingredientCount: number;
   stepCount: number;
   recipeId: string | null;
+  parsedVia: string | null;
+  imageSource: string | null;
   error?: string;
 }
 
@@ -92,6 +94,8 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
       ingredientCount: 0,
       stepCount: 0,
       recipeId: null,
+      parsedVia: null,
+      imageSource: null,
     }));
     setRows(initial);
 
@@ -121,7 +125,7 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
             const body = await res.json();
             if (body.error) errorMsg = body.error;
           } catch { /* ignore */ }
-          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, error: errorMsg };
+          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, parsedVia: null, imageSource: null, error: errorMsg };
         } else {
           const data = await res.json();
           const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
@@ -161,11 +165,13 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
             ingredientCount: Array.isArray(data.ingredients) ? data.ingredients.length : 0,
             stepCount: Array.isArray(data.steps) ? data.steps.length : 0,
             recipeId,
+            parsedVia: typeof data.parsed_via === "string" ? data.parsed_via : null,
+            imageSource: typeof data.image_source === "string" ? data.image_source : null,
           };
         }
       } catch (err) {
         const durationMs = Date.now() - t0;
-        result = { status: "crashed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, error: err instanceof Error ? err.message : String(err) };
+        result = { status: "crashed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, parsedVia: null, imageSource: null, error: err instanceof Error ? err.message : String(err) };
       }
 
       setRows((prev) =>
@@ -200,6 +206,8 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
         hasPrepTime: r.hasPrepTime,
         ingredientCount: r.ingredientCount,
         stepCount: r.stepCount,
+        parsedVia: r.parsedVia,
+        imageSource: r.imageSource,
         ...(r.error ? { error: r.error } : {}),
       })),
     };
@@ -320,6 +328,8 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Time</th>
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Ing</th>
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Steps</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Parsed via</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Img src</th>
                   <th className="text-right px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">ms</th>
                   <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Recipe</th>
                 </tr>
@@ -344,6 +354,8 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
                     <td className="px-4 py-2.5 text-center">{row.status === "pending" || row.status === "running" ? "·" : row.hasPrepTime ? "✓" : "✗"}</td>
                     <td className="px-4 py-2.5 text-center text-anthracite">{row.status === "pending" || row.status === "running" ? "·" : row.ingredientCount}</td>
                     <td className="px-4 py-2.5 text-center text-anthracite">{row.status === "pending" || row.status === "running" ? "·" : row.stepCount}</td>
+                    <td className="px-4 py-2.5 text-on-surface-variant">{row.parsedVia ?? "·"}</td>
+                    <td className="px-4 py-2.5 text-on-surface-variant">{row.imageSource ?? "·"}</td>
                     <td className="px-4 py-2.5 text-right text-on-surface-variant">{row.durationMs != null ? row.durationMs.toLocaleString() : "·"}</td>
                     <td className="px-4 py-2.5 text-center">
                       {row.recipeId ? (
@@ -367,19 +379,69 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
 
           {/* Final summary */}
           {!running && done.length === total && (
-            <div className="mt-6 bg-white rounded-md shadow-ambient p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">
-                Summary — {batchLabel} — {total} URLs
-              </p>
-              <div className="grid grid-cols-5 gap-3">
-                {(["perfect", "good", "partial", "failed", "crashed"] as const).map((s) => (
-                  <div key={s}>
-                    <p className={`text-2xl font-thin ${STATUS_COLOR[s]}`}>{counts[s]}</p>
-                    <p className="text-[10px] font-light text-on-surface-variant">{s}</p>
-                    <p className="text-[10px] font-light text-on-surface-variant">{pct(counts[s])}</p>
-                  </div>
-                ))}
+            <div className="mt-6 bg-white rounded-md shadow-ambient p-4 space-y-5">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">
+                  Summary — {batchLabel} — {total} URLs
+                </p>
+                <div className="grid grid-cols-5 gap-3">
+                  {(["perfect", "good", "partial", "failed", "crashed"] as const).map((s) => (
+                    <div key={s}>
+                      <p className={`text-2xl font-thin ${STATUS_COLOR[s]}`}>{counts[s]}</p>
+                      <p className="text-[10px] font-light text-on-surface-variant">{s}</p>
+                      <p className="text-[10px] font-light text-on-surface-variant">{pct(counts[s])}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {(() => {
+                type Bucket = { total: number; perfect: number; good: number; partial: number; failed: number; crashed: number; withImage: number };
+                const groups = new Map<string, Bucket>();
+                for (const r of done) {
+                  const key = r.parsedVia ?? "(unknown)";
+                  let b = groups.get(key);
+                  if (!b) { b = { total: 0, perfect: 0, good: 0, partial: 0, failed: 0, crashed: 0, withImage: 0 }; groups.set(key, b); }
+                  b.total++;
+                  if (r.status in b) (b as unknown as Record<string, number>)[r.status]++;
+                  if (r.hasImage) b.withImage++;
+                }
+                const sorted = [...groups.entries()].sort((a, b) => b[1].total - a[1].total);
+                if (sorted.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">
+                      Breakdown by parse path
+                    </p>
+                    <table className="w-full text-xs font-light">
+                      <thead>
+                        <tr className="border-b border-surface-low">
+                          <th className="text-left py-1.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Parsed via</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">Total</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-green-600">Perfect</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-yellow-600">Good</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-orange-500">Partial</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-red-500">Fail</th>
+                          <th className="text-right py-1.5 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">w/ photo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sorted.map(([key, b]) => (
+                          <tr key={key} className="border-b border-surface-low last:border-0">
+                            <td className="py-1.5 text-anthracite">{key}</td>
+                            <td className="py-1.5 text-right text-anthracite">{b.total}</td>
+                            <td className="py-1.5 text-right text-green-600">{b.perfect}</td>
+                            <td className="py-1.5 text-right text-yellow-600">{b.good}</td>
+                            <td className="py-1.5 text-right text-orange-500">{b.partial}</td>
+                            <td className="py-1.5 text-right text-red-500">{b.failed + b.crashed}</td>
+                            <td className="py-1.5 text-right text-on-surface-variant">{b.withImage}/{b.total}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

@@ -399,10 +399,32 @@ Return only the raw recipe content, no commentary.`;
   return data.choices?.[0]?.message?.content ?? "";
 }
 
+export type ParsedVia =
+  | "instagram_caption"
+  | "instagram_perplexity"
+  | "youtube_transcript"
+  | "youtube_video"
+  | "youtube_perplexity"
+  | "tiktok"
+  | "jsonld"
+  | "perplexity"
+  | "html_text"
+  | "none";
+
+export type ImageSource =
+  | "instagram_embed"
+  | "youtube_thumbnail"
+  | "tiktok_thumbnail"
+  | "jsonld_image"
+  | "og_image"
+  | "none";
+
 interface FetchResult {
   content: string;
   imageUrl: string | null;
   imageCandidates: string[];
+  parsedVia: ParsedVia;
+  imageSource: ImageSource;
   error?: string;
 }
 
@@ -418,8 +440,9 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     ]);
 
     const imageUrl = instagramImages[0] ?? null;
+    const imageSource: ImageSource = imageUrl ? "instagram_embed" : "none";
     if (embedContent.length > 200) {
-      return { content: embedContent, imageUrl, imageCandidates: instagramImages };
+      return { content: embedContent, imageUrl, imageCandidates: instagramImages, parsedVia: "instagram_caption", imageSource };
     }
     // Embed failed — fall back to Perplexity with strict prompt
     if (process.env.PERPLEXITY_API_KEY) {
@@ -429,15 +452,19 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
           content: "",
           imageUrl: null,
           imageCandidates: [],
+          parsedVia: "none",
+          imageSource: "none",
           error: "Instagram posts require login and cannot be parsed automatically. Please add the recipe manually.",
         };
       }
-      return { content, imageUrl, imageCandidates: instagramImages };
+      return { content, imageUrl, imageCandidates: instagramImages, parsedVia: "instagram_perplexity", imageSource };
     }
     return {
       content: "",
       imageUrl: null,
       imageCandidates: [],
+      parsedVia: "none",
+      imageSource: "none",
       error: "Instagram posts cannot be parsed automatically. Please add the recipe manually.",
     };
   }
@@ -449,9 +476,9 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     if (!extractYouTubeVideoId(url)) {
       if (process.env.PERPLEXITY_API_KEY) {
         const content = await fetchViaPerplexity(url, false);
-        if (content.length > 200) return { content, imageUrl: null, imageCandidates: [] };
+        if (content.length > 200) return { content, imageUrl: null, imageCandidates: [], parsedVia: "youtube_perplexity", imageSource: "none" };
       }
-      return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [] };
+      return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [], parsedVia: "none", imageSource: "none" };
     }
 
     // Fetch all thumbnail candidates (cover + snapshot frames) in parallel with transcript
@@ -460,17 +487,18 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       fetchYouTubeTranscript(url),
     ]);
     const imageUrl = thumbnails[0] ?? null;
+    const imageSource: ImageSource = imageUrl ? "youtube_thumbnail" : "none";
 
     // Route 1: transcript — most videos have captions, near-zero cost
     if (transcript && transcript.length > 200) {
-      return { content: transcript, imageUrl, imageCandidates: thumbnails };
+      return { content: transcript, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_transcript", imageSource };
     }
 
     // Route 2: Gemini watches the video directly — handles videos without captions
     try {
       const videoContent = await analyzeYouTubeVideoWithGemini(url);
       if (videoContent.length > 200) {
-        return { content: videoContent, imageUrl, imageCandidates: thumbnails };
+        return { content: videoContent, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_video", imageSource };
       }
     } catch {
       // Fall through to Perplexity
@@ -479,10 +507,10 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     // Route 3: Perplexity web search fallback
     if (process.env.PERPLEXITY_API_KEY) {
       const content = await fetchViaPerplexity(url, false);
-      return { content, imageUrl, imageCandidates: thumbnails };
+      return { content, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_perplexity", imageSource };
     }
 
-    return { content: `Recipe from: ${url}`, imageUrl, imageCandidates: thumbnails };
+    return { content: `Recipe from: ${url}`, imageUrl, imageCandidates: thumbnails, parsedVia: "none", imageSource };
   }
 
   // TikTok: oEmbed for thumbnail + caption, Perplexity for full recipe content
@@ -493,7 +521,8 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     ]);
     const imageCandidates = thumbnailUrl ? [thumbnailUrl] : [];
     const content = [caption, perplexityContent].filter(Boolean).join("\n\n");
-    return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl, imageCandidates };
+    const imageSource: ImageSource = thumbnailUrl ? "tiktok_thumbnail" : "none";
+    return { content: content || `Recipe from TikTok: ${url}`, imageUrl: thumbnailUrl, imageCandidates, parsedVia: "tiktok", imageSource };
   }
 
   // Regular websites: always do a direct fetch first — JSON-LD gives us exact structured data
@@ -516,7 +545,8 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
         const jsonLdImage = extractJsonLdImage(jsonLd);
         const imageUrl = jsonLdImage ?? ogImageUrl;
         const imageCandidates = imageUrl ? [imageUrl] : [];
-        return { content: formatJsonLdForModel(jsonLd), imageUrl, imageCandidates };
+        const imageSource: ImageSource = jsonLdImage ? "jsonld_image" : ogImageUrl ? "og_image" : "none";
+        return { content: formatJsonLdForModel(jsonLd), imageUrl, imageCandidates, parsedVia: "jsonld", imageSource };
       }
 
       // No JSON-LD: try Perplexity for cleaner content on JS-heavy pages
@@ -525,7 +555,8 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
           const perplexityContent = await fetchViaPerplexity(url, false);
           if (perplexityContent.length > 200) {
             const imageCandidates = ogImageUrl ? [ogImageUrl] : [];
-            return { content: perplexityContent, imageUrl: ogImageUrl, imageCandidates };
+            const imageSource: ImageSource = ogImageUrl ? "og_image" : "none";
+            return { content: perplexityContent, imageUrl: ogImageUrl, imageCandidates, parsedVia: "perplexity", imageSource };
           }
         } catch { /* fall through to stripped HTML */ }
       }
@@ -542,7 +573,8 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
         .trim()
         .slice(0, 15000);
       const imageCandidates = ogImageUrl ? [ogImageUrl] : [];
-      return { content: text, imageUrl: ogImageUrl, imageCandidates };
+      const imageSource: ImageSource = ogImageUrl ? "og_image" : "none";
+      return { content: text, imageUrl: ogImageUrl, imageCandidates, parsedVia: "html_text", imageSource };
     }
   } catch { /* fall through */ }
 
@@ -550,11 +582,11 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
   if (process.env.PERPLEXITY_API_KEY) {
     try {
       const content = await fetchViaPerplexity(url, false);
-      if (content.length > 200) return { content, imageUrl: null, imageCandidates: [] };
+      if (content.length > 200) return { content, imageUrl: null, imageCandidates: [], parsedVia: "perplexity", imageSource: "none" };
     } catch { /* give up */ }
   }
 
-  return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [] };
+  return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [], parsedVia: "none", imageSource: "none" };
 }
 
 export async function POST(request: Request) {
@@ -588,7 +620,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
   }
 
-  const { content: pageContent, imageUrl, imageCandidates, error: fetchError } = await fetchPageContent(url);
+  const { content: pageContent, imageUrl, imageCandidates, parsedVia, imageSource, error: fetchError } = await fetchPageContent(url);
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError }, { status: 422 });
@@ -634,6 +666,8 @@ ${pageContent}`
       parsed.image_url = imageUrl;
     }
     parsed.image_candidates = imageCandidates;
+    parsed.parsed_via = parsedVia;
+    parsed.image_source = imageSource;
     await logAIUsage({
       userId: user.id,
       operation: "parse_link",
