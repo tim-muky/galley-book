@@ -40,7 +40,7 @@ const COMMON_RULES = `Common rules:
 - Return null for fields you cannot determine
 - Return ONLY JSON, no markdown, no explanation`;
 
-function sourceGuidance(parsedVia: ParsedVia): string {
+function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
   switch (parsedVia) {
     case "jsonld":
       return [
@@ -50,6 +50,16 @@ function sourceGuidance(parsedVia: ParsedVia): string {
       ].join(" ");
 
     case "instagram_caption":
+      return [
+        "The content below is a short Instagram caption (post or reel) — informal, often partial, sometimes in a non-English language.",
+        hasImage
+          ? "An image of the dish (cover frame for reels) is attached. Use it to infer dish type, season, plating, visible ingredients, and a confident name even when the caption is terse."
+          : "",
+        "Be aggressive about inferring servings, prep_time, type, and season from the dish description and (if attached) image.",
+        "For ingredients and steps, use ONLY what is literally written in the caption. Do not invent a procedure if the caption omits one — visible ingredients in the image are fine to list, but never invent steps from a photo.",
+        "If the caption is only a hashtag list and no recipe content can be extracted, return null for every field except name (which may come from the image).",
+      ].filter(Boolean).join(" ");
+
     case "tiktok":
       return [
         "The content below is a short social-media caption — informal, often partial, sometimes in a non-English language.",
@@ -96,9 +106,10 @@ function sourceGuidance(parsedVia: ParsedVia): string {
 export function buildRecipePrompt(
   parsedVia: ParsedVia,
   content: string,
-  imageUrl: string | null
+  imageUrl: string | null,
+  hasInlineImage: boolean = false
 ): string {
-  const guidance = sourceGuidance(parsedVia);
+  const guidance = sourceGuidance(parsedVia, hasInlineImage);
 
   return `Extract the recipe and return ONLY valid JSON matching this schema:
 ${RECIPE_SCHEMA}

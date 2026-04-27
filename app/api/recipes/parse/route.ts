@@ -120,6 +120,28 @@ function extractInstagramEmbedImage(html: string): string | null {
   return m[1].replace(/&amp;/g, "&");
 }
 
+/** Download an image and return base64 + mime so it can be passed as Gemini inlineData.
+ *  Cap at 5 MB to keep us inside model + lambda limits. */
+async function fetchInlineImage(url: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    const isInstagramCdn = url.includes("cdninstagram.com") || url.includes("fbcdn.net");
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)",
+        ...(isInstagramCdn ? { Referer: "https://www.instagram.com/" } : {}),
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    if (buffer.byteLength > 5 * 1024 * 1024) return null;
+    const mimeType = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0];
+    return { data: Buffer.from(buffer).toString("base64"), mimeType };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchInstagramImages(url: string): Promise<string[]> {
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   if (!match) return [];
@@ -603,10 +625,31 @@ export async function POST(request: Request) {
   }
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  // For Instagram captions (incl. reels) the spoken/written recipe is often thin.
+  // Adding the cover-frame as a multimodal input lets Gemini infer dish type,
+  // season, plating, and visible ingredients from the photo even when the
+  // caption is terse. Cheapest meaningful boost for reel quality.
+  const inlineImage =
+    parsedVia === "instagram_caption" && imageUrl
+      ? await fetchInlineImage(imageUrl)
+      : null;
+  const usedMultimodal = !!inlineImage;
+
+  const promptText = buildRecipePrompt(parsedVia, pageContent, imageUrl, usedMultimodal);
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+    { text: promptText },
+  ];
+  if (inlineImage) {
+    parts.push({ inlineData: { mimeType: inlineImage.mimeType, data: inlineImage.data } });
+  }
+
   const t0 = Date.now();
-  const result = await model.generateContent(buildRecipePrompt(parsedVia, pageContent, imageUrl));
+  const result = await model.generateContent(parts);
   const duration = Date.now() - t0;
-  const operationLabel = `parse_link:${parsedVia}` as const;
+  const operationLabel = (
+    usedMultimodal ? `parse_link:${parsedVia}+image` : `parse_link:${parsedVia}`
+  ) as `parse_link:${string}`;
 
   const rawText = result.response.text();
 
