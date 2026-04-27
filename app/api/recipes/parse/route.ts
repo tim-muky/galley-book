@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSafeUrl } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
+import { checkParseLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const ParseSchema = z.object({
@@ -560,6 +561,14 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = await checkParseLimit(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${rl.retryAfterSeconds} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
 
   const body = await request.json();
   const parsed = ParseSchema.safeParse(body);

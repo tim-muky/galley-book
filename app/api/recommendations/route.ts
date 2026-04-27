@@ -8,6 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { logAIUsage } from "@/lib/ai-logger";
+import { checkRecsLimit } from "@/lib/rate-limit";
 
 interface RecommendationResult {
   title: string;
@@ -71,6 +72,14 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = await checkRecsLimit(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${rl.retryAfterSeconds} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const cuisine = searchParams.get("cuisine")?.trim() || null;
