@@ -580,6 +580,44 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
   return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [], parsedVia: "none", imageSource: "none" };
 }
 
+/** Download an Instagram CDN image and re-host it in Supabase Storage.
+ *
+ * Instagram CDN URLs (cdninstagram.com / fbcdn.net) are signed and expire within
+ * seconds to minutes. Fetching the same URL again at recipe-save time silently fails,
+ * leaving recipes without photos. Caching at parse time gives us a stable URL that
+ * survives the round-trip back to the client and the subsequent save call.
+ */
+async function cacheInstagramImage(
+  cdnUrl: string,
+  userId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string | null> {
+  try {
+    const res = await fetch(cdnUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        Referer: "https://www.instagram.com/",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    if (buffer.byteLength > 5 * 1024 * 1024) return null;
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+    const path = `temp/${userId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("recipe-photos")
+      .upload(path, buffer, { contentType, upsert: false });
+    if (error) return null;
+    const { data: { publicUrl } } = supabase.storage.from("recipe-photos").getPublicUrl(path);
+    return publicUrl;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   if (!process.env.GOOGLE_AI_API_KEY) {
     return NextResponse.json({ error: "Recipe parsing is not configured." }, { status: 503 });
@@ -611,7 +649,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
   }
 
-  const { content: pageContent, imageUrl, imageCandidates, parsedVia, imageSource, error: fetchError } = await fetchPageContent(url);
+  const { content: pageContent, imageUrl: rawImageUrl, imageCandidates: rawImageCandidates, parsedVia, imageSource, error: fetchError } = await fetchPageContent(url);
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError }, { status: 422 });
@@ -622,6 +660,18 @@ export async function POST(request: Request) {
       { error: "Could not retrieve content from this URL. Try pasting the recipe manually." },
       { status: 422 }
     );
+  }
+
+  // Instagram CDN URLs expire within seconds — re-fetching at save time silently fails.
+  // Upload now so the parse response contains a stable Supabase URL.
+  let imageUrl = rawImageUrl;
+  let imageCandidates = rawImageCandidates;
+  if (rawImageUrl && (rawImageUrl.includes("cdninstagram.com") || rawImageUrl.includes("fbcdn.net"))) {
+    const cached = await cacheInstagramImage(rawImageUrl, user.id, supabase);
+    if (cached) {
+      imageUrl = cached;
+      imageCandidates = [cached, ...rawImageCandidates.slice(1)];
+    }
   }
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
