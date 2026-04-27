@@ -382,40 +382,37 @@ async function fetchYouTubeWatchPageMeta(
       diag.watchPageBytes = html.length;
       diag.hasConsentMarker = /consent\.youtube\.com|<title>Before you continue/i.test(html);
 
-      // Strategy 1: parse ytInitialPlayerResponse JSON
-      const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
-      diag.playerMatchFound = !!playerMatch;
-      if (playerMatch) {
-        try {
-          const data = JSON.parse(playerMatch[1]) as Record<string, unknown>;
-          const details = data.videoDetails as Record<string, unknown> | undefined;
-          if (details) {
-            const title = typeof details.title === "string" ? details.title : "";
-            const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
-            if (title || description) {
-              diag.strategy = "player_json";
-              diag.titleLen = title.length;
-              diag.descLen = description.length;
-              console.log("[GAL-152]", JSON.stringify(diag));
-              return { title, description };
-            }
+      // Strategy 1: parse ytInitialPlayerResponse JSON via balanced-brace extraction
+      const player = extractYtInitialPlayer(html);
+      diag.playerMatchFound = !!player;
+      if (player) {
+        const details = player.videoDetails as Record<string, unknown> | undefined;
+        if (details) {
+          const title = typeof details.title === "string" ? details.title : "";
+          const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
+          if (title || description) {
+            diag.strategy = "player_json";
+            diag.titleLen = title.length;
+            diag.descLen = description.length;
+            console.log("[GAL-152]", JSON.stringify(diag));
+            return { title, description };
           }
-        } catch (e) {
-          diag.playerJsonParseError = e instanceof Error ? e.message : String(e);
         }
       }
 
-      // Strategy 2: direct string scrape — works even when JSON capture is truncated
-      // by an unexpected page variant. Match the literal `"shortDescription":"…"` /
-      // `"title":"…"` strings; YouTube emits them with standard JSON escaping so we
-      // can re-parse the captured group as a JSON string.
+      // Strategy 2: direct string scrape inside the videoDetails block — narrows
+      // the search so we don't grab some unrelated short "title" field elsewhere
+      // in the page (e.g. a button label).
       const decode = (s: string): string => {
         try { return JSON.parse(`"${s}"`) as string; } catch { return s; }
       };
-      const titleMatch = html.match(/"title":"((?:[^"\\]|\\.)*?)"/);
-      const descMatch = html.match(/"shortDescription":"((?:[^"\\]|\\.)*?)"/);
+      const detailsBlock = html.match(/"videoDetails":\s*(\{[\s\S]*?\})\s*,\s*"playerConfig"/);
+      const detailsHtml = detailsBlock?.[1] ?? html;
+      const titleMatch = detailsHtml.match(/"title":"((?:[^"\\]|\\.)*?)"/);
+      const descMatch = detailsHtml.match(/"shortDescription":"((?:[^"\\]|\\.)*?)"/);
       diag.stringTitleFound = !!titleMatch;
       diag.stringDescFound = !!descMatch;
+      diag.detailsBlockFound = !!detailsBlock;
       if (titleMatch || descMatch) {
         const title = titleMatch ? decode(titleMatch[1]) : "";
         const description = descMatch ? decode(descMatch[1]) : "";
@@ -456,6 +453,41 @@ async function fetchYouTubeWatchPageMeta(
   diag.strategy = "none";
   console.log("[GAL-152]", JSON.stringify(diag));
   return null;
+}
+
+/** Extract `ytInitialPlayerResponse` from a YouTube watch-page HTML using
+ *  balanced-brace parsing instead of a regex. The previous regex anchor
+ *  (`};(?:var|</script>)` after a non-greedy match) was picking up the wrong
+ *  closing brace — JSON.parse would succeed on a shorter unrelated config
+ *  blob with no videoDetails, silently falling through. Confirmed via
+ *  GAL-152 logs (10/10 production calls hit this failure mode). */
+function extractYtInitialPlayer(html: string): Record<string, unknown> | null {
+  const idx = html.indexOf("ytInitialPlayerResponse");
+  if (idx < 0) return null;
+  const start = html.indexOf("{", idx);
+  if (start < 0) return null;
+  let depth = 0;
+  let i = start;
+  let inStr = false;
+  let esc = false;
+  for (; i < html.length; i++) {
+    const ch = html[i];
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === "\"") { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) { i++; break; }
+    }
+  }
+  if (depth !== 0) return null;
+  try {
+    return JSON.parse(html.slice(start, i)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve with the first non-null result from a list of promises, or null
@@ -539,14 +571,8 @@ async function fetchYouTubeTranscript(url: string): Promise<string | null> {
     const html = await pageRes.text();
 
     // Caption tracks live inside ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks[]
-    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
-    if (!playerMatch) return null;
-    let player: Record<string, unknown>;
-    try {
-      player = JSON.parse(playerMatch[1]) as Record<string, unknown>;
-    } catch {
-      return null;
-    }
+    const player = extractYtInitialPlayer(html);
+    if (!player) return null;
     const captions = (player.captions as Record<string, unknown> | undefined)
       ?.playerCaptionsTracklistRenderer as Record<string, unknown> | undefined;
     const tracks = captions?.captionTracks as Array<Record<string, unknown>> | undefined;
