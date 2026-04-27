@@ -4,6 +4,8 @@
  * internal services, cloud metadata endpoints, or private networks.
  */
 
+import { lookup } from "node:dns/promises";
+
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
   "metadata.google.internal",
@@ -31,10 +33,20 @@ const PRIVATE_IPV6 = [
   /^fe[89ab]/i,      // link-local
 ];
 
+function isPrivateIp(address: string): boolean {
+  const lower = address.toLowerCase();
+  if (PRIVATE_IPV4.some((p) => p.test(lower))) return true;
+  if (PRIVATE_IPV6.some((p) => p.test(lower))) return true;
+  return false;
+}
+
 /**
- * Returns true only if `urlString` is a safe, public HTTP(S) URL.
- * Returns false for any private IP, loopback address, cloud metadata
- * endpoint, non-HTTP scheme, or malformed URL.
+ * Returns true only if `urlString` is a syntactically safe, public HTTP(S) URL.
+ *
+ * NOTE: this is the cheap synchronous check — it inspects the literal hostname
+ * only. Use {@link isSafeUrlAsync} (or {@link assertSafeFetchUrl}) before any
+ * actual fetch, which additionally resolves DNS and rejects hosts whose A/AAAA
+ * records point at private/reserved space.
  */
 export function isSafeUrl(urlString: string): boolean {
   let url: URL;
@@ -50,14 +62,43 @@ export function isSafeUrl(urlString: string): boolean {
   const host = url.hostname.toLowerCase();
 
   if (BLOCKED_HOSTNAMES.has(host)) return false;
-
-  for (const pattern of PRIVATE_IPV4) {
-    if (pattern.test(host)) return false;
-  }
-
-  for (const pattern of PRIVATE_IPV6) {
-    if (pattern.test(host)) return false;
-  }
+  if (isPrivateIp(host)) return false;
 
   return true;
+}
+
+/**
+ * SSRF-safe URL check that also performs DNS resolution and rejects any
+ * hostname that resolves to a private / loopback / link-local address.
+ *
+ * Defends against DNS rebinding: an attacker could register a public domain
+ * whose A record returns 169.254.169.254. {@link isSafeUrl} alone would let
+ * that through; this resolves the host and re-checks every returned IP.
+ *
+ * Note: there is still a TOCTOU window between this check and the subsequent
+ * `fetch()`. For full protection, callers should fetch using a custom HTTP
+ * agent that pins resolution to the IP returned here.
+ */
+export async function isSafeUrlAsync(urlString: string): Promise<boolean> {
+  if (!isSafeUrl(urlString)) return false;
+
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+
+  // If the host is a literal IP, isSafeUrl already validated it.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) return true;
+
+  try {
+    const addresses = await lookup(host, { all: true });
+    if (addresses.length === 0) return false;
+    return addresses.every((a) => !isPrivateIp(a.address));
+  } catch {
+    // DNS failure — refuse rather than allow
+    return false;
+  }
 }

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { isSafeUrl } from "@/lib/utils/url-validation";
+import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 
 /** Hosts where browsers can't load images directly (Referer-required CDNs).
  *  Anything else can be loaded client-side via <img src="..."> — proxying it
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
 
-  if (!url || !isSafeUrl(url)) return new Response(null, { status: 400 });
+  if (!url || !(await isSafeUrlAsync(url))) return new Response(null, { status: 400 });
 
   let parsed: URL;
   try {

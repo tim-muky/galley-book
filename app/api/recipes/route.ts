@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { isSafeUrl } from "@/lib/utils/url-validation";
+import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 import { fetchAuthor } from "@/lib/oembed";
 import { z } from "zod";
 
@@ -250,8 +250,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Download & store recipe image if provided (SSRF-safe: validated before fetch)
-  if (image_url && isSafeUrl(image_url)) {
+  // Download & store recipe image if provided (SSRF-safe: validated + DNS-checked)
+  if (image_url && (await isSafeUrlAsync(image_url))) {
     try {
       const isInstagramCdn =
         image_url.includes("cdninstagram.com") || image_url.includes("fbcdn.net");

@@ -11,7 +11,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isSafeUrl } from "@/lib/utils/url-validation";
+import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt, type ImageSource, type ParsedVia } from "@/lib/recipe-prompts";
@@ -941,8 +941,10 @@ export async function POST(request: Request) {
   }
   const { url } = parsed.data;
 
-  // SSRF guard — reject private IPs, loopback, cloud metadata endpoints, non-HTTP schemes
-  if (!isSafeUrl(url.trim())) {
+  // SSRF guard — reject private IPs, loopback, cloud metadata endpoints,
+  // non-HTTP schemes, and any hostname whose DNS resolves to private space
+  // (defends against DNS rebinding).
+  if (!(await isSafeUrlAsync(url.trim()))) {
     return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
   }
 
