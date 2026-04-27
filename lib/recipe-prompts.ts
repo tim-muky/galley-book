@@ -76,6 +76,8 @@ function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
         "The content below is a web-search summary. It MAY not be a recipe at all.",
         "First decide: does this describe a cookable dish? If it is a news article, restaurant review, profile page, or product listing, return name=null and empty arrays.",
         "If it is a recipe, extract conservatively — prefer null over guessing when the summary is vague.",
+        "Steps: split the procedure into ONE step PER discrete cooking action. Never collapse the whole method into a single step. Use sentence boundaries, numbered markers ('1.', '2.'), and transitions ('first', 'then', 'next', 'meanwhile', 'finally') as split points. A multi-step recipe should always have multiple step entries.",
+        "prep_time: if the source states a total/cook/prep time, use it. Otherwise infer a reasonable estimate from the recipe complexity (rough guide: 15min for a one-pan / no-cook dish, 30–45min for a typical weeknight main, 60+min for braises, doughs that proof, or anything baked >30min). Only return null if you genuinely cannot tell what the dish is.",
       ].join(" ");
 
     case "youtube_description":

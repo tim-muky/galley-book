@@ -351,35 +351,114 @@ function canonicalYouTubeUrl(url: string): string {
 /** Scrape the YouTube watch page for the creator-written title and description.
  *  Many recipe creators put the full ingredient list and steps in the description —
  *  this is faster, cheaper, and more accurate than transcript / video / Perplexity routes.
- *  Returns null when the page doesn't expose ytInitialPlayerResponse (rare). */
+ *  Falls back through 3 strategies because YouTube serves different page variants
+ *  by region/UA/cookies (notably the EU consent gate which blanks the page on
+ *  Frankfurt-region Vercel functions). */
 async function fetchYouTubeWatchPageMeta(
   url: string
 ): Promise<{ title: string; description: string } | null> {
   const watchUrl = canonicalYouTubeUrl(url);
+  // Pre-accept the EU consent gate so the watch page returns content rather
+  // than the consent interstitial when called from EU serverless regions.
+  const consentCookie = "CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAI";
+
+  // Strategy 1+2: fetch the watch page, try the canonical JSON anchor first,
+  // fall back to a direct string scrape of the embedded fields.
   try {
-    const res = await fetch(watchUrl, {
+    const res = await fetch(`${watchUrl}&hl=en&persist_hl=1`, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
+        Cookie: consentCookie,
       },
       signal: AbortSignal.timeout(6000),
     });
-    if (!res.ok) return null;
-    const html = await res.text();
-    // ytInitialPlayerResponse is the canonical place; ytInitialData is a fallback
-    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
-    if (!playerMatch) return null;
-    const data = JSON.parse(playerMatch[1]) as Record<string, unknown>;
-    const details = data.videoDetails as Record<string, unknown> | undefined;
-    if (!details) return null;
-    const title = typeof details.title === "string" ? details.title : "";
-    const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
-    if (!title && !description) return null;
-    return { title, description };
-  } catch {
-    return null;
-  }
+    if (res.ok) {
+      const html = await res.text();
+
+      // Strategy 1: parse ytInitialPlayerResponse JSON
+      const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
+      if (playerMatch) {
+        try {
+          const data = JSON.parse(playerMatch[1]) as Record<string, unknown>;
+          const details = data.videoDetails as Record<string, unknown> | undefined;
+          if (details) {
+            const title = typeof details.title === "string" ? details.title : "";
+            const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
+            if (title || description) return { title, description };
+          }
+        } catch { /* fall through */ }
+      }
+
+      // Strategy 2: direct string scrape — works even when JSON capture is truncated
+      // by an unexpected page variant. Match the literal `"shortDescription":"…"` /
+      // `"title":"…"` strings; YouTube emits them with standard JSON escaping so we
+      // can re-parse the captured group as a JSON string.
+      const decode = (s: string): string => {
+        try { return JSON.parse(`"${s}"`) as string; } catch { return s; }
+      };
+      const titleMatch = html.match(/"title":"((?:[^"\\]|\\.)*?)"/);
+      const descMatch = html.match(/"shortDescription":"((?:[^"\\]|\\.)*?)"/);
+      if (titleMatch || descMatch) {
+        const title = titleMatch ? decode(titleMatch[1]) : "";
+        const description = descMatch ? decode(descMatch[1]) : "";
+        if (title || description) return { title, description };
+      }
+    }
+  } catch { /* fall through */ }
+
+  // Strategy 3: oEmbed for the title only — public, no auth, never gated.
+  // Useful as a last-resort so the title is still available to enrich
+  // transcript / Perplexity content downstream.
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data?.title === "string" && data.title) {
+        return { title: data.title, description: "" };
+      }
+    }
+  } catch { /* give up */ }
+
+  return null;
+}
+
+/** Resolve with the first non-null result from a list of promises, or null
+ *  if all resolve to null. Used to race independent fallback strategies and
+ *  return whichever produces usable content first. */
+async function firstUsable<T>(promises: Promise<T | null>[]): Promise<T | null> {
+  return new Promise((resolve) => {
+    let pending = promises.length;
+    if (pending === 0) {
+      resolve(null);
+      return;
+    }
+    let settled = false;
+    for (const p of promises) {
+      p.then((value) => {
+        if (settled) return;
+        if (value !== null && value !== undefined) {
+          settled = true;
+          resolve(value);
+          return;
+        }
+        pending -= 1;
+        if (pending === 0 && !settled) {
+          settled = true;
+          resolve(null);
+        }
+      }).catch(() => {
+        if (settled) return;
+        pending -= 1;
+        if (pending === 0 && !settled) {
+          settled = true;
+          resolve(null);
+        }
+      });
+    }
+  });
 }
 
 /** Heuristic — does this YouTube description look like it contains a real recipe?
@@ -387,16 +466,20 @@ async function fetchYouTubeWatchPageMeta(
  *  a list-style structure or step keywords. We use this to decide whether the
  *  description is rich enough to skip transcript/video/Perplexity. */
 function descriptionLooksLikeRecipe(description: string): boolean {
-  if (description.length < 200) return false;
+  if (description.length < 150) return false;
   // Numbered or bulleted list lines — characteristic of ingredient/step lists
   const listLines = (description.match(/^\s*(?:[-•*]|\d+[.)])\s+/gm) ?? []).length;
-  // Quantity hints — number adjacent to a unit (works in EN + DE)
+  // Quantity hints — number adjacent to a unit (works in EN + DE; fractions ½ ¼ etc count too)
   const quantities = (
     description.match(
-      /\b\d+([.,/]\d+)?\s*(g|kg|ml|l|tsp|tbsp|tl|el|cup|cups|tasse|tassen|ounce|oz|lb|piece|pieces|st(?:k|ück)?|prise|clove|cloves|zehe|zehen|slice|handful|handvoll)\b/gi
+      /(?:\b\d+(?:[.,/]\d+)?|[¼½¾⅓⅔⅛⅜⅝⅞])\s*(g|kg|ml|l|tsp|tbsp|tl|el|cup|cups|tasse|tassen|ounce|oz|lb|piece|pieces|st(?:k|ück)?|prise|clove|cloves|zehe|zehen|slice|handful|handvoll|stick)s?\b/gi
     ) ?? []
   ).length;
-  return listLines >= 3 || quantities >= 3;
+  // Mention of "ingredients" / "recipe" / "zutaten" headers is also a strong signal
+  const hasRecipeHeader = /\b(ingredients?|recipe|zutaten|rezept|method|directions|instructions)\b/i.test(description);
+  if (listLines >= 2 || quantities >= 2) return true;
+  if (hasRecipeHeader && (listLines >= 1 || quantities >= 1)) return true;
+  return false;
 }
 
 /** Fetch YouTube captions via the public timedtext endpoint — no API key needed.
@@ -418,15 +501,15 @@ async function fetchYouTubeTranscript(url: string): Promise<string | null> {
 }
 
 /** Ask Gemini to watch the YouTube video directly and extract the recipe */
-async function analyzeYouTubeVideoWithGemini(url: string): Promise<string> {
+async function analyzeYouTubeVideoWithGemini(url: string, timeoutMs = 15000): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const result = await Promise.race([
     model.generateContent([
       { fileData: { mimeType: "video/mp4", fileUri: url } },
-      { text: "Watch this cooking video and extract the full recipe. Return: recipe name, all ingredients with exact amounts and units, all preparation steps in order, servings count, and total prep/cook time. Plain text only, no commentary." },
+      { text: "Watch this cooking video and extract the full recipe. Return: recipe name, all ingredients with exact amounts and units, all preparation steps in order (one discrete action per step, do NOT merge into a single block), servings count, and total prep/cook time in minutes. Plain text only, no commentary." },
     ]),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Gemini video analysis timeout")), 20000)
+      setTimeout(() => reject(new Error("Gemini video analysis timeout")), timeoutMs)
     ),
   ]);
   return result.response.text();
@@ -453,7 +536,12 @@ If you cannot access this exact post, say "Unable to access this Instagram post"
     : youtube
     ? `Find the recipe from this YouTube video: ${canonicalUrl}
 Search the web (creator's blog, video description, third-party transcripts) for the SAME recipe shown in this specific video.
-Return: recipe name, complete ingredient list with exact amounts and units, all preparation steps in order, servings, prep/cook time.
+Return EVERY field below, each on its own labelled line:
+- Recipe name:
+- Servings:
+- Total time (prep + cook, in minutes):
+- Ingredients (one per line, with exact amounts and units):
+- Steps (numbered, one discrete cooking action per step — do NOT merge into a single block):
 If you cannot find the specific recipe from this video, return "Unable to find recipe" and nothing else.
 No commentary, raw recipe content only.`
     : `Fetch this URL and return the full recipe content: ${url}
@@ -586,34 +674,38 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       return { content: `${titleLine}${transcript}`, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_transcript", imageSource };
     }
 
-    // Route 3: Gemini watches the video directly — handles videos without captions
-    try {
-      const videoContent = await analyzeYouTubeVideoWithGemini(canonicalYouTubeUrl(url));
-      if (videoContent.length > 200) {
-        return { content: videoContent, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_video", imageSource };
-      }
-    } catch {
-      // Fall through to Perplexity
-    }
+    // Routes 3+4: race Gemini-video and Perplexity in parallel — whichever
+    // returns a usable result first wins. Cuts ~10–15s off the worst case
+    // versus running them sequentially. We pay for both calls when neither
+    // path is dominant; acceptable trade since most cases hit the description
+    // / transcript path now and never reach this branch.
+    const titleLine = watchMeta?.title ? `Title: ${watchMeta.title}\n\n` : "";
+    const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
 
-    // Route 4: Perplexity web search fallback (by canonical URL + title)
-    if (process.env.PERPLEXITY_API_KEY) {
-      const perplexityContent = await fetchViaPerplexity(url, false);
-      // If Perplexity admits it can't find the recipe, fail explicitly so the test
-      // run flags this as "failed" rather than "partial with empty fields".
-      if (
-        perplexityContent.length > 200 &&
-        !perplexityContent.startsWith("Unable to find recipe")
-      ) {
-        const titleLine = watchMeta?.title ? `Title: ${watchMeta.title}\n\n` : "";
-        return {
-          content: `${titleLine}${perplexityContent}`,
-          imageUrl,
-          imageCandidates: thumbnails,
-          parsedVia: "youtube_perplexity",
-          imageSource,
-        };
-      }
+    const videoPromise: Promise<{ via: ParsedVia; content: string } | null> =
+      analyzeYouTubeVideoWithGemini(canonicalYouTubeUrl(url))
+        .then((c) => (c.length > 200 ? { via: "youtube_video" as ParsedVia, content: c } : null))
+        .catch(() => null);
+
+    const perplexityPromise: Promise<{ via: ParsedVia; content: string } | null> = hasPerplexity
+      ? fetchViaPerplexity(url, false)
+          .then((c) =>
+            c.length > 200 && !c.startsWith("Unable to find recipe")
+              ? { via: "youtube_perplexity" as ParsedVia, content: `${titleLine}${c}` }
+              : null
+          )
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    const winner = await firstUsable([videoPromise, perplexityPromise]);
+    if (winner) {
+      return {
+        content: winner.content,
+        imageUrl,
+        imageCandidates: thumbnails,
+        parsedVia: winner.via,
+        imageSource,
+      };
     }
 
     return {
@@ -830,6 +922,38 @@ export async function POST(request: Request) {
     if (!jsonMatch) throw new Error("No JSON found");
 
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // Perplexity-route results sometimes pass the upstream length check but
+    // contain only a vague summary that the conservative prompt correctly
+    // rejects (name=null + empty arrays). Returning that as success leaves
+    // the user with a blank form — surface it as an explicit failure instead.
+    const isPerplexityRoute =
+      parsedVia === "youtube_perplexity" ||
+      parsedVia === "instagram_perplexity" ||
+      parsedVia === "perplexity";
+    const hasNoRecipeContent =
+      !parsed.name &&
+      (!Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0) &&
+      (!Array.isArray(parsed.steps) || parsed.steps.length === 0);
+    if (isPerplexityRoute && hasNoRecipeContent) {
+      await logAIUsage({
+        userId: user.id,
+        operation: operationLabel,
+        model: "gemini-2.5-flash",
+        inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
+        outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+        durationMs: duration,
+        success: false,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Could not extract a recipe from this URL. Web search returned only a summary, not the actual recipe. Try pasting it manually.",
+        },
+        { status: 422 }
+      );
+    }
+
     if (!parsed.image_url && imageUrl) {
       parsed.image_url = imageUrl;
     }
