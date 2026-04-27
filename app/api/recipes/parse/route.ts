@@ -360,9 +360,6 @@ async function fetchYouTubeWatchPageMeta(
   // Pre-accept the EU consent gate so the watch page returns content rather
   // than the consent interstitial when called from EU serverless regions.
   const consentCookie = "CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAI";
-  // GAL-152 diagnostic: capture which strategy fires + lengths for production debugging.
-  // Logged via console (Vercel logs surface it) — remove once description path is verified.
-  const diag: Record<string, unknown> = { url: watchUrl };
 
   // Strategy 1+2: fetch the watch page, try the canonical JSON anchor first,
   // fall back to a direct string scrape of the embedded fields.
@@ -376,27 +373,17 @@ async function fetchYouTubeWatchPageMeta(
       },
       signal: AbortSignal.timeout(6000),
     });
-    diag.watchPageStatus = res.status;
     if (res.ok) {
       const html = await res.text();
-      diag.watchPageBytes = html.length;
-      diag.hasConsentMarker = /consent\.youtube\.com|<title>Before you continue/i.test(html);
 
       // Strategy 1: parse ytInitialPlayerResponse JSON via balanced-brace extraction
       const player = extractYtInitialPlayer(html);
-      diag.playerMatchFound = !!player;
       if (player) {
         const details = player.videoDetails as Record<string, unknown> | undefined;
         if (details) {
           const title = typeof details.title === "string" ? details.title : "";
           const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
-          if (title || description) {
-            diag.strategy = "player_json";
-            diag.titleLen = title.length;
-            diag.descLen = description.length;
-            console.log("[GAL-152]", JSON.stringify(diag));
-            return { title, description };
-          }
+          if (title || description) return { title, description };
         }
       }
 
@@ -410,23 +397,14 @@ async function fetchYouTubeWatchPageMeta(
       const detailsHtml = detailsBlock?.[1] ?? html;
       const titleMatch = detailsHtml.match(/"title":"((?:[^"\\]|\\.)*?)"/);
       const descMatch = detailsHtml.match(/"shortDescription":"((?:[^"\\]|\\.)*?)"/);
-      diag.stringTitleFound = !!titleMatch;
-      diag.stringDescFound = !!descMatch;
-      diag.detailsBlockFound = !!detailsBlock;
       if (titleMatch || descMatch) {
         const title = titleMatch ? decode(titleMatch[1]) : "";
         const description = descMatch ? decode(descMatch[1]) : "";
-        if (title || description) {
-          diag.strategy = "string_scrape";
-          diag.titleLen = title.length;
-          diag.descLen = description.length;
-          console.log("[GAL-152]", JSON.stringify(diag));
-          return { title, description };
-        }
+        if (title || description) return { title, description };
       }
     }
-  } catch (e) {
-    diag.watchPageError = e instanceof Error ? e.message : String(e);
+  } catch {
+    // Fall through to oEmbed
   }
 
   // Strategy 3: oEmbed for the title only — public, no auth, never gated.
@@ -435,23 +413,16 @@ async function fetchYouTubeWatchPageMeta(
   try {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
     const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(4000) });
-    diag.oembedStatus = res.status;
     if (res.ok) {
       const data = await res.json();
       if (typeof data?.title === "string" && data.title) {
-        diag.strategy = "oembed";
-        diag.titleLen = data.title.length;
-        diag.descLen = 0;
-        console.log("[GAL-152]", JSON.stringify(diag));
         return { title: data.title, description: "" };
       }
     }
-  } catch (e) {
-    diag.oembedError = e instanceof Error ? e.message : String(e);
+  } catch {
+    // Fall through
   }
 
-  diag.strategy = "none";
-  console.log("[GAL-152]", JSON.stringify(diag));
   return null;
 }
 
