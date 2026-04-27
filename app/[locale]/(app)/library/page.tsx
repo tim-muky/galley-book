@@ -7,7 +7,6 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { GalleySwitcher } from "@/components/galley-switcher";
 import { LibraryRecipes } from "./library-recipes-client";
-import { CreateGalleyForm } from "./create-galley-form";
 import Image from "next/image";
 
 const PAGE_SIZE = 20;
@@ -33,17 +32,24 @@ export default async function LibraryPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const { data: membershipsRaw } = await supabase
-    .from("galley_members")
-    .select("galley_id, is_default, galleys(id, name)")
-    .eq("user_id", user.id)
-    .order("invited_at", { ascending: true });
+  const [{ data: membershipsRaw }, { data: userRow }] = await Promise.all([
+    supabase
+      .from("galley_members")
+      .select("galley_id, is_default, galleys(id, name)")
+      .eq("user_id", user.id)
+      .order("invited_at", { ascending: true }),
+    supabase.from("users").select("name").eq("id", user.id).single(),
+  ]);
 
   type MembershipRow = { galley_id: string; is_default: boolean; galleys: { id: string; name: string } | null };
   const memberships = (membershipsRaw ?? []) as unknown as MembershipRow[];
 
-  if (memberships.length === 0) {
-    return <CreateGalleyPrompt />;
+  const dbName = (userRow as { name: string | null } | null)?.name?.trim() ?? "";
+  const metaName = ((user.user_metadata?.full_name as string | undefined) ?? "").trim();
+  const hasName = !!dbName || !!metaName;
+
+  if (!hasName || memberships.length === 0) {
+    redirect(`/${locale}/onboarding`);
   }
 
   const cookieStore = await cookies();
@@ -123,7 +129,7 @@ export default async function LibraryPage({
   }
 
   if (!galley) {
-    return <CreateGalleyPrompt />;
+    redirect(`/${locale}/onboarding`);
   }
 
   const headerImageUrl = (galley as unknown as { header_image_path: string | null }).header_image_path
@@ -253,15 +259,3 @@ export default async function LibraryPage({
   );
 }
 
-async function CreateGalleyPrompt() {
-  const t = await getTranslations("library.galleyPrompt");
-  const tc = await getTranslations("common");
-
-  return (
-    <div className="px-5 pt-12 min-h-screen flex flex-col">
-      <h1 className="text-4xl font-thin text-anthracite mb-2">{t("title")}</h1>
-      <p className="text-sm font-light text-on-surface-variant mb-8">{t("subtitle")}</p>
-      <CreateGalleyForm placeholder={t("placeholder")} buttonLabel={t("button")} />
-    </div>
-  );
-}

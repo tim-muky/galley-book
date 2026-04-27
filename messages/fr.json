@@ -218,5 +218,32 @@
     "termsNotice": "En continuant, vous acceptez les {terms} et la {privacy} de Galley Book.",
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Bienvenue sur Galley Book.",
+      "subtitle": "Configurons votre cuisine.",
+      "nameLabel": "Votre nom",
+      "galleyLabel": "Nom de votre cuisine",
+      "galleyPlaceholder": "p. ex. La cuisine des Dupont",
+      "submit": "Continuer",
+      "submitting": "Enregistrement…"
+    },
+    "step2": {
+      "title": "Invitez votre famille.",
+      "subtitle": "Partagez ce lien — quiconque l'ouvre rejoint votre galley.",
+      "generating": "Génération du lien…",
+      "copy": "Copier",
+      "copied": "Copié",
+      "skip": "Plus tard",
+      "done": "Terminé",
+      "error": "Impossible de créer le lien"
+    },
+    "step3": {
+      "title": "Ajoutez votre première recette.",
+      "subtitle": "Collez un lien d'Instagram, YouTube ou d'un site de recettes et nous l'importerons pour vous.",
+      "start": "Commencer l'import",
+      "skip": "Aller à ma bibliothèque"
+    }
   }
 }

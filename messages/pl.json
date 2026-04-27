@@ -218,5 +218,32 @@
     "termsNotice": "Kontynuując, akceptujesz {terms} i {privacy} Galley Book.",
     "termsOfService": "Warunki korzystania",
     "privacyPolicy": "Politykę prywatności"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Witaj w Galley Book.",
+      "subtitle": "Skonfigurujmy twoją kuchnię.",
+      "nameLabel": "Twoje imię",
+      "galleyLabel": "Nazwa twojej kuchni",
+      "galleyPlaceholder": "np. Kuchnia Kowalskich",
+      "submit": "Dalej",
+      "submitting": "Zapisywanie…"
+    },
+    "step2": {
+      "title": "Zaproś rodzinę.",
+      "subtitle": "Udostępnij ten link — kto go otworzy, dołączy do twojej galley.",
+      "generating": "Tworzenie linku…",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "skip": "Później",
+      "done": "Gotowe",
+      "error": "Nie udało się utworzyć linku"
+    },
+    "step3": {
+      "title": "Dodaj pierwszy przepis.",
+      "subtitle": "Wklej link z Instagrama, YouTube lub strony z przepisami, a my go zaimportujemy.",
+      "start": "Rozpocznij import",
+      "skip": "Przejdź do biblioteki"
+    }
   }
 }

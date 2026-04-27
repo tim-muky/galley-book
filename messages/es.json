@@ -218,5 +218,32 @@
     "termsNotice": "Al continuar, aceptas los {terms} y la {privacy} de Galley Book.",
     "termsOfService": "Términos de servicio",
     "privacyPolicy": "Política de privacidad"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Bienvenido a Galley Book.",
+      "subtitle": "Configuremos tu cocina.",
+      "nameLabel": "Tu nombre",
+      "galleyLabel": "Nombre de tu cocina",
+      "galleyPlaceholder": "p. ej. Cocina de los García",
+      "submit": "Continuar",
+      "submitting": "Guardando…"
+    },
+    "step2": {
+      "title": "Invita a tu familia.",
+      "subtitle": "Comparte este enlace — cualquiera que lo abra se unirá a tu galley.",
+      "generating": "Generando enlace…",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "skip": "Más tarde",
+      "done": "Hecho",
+      "error": "No se pudo crear el enlace"
+    },
+    "step3": {
+      "title": "Añade tu primera receta.",
+      "subtitle": "Pega un enlace de Instagram, YouTube o cualquier sitio de recetas y la importaremos por ti.",
+      "start": "Empezar importación",
+      "skip": "Ir a mi biblioteca"
+    }
   }
 }

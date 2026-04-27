@@ -218,5 +218,32 @@
     "termsNotice": "Mit der Fortsetzung stimmst du den {terms} und der {privacy} von Galley Book zu.",
     "termsOfService": "Nutzungsbedingungen",
     "privacyPolicy": "Datenschutzerklärung"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Willkommen bei Galley Book.",
+      "subtitle": "Lass uns deine Küche einrichten.",
+      "nameLabel": "Dein Name",
+      "galleyLabel": "Name deiner Küche",
+      "galleyPlaceholder": "z. B. Die Schmidt-Küche",
+      "submit": "Weiter",
+      "submitting": "Speichern…"
+    },
+    "step2": {
+      "title": "Lade deine Familie ein.",
+      "subtitle": "Teile diesen Link — wer ihn öffnet, tritt deiner Galley bei.",
+      "generating": "Link wird erstellt…",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "skip": "Später",
+      "done": "Fertig",
+      "error": "Link konnte nicht erstellt werden"
+    },
+    "step3": {
+      "title": "Füge dein erstes Rezept hinzu.",
+      "subtitle": "Füge einen Link aus Instagram, YouTube oder einer Rezept-Webseite ein — wir importieren es für dich.",
+      "start": "Importieren starten",
+      "skip": "Zu meiner Bibliothek"
+    }
   }
 }

@@ -18,6 +18,26 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
+export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { name } = (await request.json()) as { name?: string };
+  const trimmed = name?.trim();
+  if (!trimmed) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  if (trimmed.length > 50) return NextResponse.json({ error: "Name too long" }, { status: 400 });
+
+  const { error } = await supabase
+    .from("users")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ name: trimmed } as any)
+    .eq("id", user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE() {
   // 1. Verify the caller is authenticated
   const supabase = await createClient();

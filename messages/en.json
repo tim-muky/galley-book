@@ -218,5 +218,32 @@
     "termsNotice": "By continuing, you agree to Galley Book's {terms} and {privacy}.",
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Welcome to Galley Book.",
+      "subtitle": "Let's set up your kitchen.",
+      "nameLabel": "Your name",
+      "galleyLabel": "Your kitchen's name",
+      "galleyPlaceholder": "e.g. The Smith Kitchen",
+      "submit": "Continue",
+      "submitting": "Saving…"
+    },
+    "step2": {
+      "title": "Invite your household.",
+      "subtitle": "Share this link — anyone who opens it joins your galley.",
+      "generating": "Generating link…",
+      "copy": "Copy",
+      "copied": "Copied",
+      "skip": "Skip for now",
+      "done": "Done",
+      "error": "Couldn't create link"
+    },
+    "step3": {
+      "title": "Add your first recipe.",
+      "subtitle": "Paste a link from Instagram, YouTube, or any recipe site and we'll import it for you.",
+      "start": "Start importing",
+      "skip": "Go to my library"
+    }
   }
 }

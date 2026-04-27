@@ -218,5 +218,32 @@
     "termsNotice": "Continuando, accetti i {terms} e la {privacy} di Galley Book.",
     "termsOfService": "Termini di servizio",
     "privacyPolicy": "Informativa sulla privacy"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Benvenuto su Galley Book.",
+      "subtitle": "Configuriamo la tua cucina.",
+      "nameLabel": "Il tuo nome",
+      "galleyLabel": "Nome della tua cucina",
+      "galleyPlaceholder": "es. Cucina dei Rossi",
+      "submit": "Continua",
+      "submitting": "Salvataggio…"
+    },
+    "step2": {
+      "title": "Invita la famiglia.",
+      "subtitle": "Condividi questo link — chiunque lo apre entra nella tua galley.",
+      "generating": "Generazione link…",
+      "copy": "Copia",
+      "copied": "Copiato",
+      "skip": "Più tardi",
+      "done": "Fatto",
+      "error": "Impossibile creare il link"
+    },
+    "step3": {
+      "title": "Aggiungi la prima ricetta.",
+      "subtitle": "Incolla un link da Instagram, YouTube o un sito di ricette e lo importeremo per te.",
+      "start": "Inizia l'importazione",
+      "skip": "Vai alla mia libreria"
+    }
   }
 }
