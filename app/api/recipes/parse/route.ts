@@ -22,7 +22,7 @@ const ParseSchema = z.object({
   url: z.string().min(1).max(2000),
 });
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -342,6 +342,63 @@ function extractYouTubeVideoId(url: string): string | null {
   return null;
 }
 
+/** Canonical watch URL — Perplexity and Gemini handle /watch?v= more reliably than /shorts/ */
+function canonicalYouTubeUrl(url: string): string {
+  const id = extractYouTubeVideoId(url);
+  return id ? `https://www.youtube.com/watch?v=${id}` : url;
+}
+
+/** Scrape the YouTube watch page for the creator-written title and description.
+ *  Many recipe creators put the full ingredient list and steps in the description —
+ *  this is faster, cheaper, and more accurate than transcript / video / Perplexity routes.
+ *  Returns null when the page doesn't expose ytInitialPlayerResponse (rare). */
+async function fetchYouTubeWatchPageMeta(
+  url: string
+): Promise<{ title: string; description: string } | null> {
+  const watchUrl = canonicalYouTubeUrl(url);
+  try {
+    const res = await fetch(watchUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // ytInitialPlayerResponse is the canonical place; ytInitialData is a fallback
+    const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{[\s\S]*?\})\s*;\s*(?:var|<\/script>)/);
+    if (!playerMatch) return null;
+    const data = JSON.parse(playerMatch[1]) as Record<string, unknown>;
+    const details = data.videoDetails as Record<string, unknown> | undefined;
+    if (!details) return null;
+    const title = typeof details.title === "string" ? details.title : "";
+    const description = typeof details.shortDescription === "string" ? details.shortDescription : "";
+    if (!title && !description) return null;
+    return { title, description };
+  } catch {
+    return null;
+  }
+}
+
+/** Heuristic — does this YouTube description look like it contains a real recipe?
+ *  Recipe descriptions usually have ingredient amounts (numbers + units) and either
+ *  a list-style structure or step keywords. We use this to decide whether the
+ *  description is rich enough to skip transcript/video/Perplexity. */
+function descriptionLooksLikeRecipe(description: string): boolean {
+  if (description.length < 200) return false;
+  // Numbered or bulleted list lines — characteristic of ingredient/step lists
+  const listLines = (description.match(/^\s*(?:[-•*]|\d+[.)])\s+/gm) ?? []).length;
+  // Quantity hints — number adjacent to a unit (works in EN + DE)
+  const quantities = (
+    description.match(
+      /\b\d+([.,/]\d+)?\s*(g|kg|ml|l|tsp|tbsp|tl|el|cup|cups|tasse|tassen|ounce|oz|lb|piece|pieces|st(?:k|ück)?|prise|clove|cloves|zehe|zehen|slice|handful|handvoll)\b/gi
+    ) ?? []
+  ).length;
+  return listLines >= 3 || quantities >= 3;
+}
+
 /** Fetch YouTube captions via the public timedtext endpoint — no API key needed.
  *  Uses youtube-transcript@1.3.0 which relies on undocumented YouTube APIs.
  *  If this returns null more frequently, fall through to Gemini video analysis.
@@ -375,10 +432,16 @@ async function analyzeYouTubeVideoWithGemini(url: string): Promise<string> {
   return result.response.text();
 }
 
-/** Use Perplexity to search for recipe content — good for Instagram, YouTube, JS-heavy pages */
+/** Use Perplexity to search for recipe content — good for Instagram, JS-heavy pages.
+ *  Retries once on 504/timeout — Perplexity is occasionally slow on the first call. */
 async function fetchViaPerplexity(url: string, isInstagram: boolean): Promise<string> {
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   const shortcode = match?.[1] ?? "";
+
+  // YouTube: Perplexity sonar can't watch videos, but it can find the recipe via web search
+  // when given the canonical title/URL. Asking it to "fetch the URL" yields vague summaries.
+  const youtube = !isInstagram && /youtube\.com|youtu\.be/i.test(url);
+  const canonicalUrl = youtube ? canonicalYouTubeUrl(url) : url;
 
   const prompt = isInstagram
     ? `I need the EXACT recipe from this specific Instagram post only: ${url}
@@ -387,22 +450,47 @@ Do NOT return recipes from other posts or accounts.
 Fetch this exact URL and extract ONLY the recipe shown in this specific post.
 Return: recipe name, complete ingredient list with exact amounts and units, all preparation steps in order, servings, total prep/cook time.
 If you cannot access this exact post, say "Unable to access this Instagram post" and nothing else.`
+    : youtube
+    ? `Find the recipe from this YouTube video: ${canonicalUrl}
+Search the web (creator's blog, video description, third-party transcripts) for the SAME recipe shown in this specific video.
+Return: recipe name, complete ingredient list with exact amounts and units, all preparation steps in order, servings, prep/cook time.
+If you cannot find the specific recipe from this video, return "Unable to find recipe" and nothing else.
+No commentary, raw recipe content only.`
     : `Fetch this URL and return the full recipe content: ${url}
 Include: recipe name, all ingredients with amounts and units, all preparation steps, servings, and prep time.
 Return only the raw recipe content, no commentary.`;
 
-  const res = await fetch("https://api.perplexity.ai/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "sonar",
-      messages: [{ role: "user", content: prompt }],
-    }),
-    signal: AbortSignal.timeout(12000),
-  });
+  const callOnce = async (timeoutMs: number) => {
+    const res = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [{ role: "user", content: prompt }],
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return res;
+  };
+
+  let res: Response;
+  try {
+    res = await callOnce(15000);
+    // 504 from upstream → one quick retry
+    if (res.status === 504) {
+      res = await callOnce(15000);
+    }
+  } catch {
+    // First-attempt timeout → one retry
+    try {
+      res = await callOnce(15000);
+    } catch {
+      return "";
+    }
+  }
 
   if (!res.ok) return "";
 
@@ -460,34 +548,47 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
     };
   }
 
-  // YouTube: 1) transcript (free, no key), 2) Gemini video analysis, 3) Perplexity fallback
+  // YouTube: 1) watch-page description (free, fast, accurate when creator posts the recipe),
+  // 2) transcript, 3) Gemini video analysis, 4) Perplexity fallback (web search by title).
   if (youtube) {
     // Community Posts, channel pages, etc. have no video ID — skip video-specific routes
-    // to avoid Gemini video analysis timeout blowing the 30 s maxDuration budget.
+    // to avoid Gemini video analysis timeout blowing the maxDuration budget.
     if (!extractYouTubeVideoId(url)) {
       if (process.env.PERPLEXITY_API_KEY) {
         const content = await fetchViaPerplexity(url, false);
-        if (content.length > 200) return { content, imageUrl: null, imageCandidates: [], parsedVia: "youtube_perplexity", imageSource: "none" };
+        if (content.length > 200 && !content.startsWith("Unable to find recipe")) {
+          return { content, imageUrl: null, imageCandidates: [], parsedVia: "youtube_perplexity", imageSource: "none" };
+        }
       }
       return { content: `Recipe from: ${url}`, imageUrl: null, imageCandidates: [], parsedVia: "none", imageSource: "none" };
     }
 
-    // Fetch all thumbnail candidates (cover + snapshot frames) in parallel with transcript
-    const [thumbnails, transcript] = await Promise.all([
+    // Fetch thumbnails, watch-page meta, and transcript in parallel — cheapest first wins.
+    const [thumbnails, watchMeta, transcript] = await Promise.all([
       extractYouTubeThumbnails(url),
+      fetchYouTubeWatchPageMeta(url),
       fetchYouTubeTranscript(url),
     ]);
     const imageUrl = thumbnails[0] ?? null;
     const imageSource: ImageSource = imageUrl ? "youtube_thumbnail" : "none";
 
-    // Route 1: transcript — most videos have captions, near-zero cost
-    if (transcript && transcript.length > 200) {
-      return { content: transcript, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_transcript", imageSource };
+    // Route 1: watch-page description — many recipe creators post the full recipe here.
+    // Fast (~1s), free, deterministic — by far the best signal when present.
+    if (watchMeta && descriptionLooksLikeRecipe(watchMeta.description)) {
+      const content = `Title: ${watchMeta.title}\n\nDescription:\n${watchMeta.description}`;
+      return { content, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_description", imageSource };
     }
 
-    // Route 2: Gemini watches the video directly — handles videos without captions
+    // Route 2: transcript — most videos have captions, near-zero cost
+    if (transcript && transcript.length > 200) {
+      // Prepend the title so the model has a confident dish name even if the transcript starts mid-sentence
+      const titleLine = watchMeta?.title ? `Title: ${watchMeta.title}\n\n` : "";
+      return { content: `${titleLine}${transcript}`, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_transcript", imageSource };
+    }
+
+    // Route 3: Gemini watches the video directly — handles videos without captions
     try {
-      const videoContent = await analyzeYouTubeVideoWithGemini(url);
+      const videoContent = await analyzeYouTubeVideoWithGemini(canonicalYouTubeUrl(url));
       if (videoContent.length > 200) {
         return { content: videoContent, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_video", imageSource };
       }
@@ -495,13 +596,34 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
       // Fall through to Perplexity
     }
 
-    // Route 3: Perplexity web search fallback
+    // Route 4: Perplexity web search fallback (by canonical URL + title)
     if (process.env.PERPLEXITY_API_KEY) {
-      const content = await fetchViaPerplexity(url, false);
-      return { content, imageUrl, imageCandidates: thumbnails, parsedVia: "youtube_perplexity", imageSource };
+      const perplexityContent = await fetchViaPerplexity(url, false);
+      // If Perplexity admits it can't find the recipe, fail explicitly so the test
+      // run flags this as "failed" rather than "partial with empty fields".
+      if (
+        perplexityContent.length > 200 &&
+        !perplexityContent.startsWith("Unable to find recipe")
+      ) {
+        const titleLine = watchMeta?.title ? `Title: ${watchMeta.title}\n\n` : "";
+        return {
+          content: `${titleLine}${perplexityContent}`,
+          imageUrl,
+          imageCandidates: thumbnails,
+          parsedVia: "youtube_perplexity",
+          imageSource,
+        };
+      }
     }
 
-    return { content: `Recipe from: ${url}`, imageUrl, imageCandidates: thumbnails, parsedVia: "none", imageSource };
+    return {
+      content: "",
+      imageUrl,
+      imageCandidates: thumbnails,
+      parsedVia: "none",
+      imageSource,
+      error: "Could not extract a recipe from this YouTube video. The description has no recipe text and the video has no usable captions. Try pasting the recipe manually.",
+    };
   }
 
   // TikTok: oEmbed for thumbnail + caption, Perplexity for full recipe content

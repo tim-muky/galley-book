@@ -1,6 +1,7 @@
 export type ParsedVia =
   | "instagram_caption"
   | "instagram_perplexity"
+  | "youtube_description"
   | "youtube_transcript"
   | "youtube_video"
   | "youtube_perplexity"
@@ -75,6 +76,15 @@ function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
         "The content below is a web-search summary. It MAY not be a recipe at all.",
         "First decide: does this describe a cookable dish? If it is a news article, restaurant review, profile page, or product listing, return name=null and empty arrays.",
         "If it is a recipe, extract conservatively — prefer null over guessing when the summary is vague.",
+      ].join(" ");
+
+    case "youtube_description":
+      return [
+        "The content below is the YouTube video title and the creator-written description.",
+        "Recipe creators commonly post the full ingredient list and steps in the description — extract them directly when present.",
+        "The title is authoritative for the recipe name. Steps and ingredients in the description are the cook's own words; trust them and only normalise units (½ → 0.5).",
+        "Ignore promotional lines, channel links, social handles, sponsor mentions, timestamps (e.g. '0:42 Step 1'), and any 'subscribe' / 'follow me' boilerplate.",
+        "If the description is just a one-liner with no recipe content, return name from the title and null/empty for the rest — do not invent ingredients or steps.",
       ].join(" ");
 
     case "youtube_transcript":
