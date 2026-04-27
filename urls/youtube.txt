@@ -29,6 +29,9 @@
 # === D. YouTube Shorts (target ~6–8) — confirm/deny the 67% Shorts failure rate ===
 # Mix description-rich Shorts with caption-less ones. /shorts/ID URLs are normalised
 # to /watch?v=ID before downstream calls (see canonicalYouTubeUrl in route.ts).
+#
+# IMPORTANT (GAL-155): Run 3 had ZERO Shorts. Without Shorts in the test set we
+# can't validate that GAL-142 normalisation is helping. Aim for 6+ Shorts here.
 
 
 # === E. Non-recipe controls — should FAIL gracefully, not return garbage ===

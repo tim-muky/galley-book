@@ -58,6 +58,31 @@ function lintUrl(line: string, sourceFile: string): { ok: true; url: string } | 
   return { ok: true, url: line };
 }
 
+/** Canonical key for de-duplication. Same video ID with different `si=` /
+ *  `feature=` / `is=` tracking params should collapse to one test, not two. */
+function canonicalKey(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+    // YouTube: video ID is the dedup key
+    const ytShort = host === "youtu.be" ? u.pathname.slice(1) : null;
+    const ytShorts = u.pathname.match(/^\/shorts\/([A-Za-z0-9_-]{11})/)?.[1];
+    const ytWatch = u.searchParams.get("v");
+    const ytId = ytShort || ytShorts || ytWatch;
+    if (ytId) return `youtube:${ytId}`;
+    // Instagram: shortcode (p|reel|tv)
+    const igMatch = u.pathname.match(/^\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    if (igMatch) return `instagram:${igMatch[1]}`;
+    // TikTok: numeric video id
+    const ttMatch = u.pathname.match(/\/video\/(\d+)/);
+    if (ttMatch) return `tiktok:${ttMatch[1]}`;
+    // Generic: host + pathname (drop query string entirely)
+    return `${host}${u.pathname}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
 type Status = "perfect" | "good" | "partial" | "failed" | "crashed";
 
 interface RecipeResult {
@@ -148,14 +173,25 @@ async function main() {
 
   const urls: string[] = [];
   const skipped: { line: number; raw: string; reason: string }[] = [];
+  const seen = new Map<string, number>();
   for (const { line, lineNumber } of lines) {
     const result = lintUrl(line, urlFile);
-    if (result.ok) urls.push(result.url);
-    else skipped.push({ line: lineNumber, raw: line, reason: result.reason });
+    if (!result.ok) {
+      skipped.push({ line: lineNumber, raw: line, reason: result.reason });
+      continue;
+    }
+    const key = canonicalKey(result.url);
+    const firstSeenAt = seen.get(key);
+    if (firstSeenAt !== undefined) {
+      skipped.push({ line: lineNumber, raw: line, reason: `duplicate of line ${firstSeenAt}` });
+      continue;
+    }
+    seen.set(key, lineNumber);
+    urls.push(result.url);
   }
 
   if (skipped.length > 0) {
-    console.warn(`\nSkipping ${skipped.length} malformed URL(s):`);
+    console.warn(`\nSkipping ${skipped.length} URL(s):`);
     for (const s of skipped) {
       console.warn(`  line ${s.line}: ${s.raw}`);
       console.warn(`    ↳ ${s.reason}`);
