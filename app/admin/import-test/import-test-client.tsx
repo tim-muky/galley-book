@@ -47,11 +47,12 @@ function scoreResult(data: {
   steps?: unknown[];
 }): Status {
   const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
+  const ingredients = Array.isArray(data.ingredients) ? data.ingredients.length : 0;
+  const steps = Array.isArray(data.steps) ? data.steps.length : 0;
+  if (ingredients === 0 && steps === 0) return "failed";
   if (!name) return "partial";
   const hasImage = !!data.image_url;
   const hasPrepTime = typeof data.prep_time === "number" && data.prep_time > 0;
-  const ingredients = Array.isArray(data.ingredients) ? data.ingredients.length : 0;
-  const steps = Array.isArray(data.steps) ? data.steps.length : 0;
   if (hasImage && hasPrepTime && ingredients >= 1 && steps >= 1) return "perfect";
   if (ingredients >= 1 && steps >= 1) return "good";
   return "partial";

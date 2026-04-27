@@ -62,6 +62,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   const [linkUrl, setLinkUrl] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState("");
+  const [parseWarning, setParseWarning] = useState("");
   const [form, setForm] = useState<RecipeForm>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,6 +84,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     if (!linkUrl.trim()) return;
     setParsing(true);
     setParseError("");
+    setParseWarning("");
     try {
       const res = await fetch("/api/recipes/parse", {
         method: "POST",
@@ -104,6 +106,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
       const candidates = parsed.image_candidates ?? (parsed.image_url ? [parsed.image_url] : []);
       setImageCandidates(candidates);
       if (parsed.image_url) setPhotoPreview(parsed.image_url);
+      const parsedIngredientCount = (parsed.ingredients ?? []).length;
+      if (parsedIngredientCount < 3) {
+        setParseWarning("This video had limited recipe detail — check that ingredients and steps are complete before saving.");
+      }
       setShowForm(true);
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Parse failed");
@@ -482,6 +488,11 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
           {(mode === "link" || mode === "photo") && (
             <div className="bg-surface-low rounded-md px-4 py-3">
               <p className="text-xs font-light text-on-surface-variant">{t("form.aiParsed")}</p>
+            </div>
+          )}
+          {parseWarning && (
+            <div className="bg-amber-50 rounded-md px-4 py-3">
+              <p className="text-xs font-light text-amber-800">{parseWarning}</p>
             </div>
           )}
 

@@ -803,6 +803,16 @@ async function fetchPageContent(url: string): Promise<FetchResult> {
 
   // TikTok: oEmbed for thumbnail + caption, Perplexity for full recipe content
   if (isTikTokUrl(url)) {
+    if (!/\/video\/\d+/.test(url)) {
+      return {
+        content: "",
+        imageUrl: null,
+        imageCandidates: [],
+        parsedVia: "none",
+        imageSource: "none",
+        error: "Please share a specific TikTok video, not a profile page. Tap share on a video and copy that link.",
+      };
+    }
     const [{ thumbnail: thumbnailUrl, caption }, perplexityContent] = await Promise.all([
       fetchTikTokOEmbed(url),
       process.env.PERPLEXITY_API_KEY ? fetchViaPerplexity(url, false) : Promise.resolve(""),

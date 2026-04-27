@@ -55,6 +55,11 @@ function lintUrl(line: string, sourceFile: string): { ok: true; url: string } | 
   if (isSocial && !ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) {
     return { ok: false, reason: `host ${parsed.hostname} not in allowlist for ${baseName}` };
   }
+  // TikTok profile URLs have no /video/ segment — the server rejects them; catch early.
+  const isTikTokHost = ["tiktok.com", "www.tiktok.com", "vm.tiktok.com"].includes(parsed.hostname.toLowerCase());
+  if (isTikTokHost && !/\/video\/\d+/.test(parsed.pathname)) {
+    return { ok: false, reason: "TikTok profile URL — share a specific video link instead" };
+  }
   return { ok: true, url: line };
 }
 
@@ -99,6 +104,7 @@ interface RecipeResult {
 
 function score(r: Omit<RecipeResult, "status" | "url" | "durationMs">): Status {
   const { name, hasImage, hasPrepTime, ingredientCount, stepCount } = r;
+  if (ingredientCount === 0 && stepCount === 0) return "failed";
   if (!name) return "partial";
   const hasIngredients = ingredientCount >= 1;
   const hasSteps = stepCount >= 1;
