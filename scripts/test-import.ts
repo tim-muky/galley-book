@@ -18,6 +18,45 @@ import path from "path";
 const BASE_URL = process.env.BASE_URL ?? "https://www.galleybook.com";
 const SESSION_COOKIE = process.env.TEST_SESSION_COOKIE ?? "";
 const DELAY_MS = 2000;
+// Slightly above the parse route's 60s maxDuration so a real server timeout
+// surfaces as the route's own 422, not a client-side abort.
+const REQUEST_TIMEOUT_MS = 65000;
+
+const ALLOWED_HOSTS = new Set([
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "youtu.be",
+  "instagram.com",
+  "www.instagram.com",
+  "tiktok.com",
+  "www.tiktok.com",
+  "vm.tiktok.com",
+]);
+
+/** Validate a URL line. Returns the trimmed URL or a reason it's invalid.
+ *  Catches typos like missing scheme ("tps://...") or wrong host before they
+ *  hit the server and inflate the failure count. Generic websites are allowed
+ *  through (no host check) since the test set may include any cooking blog. */
+function lintUrl(line: string, sourceFile: string): { ok: true; url: string } | { ok: false; reason: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(line);
+  } catch {
+    return { ok: false, reason: "not a valid URL (check scheme, e.g. missing 'ht' before 'tps://')" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, reason: `unsupported scheme ${parsed.protocol}` };
+  }
+  // Only enforce host allowlist for known social-media test files; generic
+  // site lists pass through.
+  const baseName = path.basename(sourceFile, path.extname(sourceFile)).toLowerCase();
+  const isSocial = ["youtube", "instagram", "tiktok"].some((s) => baseName.includes(s));
+  if (isSocial && !ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) {
+    return { ok: false, reason: `host ${parsed.hostname} not in allowlist for ${baseName}` };
+  }
+  return { ok: true, url: line };
+}
 
 type Status = "perfect" | "good" | "partial" | "failed" | "crashed";
 
@@ -53,7 +92,7 @@ async function parseUrl(url: string): Promise<RecipeResult> {
         ...(SESSION_COOKIE ? { Cookie: SESSION_COOKIE } : {}),
       },
       body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     const durationMs = Date.now() - t0;
@@ -102,13 +141,29 @@ async function main() {
   }
 
   const raw = fs.readFileSync(urlFile, "utf-8");
-  const urls = raw
+  const lines = raw
     .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
+    .map((l, i) => ({ line: l.trim(), lineNumber: i + 1 }))
+    .filter((l) => l.line && !l.line.startsWith("#"));
+
+  const urls: string[] = [];
+  const skipped: { line: number; raw: string; reason: string }[] = [];
+  for (const { line, lineNumber } of lines) {
+    const result = lintUrl(line, urlFile);
+    if (result.ok) urls.push(result.url);
+    else skipped.push({ line: lineNumber, raw: line, reason: result.reason });
+  }
+
+  if (skipped.length > 0) {
+    console.warn(`\nSkipping ${skipped.length} malformed URL(s):`);
+    for (const s of skipped) {
+      console.warn(`  line ${s.line}: ${s.raw}`);
+      console.warn(`    ↳ ${s.reason}`);
+    }
+  }
 
   if (urls.length === 0) {
-    console.error("No URLs found in file.");
+    console.error("No valid URLs found in file.");
     process.exit(1);
   }
 
