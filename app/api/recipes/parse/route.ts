@@ -121,10 +121,16 @@ async function extractYouTubeThumbnails(url: string): Promise<string[]> {
   return [coverUrl, ...snapshots].filter((u): u is string => !!u);
 }
 
-/** Instagram images — extracts og:image from the embed page.
- *  oEmbed thumbnail_url was deprecated by Meta in Nov 2025 (returns the Instagram logo).
- *  The og:image in the embed HTML is the actual video/photo thumbnail set by the creator.
+/** Extract the post photo from an Instagram embed page.
+ *  In Apr 2026 Instagram migrated embed/captioned/ to a CSR React app and stopped
+ *  emitting <meta og:image>. The SSR'd photo lives in <img class="EmbeddedMediaImage" src="..."> instead.
  *  These CDN URLs need the Instagram Referer to load — the client proxies them via /api/proxy-image. */
+function extractInstagramEmbedImage(html: string): string | null {
+  const m = html.match(/<img[^>]*class=["']EmbeddedMediaImage["'][^>]*src=["']([^"']+)["']/i);
+  if (!m?.[1]) return null;
+  return m[1].replace(/&amp;/g, "&");
+}
+
 async function fetchInstagramImages(url: string): Promise<string[]> {
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
   if (!match) return [];
@@ -147,8 +153,8 @@ async function fetchInstagramImages(url: string): Promise<string[]> {
       });
       if (!res.ok) continue;
       const html = await res.text();
-      const ogImg = extractImageUrl(html);
-      if (ogImg) return [ogImg];
+      const img = extractInstagramEmbedImage(html) ?? extractImageUrl(html);
+      if (img) return [img];
     } catch {
       continue;
     }
