@@ -136,17 +136,17 @@ export default async function LibraryPage({
   return (
     <div className="px-5 pt-2 pb-6">
       <div className="mb-6">
-        <div className="flex items-center mb-1">
+        <div className="flex items-start justify-between mb-1">
+          <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
           <Image
             src="/logo.png"
             alt="Galley Book"
             width={75}
             height={75}
-            className="object-contain object-left"
+            className="object-contain object-right flex-shrink-0"
             priority
           />
         </div>
-        <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
 
         {memberships.length > 1 && (
           <GalleySwitcher galleys={galleyOptions} activeGalleyId={galleyId} />
