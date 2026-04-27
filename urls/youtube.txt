@@ -1,0 +1,40 @@
+# YouTube recipe URLs — structured test batch
+# One URL per line; lines starting with # are ignored (used here as section headers).
+#
+# Run: TEST_SESSION_COOKIE="..." npx tsx scripts/test-import.ts urls/youtube.txt
+#
+# Categories below are documented so failures can be analysed by type instead of
+# only by overall pass/fail counts. When adding URLs, drop them under the right
+# section so future test runs keep apples-to-apples coverage.
+#
+# Expected outcome legend (set in test-set notes, not parsed by the runner):
+#   PERFECT  = name + image + ingredients + steps + prep_time
+#   GOOD     = name + ingredients + steps (image/prep optional)
+#   PARTIAL  = name only (no ingredients/steps) — usually the source had no recipe text
+#   FAILED   = explicit error (e.g. no recipe content available)
+
+
+# === A. Description-rich — recipe in the video description (should be GOOD/PERFECT) ===
+# Channels that reliably post the full ingredient list and steps in the description.
+
+
+# === B. Captioned cooking videos — recipe via transcript (should be GOOD) ===
+# Major recipe channels with auto/manual captions. Tests the youtube_transcript route.
+
+
+# === C. No description, no captions — recipe via Gemini video analysis (best-effort) ===
+# Hardest case. Expect PARTIAL or GOOD, never PERFECT.
+
+
+# === D. YouTube Shorts (target ~6–8) — confirm/deny the 67% Shorts failure rate ===
+# Mix description-rich Shorts with caption-less ones. /shorts/ID URLs are normalised
+# to /watch?v=ID before downstream calls (see canonicalYouTubeUrl in route.ts).
+
+
+# === E. Non-recipe controls — should FAIL gracefully, not return garbage ===
+# Cooking-adjacent but not a recipe (e.g. restaurant review, equipment review).
+# A good importer reports the dish-not-found error; a bad one invents ingredients.
+
+
+# === F. Golden set — manually verified, used as regression baseline on every run ===
+# These should always come back GOOD or PERFECT. Any regression here is a bug.
