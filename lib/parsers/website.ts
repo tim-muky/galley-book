@@ -2,8 +2,69 @@ import type { FetchResult, ImageSource } from "./types";
 import { extractImageUrl, normalizeImageUrl } from "./utils";
 import { fetchViaPerplexity } from "./perplexity";
 
-/** Extract Schema.org Recipe from JSON-LD script tags */
-function extractJsonLd(html: string): Record<string, unknown> | null {
+function isRecipeType(item: Record<string, unknown>): boolean {
+  const t = item["@type"];
+  return t === "Recipe" || (Array.isArray(t) && t.includes("Recipe"));
+}
+
+/** Slugify-ish: lowercase, ASCII-fold accents, drop non-alphanumeric. */
+function tokens(s: string): string[] {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 3);
+}
+
+function instructionCount(instructions: unknown): number {
+  if (typeof instructions === "string") return instructions.length > 20 ? 1 : 0;
+  if (!Array.isArray(instructions)) return 0;
+  let count = 0;
+  for (const step of instructions) {
+    if (typeof step === "string") {
+      count += 1;
+    } else if (step && typeof step === "object") {
+      const s = step as Record<string, unknown>;
+      if (s["@type"] === "HowToSection" && Array.isArray(s.itemListElement)) {
+        count += s.itemListElement.length;
+      } else {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+/** Score a Recipe candidate so we can pick the page's primary recipe when
+ *  multiple are embedded (sidebar widgets, "you might also like" sections). */
+function scoreRecipe(recipe: Record<string, unknown>, urlTokens: string[]): number {
+  const ingredients = Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient.length : 0;
+  const steps = instructionCount(recipe.recipeInstructions);
+  let score = ingredients * 2 + steps * 3;
+
+  // Slug-match bonus: name shares meaningful tokens with the URL path.
+  const name = typeof recipe.name === "string" ? recipe.name : "";
+  if (name && urlTokens.length > 0) {
+    const nameTokens = tokens(name);
+    const overlap = nameTokens.filter((t) => urlTokens.includes(t)).length;
+    if (overlap > 0) score += overlap * 25;
+  }
+
+  // mainEntity / mainEntityOfPage hint that this is the page's primary entity.
+  if (recipe.mainEntityOfPage || recipe["@id"]) score += 5;
+
+  return score;
+}
+
+/** Extract Schema.org Recipe from JSON-LD script tags. When multiple Recipe
+ *  objects exist (sidebar widgets, related recipes), the one whose name
+ *  matches the page URL slug — or has the most fields — wins. */
+function extractJsonLd(
+  html: string,
+  pageUrl?: string
+): Record<string, unknown> | null {
+  const candidates: Record<string, unknown>[] = [];
   const scriptMatches = html.matchAll(
     /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
   );
@@ -12,25 +73,45 @@ function extractJsonLd(html: string): Record<string, unknown> | null {
       const data = JSON.parse(match[1]);
       const items = Array.isArray(data) ? data : [data];
       for (const item of items) {
-        const type = (item as Record<string, unknown>)["@type"];
-        if (type === "Recipe" || (Array.isArray(type) && type.includes("Recipe"))) {
-          return item as Record<string, unknown>;
-        }
+        const obj = item as Record<string, unknown>;
+        if (isRecipeType(obj)) candidates.push(obj);
         // Some sites wrap recipes in @graph
-        const graph = (item as Record<string, unknown>)["@graph"];
+        const graph = obj["@graph"];
         if (Array.isArray(graph)) {
-          const recipe = graph.find((g) => {
-            const t = (g as Record<string, unknown>)["@type"];
-            return t === "Recipe" || (Array.isArray(t) && t.includes("Recipe"));
-          });
-          if (recipe) return recipe as Record<string, unknown>;
+          for (const g of graph) {
+            const gObj = g as Record<string, unknown>;
+            if (isRecipeType(gObj)) candidates.push(gObj);
+          }
         }
       }
     } catch {
       continue;
     }
   }
-  return null;
+
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  let urlTokens: string[] = [];
+  if (pageUrl) {
+    try {
+      urlTokens = tokens(new URL(pageUrl).pathname);
+    } catch {
+      /* leave urlTokens empty */
+    }
+  }
+
+  // Pick the highest-scoring candidate; ties broken by document order.
+  let best = candidates[0];
+  let bestScore = scoreRecipe(best, urlTokens);
+  for (let i = 1; i < candidates.length; i++) {
+    const score = scoreRecipe(candidates[i], urlTokens);
+    if (score > bestScore) {
+      best = candidates[i];
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 /** Serialize JSON-LD Recipe into clean structured text for the model */
@@ -123,7 +204,7 @@ export async function parseWebsite(url: string): Promise<FetchResult> {
     if (res.ok) {
       const html = await res.text();
       const ogImageUrl = extractImageUrl(html);
-      const jsonLd = extractJsonLd(html);
+      const jsonLd = extractJsonLd(html, url);
 
       if (jsonLd) {
         const jsonLdImage = extractJsonLdImage(jsonLd);
