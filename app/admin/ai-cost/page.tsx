@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireAdmin } from "@/lib/auth/admin";
 
 type AILog = {
   id: string;
@@ -14,6 +15,7 @@ type AILog = {
 };
 
 export default async function AICostPage() {
+  await requireAdmin();
   const service = createServiceClient();
 
   const now = new Date();

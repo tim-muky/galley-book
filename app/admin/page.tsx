@@ -1,7 +1,9 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export default async function AdminOverviewPage() {
+  await requireAdmin();
   const service = createServiceClient();
 
   const now = new Date();

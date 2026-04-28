@@ -390,6 +390,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_admin: boolean
           name: string | null
           username: string | null
         }
@@ -398,6 +399,7 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          is_admin?: boolean
           name?: string | null
           username?: string | null
         }
@@ -406,6 +408,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_admin?: boolean
           name?: string | null
           username?: string | null
         }

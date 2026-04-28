@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireAdmin } from "@/lib/auth/admin";
 
 type UserRow = { id: string; name: string | null; email: string; avatar_url: string | null; created_at: string };
 type RecipeRow = { id: string; name: string; created_by: string | null; galley_id: string; created_at: string };
@@ -10,6 +11,7 @@ type FeedEvent =
   | { kind: "vote"; at: string; userId: string; recipeName: string; value: number };
 
 export default async function UsersPage() {
+  await requireAdmin();
   const service = createServiceClient();
 
   const [{ data: usersRaw }, { data: recipesRaw }, { data: votesRaw }, { data: galleysRaw }] =

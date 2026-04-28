@@ -1,11 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { NavTab } from "./nav-tab";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
-
-const ADMIN_EMAIL = "tim@muky-kids.com";
 
 const NAV_LINKS = [
   { href: "/admin", label: "Overview" },
@@ -15,12 +12,7 @@ const NAV_LINKS = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || user.email !== ADMIN_EMAIL) redirect("/library");
+  await requireAdmin();
 
   return (
     <div className="min-h-screen bg-surface">
