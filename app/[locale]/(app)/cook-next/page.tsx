@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { CookNextClient } from "./cook-next-client";
 import { getLocale } from "next-intl/server";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 export default async function CookNextPage() {
   const supabase = await createClient();
@@ -13,24 +14,23 @@ export default async function CookNextPage() {
   const locale = await getLocale();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id, galleys(name)")
-    .eq("user_id", user.id)
-    .order("invited_at", { ascending: true })
-    .limit(1)
-    .single();
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
 
-  if (!membership?.galley_id) {
+  if (!galleyId) {
     return <CookNextClient initialItems={[]} galleyName="" memberNames={{}} />;
   }
 
-  const galleyName = (membership.galleys as unknown as { name: string } | null)?.name ?? "";
+  const { data: galleyRow } = await supabase
+    .from("galleys")
+    .select("name")
+    .eq("id", galleyId)
+    .single();
+  const galleyName = galleyRow?.name ?? "";
 
   const { data: items } = await supabase
     .from("cook_next_list")
     .select(`id, recipe_id, added_by, added_at, recipes(id, name, prep_time, servings, type, recipe_photos(*))`)
-    .eq("galley_id", membership.galley_id)
+    .eq("galley_id", galleyId)
     .order("added_at", { ascending: false });
 
   const addedByIds = [...new Set((items ?? []).map((i) => i.added_by).filter(Boolean))];

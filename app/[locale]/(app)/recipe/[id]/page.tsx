@@ -14,6 +14,7 @@ import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
 import { RecipeContent } from "@/app/(app)/recipe/[id]/recipe-content";
 import { RecipeComments, type CommentItem } from "@/components/recipe-comments";
 import type { RecipeTranslation } from "@/types/database";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
@@ -37,7 +38,10 @@ export default async function RecipeDetailPage({
     .eq("user_id", user.id)
     .order("invited_at", { ascending: true });
 
-  const membership = membershipsRaw?.[0];
+  const activeGalleyId = await resolveActiveGalleyId(supabase, user.id);
+  const membership =
+    (activeGalleyId ? membershipsRaw?.find((m) => m.galley_id === activeGalleyId) : null) ??
+    membershipsRaw?.[0];
 
   const [{ data: recipe }, { data: cookNextRow }, { data: userRow }, { data: voteSummary }, { data: userVoteRow }] = await Promise.all([
     supabase

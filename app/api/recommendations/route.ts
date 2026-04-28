@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkRecsLimit } from "@/lib/rate-limit";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 interface RecommendationResult {
   title: string;
@@ -85,16 +86,8 @@ export async function GET(request: Request) {
   const cuisine = searchParams.get("cuisine")?.trim() || null;
   const ingredient = searchParams.get("ingredient")?.trim() || null;
 
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (!membership) return NextResponse.json({ recommendations: [] });
-
-  const galleyId = membership.galley_id;
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
+  if (!galleyId) return NextResponse.json({ recommendations: [] });
 
   // Load data in parallel — skip saved_sources for custom searches
   const [{ data: recipes }, { data: savedSources }, { data: memory }] = await Promise.all([

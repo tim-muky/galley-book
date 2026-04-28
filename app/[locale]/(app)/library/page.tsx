@@ -4,10 +4,10 @@ export const dynamic = "force-dynamic";
 import { Link } from "@/i18n/routing";
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
-import { cookies } from "next/headers";
 import { GalleySwitcher } from "@/components/galley-switcher";
 import { LibraryRecipes } from "./library-recipes-client";
 import Image from "next/image";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 const PAGE_SIZE = 20;
 
@@ -52,11 +52,7 @@ export default async function LibraryPage({
     redirect(`/${locale}/onboarding`);
   }
 
-  const cookieStore = await cookies();
-  const cookieGalleyId = cookieStore.get("active_galley_id")?.value;
-  const validFromCookie = cookieGalleyId ? memberships.find((m) => m.galley_id === cookieGalleyId) : null;
-  const activeMembership = validFromCookie ?? memberships.find((m) => m.is_default) ?? memberships[0];
-  const galleyId = activeMembership.galley_id;
+  const galleyId = (await resolveActiveGalleyId(supabase, user.id))!;
 
   let recipesQuery = supabase
     .from("recipes")

@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -17,21 +18,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (!membership) return NextResponse.json({ error: "No galley" }, { status: 400 });
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
+  if (!galleyId) return NextResponse.json({ error: "No galley" }, { status: 400 });
 
   // Record vote
   await supabase
     .from("cook_next_history")
     .update({ vote })
     .eq("recipe_id", recipeId)
-    .eq("galley_id", membership.galley_id);
+    .eq("galley_id", galleyId);
 
   // If thumbs down, fetch a replacement
   if (vote === -1) {

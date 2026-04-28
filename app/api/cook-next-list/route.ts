@@ -1,16 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-
-async function getGalleyId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
-  const { data } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", userId)
-    .order("invited_at", { ascending: true })
-    .limit(1)
-    .single();
-  return data?.galley_id ?? null;
-}
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 
 // GET /api/cook-next-list — returns all recipes in the galley's list (newest first)
 export async function GET() {
@@ -18,7 +8,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const galleyId = await getGalleyId(supabase, user.id);
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ items: [] });
 
   const { data } = await supabase
@@ -37,7 +27,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const galleyId = await getGalleyId(supabase, user.id);
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ error: "No galley" }, { status: 400 });
 
   const { recipeId } = await request.json();
@@ -61,7 +51,7 @@ export async function DELETE() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const galleyId = await getGalleyId(supabase, user.id);
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ ok: true });
 
   await supabase.from("cook_next_list").delete().eq("galley_id", galleyId);
