@@ -12,6 +12,22 @@ const SEASONS = ["all_year", "spring", "summer", "autumn", "winter"] as const;
 const TYPES = ["starter", "main", "dessert", "breakfast", "snack", "drink", "side"] as const;
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
+// Names that don't identify a specific dish — flagged so users replace them
+// before saving. Match is case-insensitive on the trimmed full name.
+const GENERIC_NAME_BLOCKLIST = new Set([
+  "recipe", "easy recipe", "quick recipe", "tasty recipe", "delicious recipe",
+  "juice", "smoothie", "drink",
+  "dinner", "lunch", "breakfast", "snack", "meal",
+  "easy dinner", "quick dinner", "easy dinner recipe", "quick dinner recipe",
+  "cooking", "food", "tasty", "delicious",
+]);
+
+function isGenericName(name: string): boolean {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return false;
+  return GENERIC_NAME_BLOCKLIST.has(normalized);
+}
+
 interface Ingredient {
   _key: string;
   name: string;
@@ -564,6 +580,11 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             </label>
             <input value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder={t("form.namePlaceholder")}
               className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2" />
+            {isGenericName(form.name) && (
+              <p className="text-[11px] font-light text-amber-700 mt-1.5 px-2">
+                Give this recipe a more specific name so it's easy to find later.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -580,6 +601,11 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               </label>
               <input type="number" min="1" value={form.prep_time} onChange={(e) => updateField("prep_time", e.target.value)} placeholder="30"
                 className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2" />
+              {!form.prep_time && (mode === "link" || mode === "photo") && (
+                <p className="text-[11px] font-light text-on-surface-variant/70 mt-1.5 px-2">
+                  Add prep time so the library quick-filter works.
+                </p>
+              )}
             </div>
           </div>
 

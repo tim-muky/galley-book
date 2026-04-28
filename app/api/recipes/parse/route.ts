@@ -975,12 +975,12 @@ export async function POST(request: Request) {
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  // For Instagram captions (incl. reels) the spoken/written recipe is often thin.
-  // Adding the cover-frame as a multimodal input lets Gemini infer dish type,
-  // season, plating, and visible ingredients from the photo even when the
-  // caption is terse. Cheapest meaningful boost for reel quality.
+  // For Instagram captions (incl. reels) and TikTok the spoken/written recipe
+  // is often thin — short videos in particular don't narrate ingredients. Adding
+  // the cover-frame as a multimodal input lets Gemini infer dish type, season,
+  // plating, and visible ingredients from the photo. Cheapest meaningful boost.
   const inlineImage =
-    parsedVia === "instagram_caption" && imageUrl
+    (parsedVia === "instagram_caption" || parsedVia === "tiktok") && imageUrl
       ? await fetchInlineImage(imageUrl)
       : null;
   const usedMultimodal = !!inlineImage;
