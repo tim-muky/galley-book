@@ -462,6 +462,10 @@ export type Database = {
         Args: { galley_name: string; owner: string }
         Returns: string
       }
+      create_recipe_with_children: {
+        Args: { p_recipe: Json; p_ingredients: Json; p_steps: Json }
+        Returns: string
+      }
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_owner: { Args: { galley_uuid: string }; Returns: boolean }
     }

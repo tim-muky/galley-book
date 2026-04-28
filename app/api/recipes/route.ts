@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 import { fetchAuthor } from "@/lib/oembed";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 const IngredientSchema = z.object({
@@ -178,34 +179,11 @@ export async function POST(request: Request) {
     }
   }
 
-  // Create recipe
-  const { data: recipe, error: recipeError } = await supabase
-    .from("recipes")
-    .insert({
-      galley_id: resolvedGalleyId,
-      created_by: user.id,
-      name: name.trim(),
-      description: description?.trim() || null,
-      servings: servings ? Number(servings) : null,
-      prep_time: prep_time ? Number(prep_time) : null,
-      season: season || "all_year",
-      type: type || null,
-      source_url: source_url?.trim() || null,
-    })
-    .select()
-    .single();
-
-  if (recipeError || !recipe) {
-    return NextResponse.json({ error: "Failed to create recipe" }, { status: 500 });
-  }
-
-  // Build insert payloads
   const validIngredients = ingredients
     .filter((ing) => ing.name.trim())
     .map((ing, idx) => ({
-      recipe_id: recipe.id,
       name: ing.name.trim(),
-      amount: ing.amount ? Number(ing.amount) : null,
+      amount: ing.amount != null && ing.amount !== "" ? String(ing.amount) : null,
       unit: ing.unit || null,
       group_name: ing.group || null,
       sort_order: idx,
@@ -214,27 +192,40 @@ export async function POST(request: Request) {
   const validSteps = steps
     .filter((s) => s.instruction.trim())
     .map((s, idx) => ({
-      recipe_id: recipe.id,
       step_number: idx + 1,
       instruction: s.instruction.trim(),
     }));
 
-  const extractedSource = source_url?.trim() ? await extractSource(source_url.trim()) : null;
+  // Single atomic RPC: recipe + ingredients + steps in one transaction.
+  const { data: newRecipeId, error: rpcError } = await supabase.rpc(
+    "create_recipe_with_children",
+    {
+      p_recipe: {
+        galley_id: resolvedGalleyId,
+        name: name.trim(),
+        description: description?.trim() || null,
+        servings: servings != null ? String(servings) : null,
+        prep_time: prep_time != null ? String(prep_time) : null,
+        season: season || "all_year",
+        type: type || null,
+        source_url: source_url?.trim() || null,
+      },
+      p_ingredients: validIngredients,
+      p_steps: validSteps,
+    }
+  );
 
-  // Insert ingredients + steps in parallel — rollback recipe on any failure
-  const [{ error: ingError }, { error: stepError }] = await Promise.all([
-    validIngredients.length > 0
-      ? supabase.from("ingredients").insert(validIngredients)
-      : Promise.resolve({ error: null }),
-    validSteps.length > 0
-      ? supabase.from("preparation_steps").insert(validSteps)
-      : Promise.resolve({ error: null }),
-  ]);
-
-  if (ingError || stepError) {
-    await supabase.from("recipes").delete().eq("id", recipe.id);
+  if (rpcError || !newRecipeId) {
+    logger.error("recipe_create_rpc_failed", {
+      userId: user.id,
+      galleyId: resolvedGalleyId,
+      error: rpcError?.message ?? "no id returned",
+    });
     return NextResponse.json({ error: "Failed to save recipe. Please try again." }, { status: 500 });
   }
+
+  const recipeId = newRecipeId as string;
+  const extractedSource = source_url?.trim() ? await extractSource(source_url.trim()) : null;
 
   // Source upsert — non-critical, don't rollback on failure
   if (extractedSource) {
@@ -250,7 +241,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Download & store recipe image if provided (SSRF-safe: validated + DNS-checked)
+  // Download & store recipe image if provided (SSRF-safe: validated + DNS-checked).
+  // Best-effort — recipe row is already committed. Failures are logged so we can monitor.
   if (image_url && (await isSafeUrlAsync(image_url))) {
     try {
       const isInstagramCdn =
@@ -263,33 +255,56 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(12000),
       });
 
-      if (imgRes.ok) {
+      if (!imgRes.ok) {
+        logger.warn("recipe_image_fetch_failed", {
+          recipeId,
+          status: imgRes.status,
+          imageUrl: image_url,
+        });
+      } else {
         const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
         const ext = contentType.includes("png")
           ? "png"
           : contentType.includes("webp")
           ? "webp"
           : "jpg";
-        const storagePath = `${recipe.id}/primary.${ext}`;
+        const storagePath = `${recipeId}/primary.${ext}`;
         const imgBuffer = await imgRes.arrayBuffer();
 
         const { error: uploadError } = await supabase.storage
           .from("recipe-photos")
           .upload(storagePath, imgBuffer, { contentType, upsert: true });
 
-        if (!uploadError) {
-          await supabase.from("recipe_photos").insert({
-            recipe_id: recipe.id,
+        if (uploadError) {
+          logger.warn("recipe_image_upload_failed", {
+            recipeId,
+            storagePath,
+            error: uploadError.message,
+          });
+        } else {
+          const { error: photoRowError } = await supabase.from("recipe_photos").insert({
+            recipe_id: recipeId,
             storage_path: storagePath,
             is_primary: true,
             sort_order: 0,
           });
+          if (photoRowError) {
+            logger.warn("recipe_photo_row_insert_failed", {
+              recipeId,
+              storagePath,
+              error: photoRowError.message,
+            });
+          }
         }
       }
-    } catch {
-      // Image fetch failed — recipe is still saved, just without a photo
+    } catch (err) {
+      logger.warn("recipe_image_fetch_threw", {
+        recipeId,
+        imageUrl: image_url,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
-  return NextResponse.json({ id: recipe.id }, { status: 201 });
+  return NextResponse.json({ id: recipeId }, { status: 201 });
 }
