@@ -224,7 +224,7 @@ export async function parseWebsite(url: string): Promise<FetchResult> {
 
     if (res.ok) {
       const html = await res.text();
-      const ogImageUrl = extractImageUrl(html);
+      const ogImageUrl = extractImageUrl(html, url);
       const jsonLd = extractJsonLd(html, url);
 
       if (jsonLd) {

@@ -1,25 +1,72 @@
-/** Normalize protocol-relative URLs to https */
-export function normalizeImageUrl(raw: string): string | null {
-  if (raw.startsWith("//")) return `https:${raw}`;
-  if (raw.startsWith("http")) return raw;
-  return null;
+/** Normalize image URLs to absolute https. Resolves protocol-relative
+ *  (`//cdn/img.jpg`) and root- or path-relative (`/img.jpg`, `img.jpg`)
+ *  forms when a page URL is provided. Returns null only for genuinely
+ *  unparseable input. */
+export function normalizeImageUrl(raw: string, pageUrl?: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (!pageUrl) return null;
+  try {
+    return new URL(trimmed, pageUrl).toString();
+  } catch {
+    return null;
+  }
 }
 
-/** Extract og:image or twitter:image from raw HTML */
-export function extractImageUrl(html: string): string | null {
-  const patterns = [
+/** Extract a hero image URL from raw HTML.
+ *  Tries og:image / twitter:image / og:image:url / og:image:secure_url /
+ *  link rel=image_src first, then falls back to the first reasonably-sized
+ *  `<img>` inside `<article>`, `<main>`, or `<picture>` (GAL-179). */
+export function extractImageUrl(html: string, pageUrl?: string): string | null {
+  const metaPatterns = [
     /property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
     /content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+    /property=["']og:image:url["'][^>]*content=["']([^"']+)["']/i,
+    /content=["']([^"']+)["'][^>]*property=["']og:image:url["']/i,
+    /property=["']og:image:secure_url["'][^>]*content=["']([^"']+)["']/i,
+    /content=["']([^"']+)["'][^>]*property=["']og:image:secure_url["']/i,
     /name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
     /content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i,
+    /<link[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']image_src["']/i,
   ];
-  for (const pattern of patterns) {
+  for (const pattern of metaPatterns) {
     const match = html.match(pattern);
     if (match?.[1]) {
-      const normalized = normalizeImageUrl(match[1]);
+      const normalized = normalizeImageUrl(match[1], pageUrl);
       if (normalized) return normalized;
     }
   }
+
+  // Last resort: first <img> inside <article>, <main>, or <picture>. Skip
+  // tracking pixels by requiring width/height ≥ 200 when the attributes
+  // are present; otherwise accept the first match.
+  const containerPatterns = [
+    /<article[\s\S]*?<\/article>/i,
+    /<main[\s\S]*?<\/main>/i,
+    /<picture[\s\S]*?<\/picture>/i,
+  ];
+  const imgPattern = /<img[^>]*>/gi;
+  for (const containerPattern of containerPatterns) {
+    const container = html.match(containerPattern)?.[0];
+    if (!container) continue;
+    const imgs = container.match(imgPattern) ?? [];
+    for (const img of imgs) {
+      const widthAttr = img.match(/\bwidth=["']?(\d+)/i)?.[1];
+      const heightAttr = img.match(/\bheight=["']?(\d+)/i)?.[1];
+      if (widthAttr && Number(widthAttr) < 200) continue;
+      if (heightAttr && Number(heightAttr) < 200) continue;
+      const src =
+        img.match(/\bsrc=["']([^"']+)["']/i)?.[1] ??
+        img.match(/\bdata-src=["']([^"']+)["']/i)?.[1];
+      if (!src) continue;
+      const normalized = normalizeImageUrl(src, pageUrl);
+      if (normalized) return normalized;
+    }
+  }
+
   return null;
 }
 
