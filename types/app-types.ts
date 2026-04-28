@@ -24,3 +24,13 @@ export interface RecipeWithDetails extends Recipe {
   votes: Vote[];
   created_by_user?: UserProfile;
 }
+
+// recipe_translations.ingredients/steps are jsonb columns — narrow them here
+// from `Json | null` to the structured shape the UI expects.
+export type RecipeTranslation = Omit<
+  Database["public"]["Tables"]["recipe_translations"]["Row"],
+  "ingredients" | "steps"
+> & {
+  ingredients: { id: string; name: string }[] | null;
+  steps: { id: string; instruction: string }[] | null;
+};

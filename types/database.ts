@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_logs: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input_tokens: number | null
+          model: string
+          operation: string
+          output_tokens: number | null
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number | null
+          model: string
+          operation: string
+          output_tokens?: number | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          operation?: string
+          output_tokens?: number | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       cook_next_history: {
         Row: {
           galley_id: string | null
@@ -53,6 +92,45 @@ export type Database = {
           },
         ]
       }
+      cook_next_list: {
+        Row: {
+          added_at: string
+          added_by: string
+          galley_id: string
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by: string
+          galley_id: string
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          galley_id?: string
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cook_next_list_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cook_next_list_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discover_memory: {
         Row: {
           galley_id: string | null
@@ -78,6 +156,45 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "discover_memory_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      galley_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          galley_id: string
+          id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          galley_id: string
+          id?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          galley_id?: string
+          id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "galley_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "galley_invites_galley_id_fkey"
             columns: ["galley_id"]
             isOneToOne: false
             referencedRelation: "galleys"
@@ -238,6 +355,45 @@ export type Database = {
           },
         ]
       }
+      recipe_comments: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_comments_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_photos: {
         Row: {
           created_at: string
@@ -269,6 +425,57 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_translations: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          ingredients: Json | null
+          language: string
+          recipe_id: string
+          steps: Json | null
+          translated_by: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ingredients?: Json | null
+          language: string
+          recipe_id: string
+          steps?: Json | null
+          translated_by?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ingredients?: Json | null
+          language?: string
+          recipe_id?: string
+          steps?: Json | null
+          translated_by?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_translations_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_translations_translated_by_fkey"
+            columns: ["translated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -392,6 +599,8 @@ export type Database = {
           id: string
           is_admin: boolean
           name: string | null
+          preferred_language: string | null
+          translation_language: string | null
           username: string | null
         }
         Insert: {
@@ -401,6 +610,8 @@ export type Database = {
           id: string
           is_admin?: boolean
           name?: string | null
+          preferred_language?: string | null
+          translation_language?: string | null
           username?: string | null
         }
         Update: {
@@ -410,6 +621,8 @@ export type Database = {
           id?: string
           is_admin?: boolean
           name?: string | null
+          preferred_language?: string | null
+          translation_language?: string | null
           username?: string | null
         }
         Relationships: []
@@ -453,9 +666,42 @@ export type Database = {
           },
         ]
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      recipe_vote_summary: {
+        Row: {
+          recipe_id: string | null
+          vote_avg: number | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       create_galley: {
@@ -463,7 +709,7 @@ export type Database = {
         Returns: string
       }
       create_recipe_with_children: {
-        Args: { p_recipe: Json; p_ingredients: Json; p_steps: Json }
+        Args: { p_ingredients: Json; p_recipe: Json; p_steps: Json }
         Returns: string
       }
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
@@ -480,7 +726,7 @@ export type Database = {
         | "snack"
         | "drink"
         | "side"
-      source_type: "instagram" | "youtube" | "website"
+      source_type: "instagram" | "youtube" | "website" | "tiktok"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -619,7 +865,7 @@ export const Constants = {
         "drink",
         "side",
       ],
-      source_type: ["instagram", "youtube", "website"],
+      source_type: ["instagram", "youtube", "website", "tiktok"],
     },
   },
 } as const
@@ -631,14 +877,6 @@ export type RecipeType = Database["public"]["Enums"]["recipe_type"];
 export type GalleyRole = Database["public"]["Enums"]["galley_role"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
-
-export type CookNextListItem = {
-  id: string;
-  galley_id: string;
-  recipe_id: string;
-  added_by: string;
-  added_at: string;
-};
 
 export type Recipe = Database["public"]["Tables"]["recipes"]["Row"];
 export type Ingredient = Database["public"]["Tables"]["ingredients"]["Row"];
@@ -658,14 +896,12 @@ export interface RecipeWithDetails extends Recipe {
   created_by_user?: UserProfile;
 }
 
-export interface RecipeTranslation {
-  id: string;
-  recipe_id: string;
-  language: string;
-  description: string | null;
+// recipe_translations.ingredients/steps are jsonb columns — narrow them here
+// from `Json | null` to the structured shape the UI expects.
+export type RecipeTranslation = Omit<
+  Database["public"]["Tables"]["recipe_translations"]["Row"],
+  "ingredients" | "steps"
+> & {
   ingredients: { id: string; name: string }[] | null;
   steps: { id: string; instruction: string }[] | null;
-  translated_by: string | null;
-  created_at: string;
-  updated_at: string;
-}
+};

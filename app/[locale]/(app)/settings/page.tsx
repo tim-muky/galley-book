@@ -97,7 +97,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
       savedSources={savedSources}
       deletedRecipes={deletedRecipes}
       currentUserId={user.id}
-      translationLanguage={(profile as unknown as { translation_language?: string | null })?.translation_language ?? null}
+      translationLanguage={profile?.translation_language ?? null}
       currentLocale={locale}
     />
   );

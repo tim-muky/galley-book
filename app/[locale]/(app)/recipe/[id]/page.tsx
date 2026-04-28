@@ -54,23 +54,22 @@ export default async function RecipeDetailPage({
           .maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("users").select("translation_language").eq("id", user.id).single(),
-    supabase.from("recipe_vote_summary" as never).select("vote_count, vote_avg").eq("recipe_id", id).maybeSingle(),
+    supabase.from("recipe_vote_summary").select("vote_count, vote_avg").eq("recipe_id", id).maybeSingle(),
     supabase.from("votes").select("value").eq("recipe_id", id).eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const translationLanguage =
-    (userRow as unknown as { translation_language?: string | null })?.translation_language ?? null;
+  const translationLanguage = userRow?.translation_language ?? null;
 
   const { data: translationRaw } = translationLanguage
     ? await supabase
-        .from("recipe_translations" as never)
+        .from("recipe_translations")
         .select("*")
         .eq("recipe_id", id)
         .eq("language", translationLanguage)
         .maybeSingle()
     : { data: null };
 
-  const translation = translationRaw as RecipeTranslation | null;
+  const translation = (translationRaw ?? null) as RecipeTranslation | null;
 
   if (!recipe) notFound();
 

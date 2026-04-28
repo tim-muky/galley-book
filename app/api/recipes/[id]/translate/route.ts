@@ -54,7 +54,7 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  const language = (userRow as unknown as { translation_language?: string | null })?.translation_language;
+  const language = userRow?.translation_language;
   if (!language) {
     return NextResponse.json({ error: "No translation language set" }, { status: 400 });
   }
@@ -157,7 +157,7 @@ ${JSON.stringify(steps ?? [])}`;
 
   // Upsert translation (overwrite on conflict)
   const { data: translation, error } = await supabase
-    .from("recipe_translations" as never)
+    .from("recipe_translations")
     .upsert(
       {
         recipe_id: id,

@@ -160,7 +160,7 @@ export function SettingsClient({
   async function saveTranslationLanguage() {
     if (!profile) return;
     setSavingLanguage(true);
-    await supabase.from("users").update({ translation_language: translationLanguage || null } as never).eq("id", profile.id);
+    await supabase.from("users").update({ translation_language: translationLanguage || null }).eq("id", profile.id);
     setSavingLanguage(false);
   }
 
