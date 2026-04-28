@@ -39,6 +39,22 @@ is fine and the test set is full of caption-less videos.
 - Perplexity fallback (`youtube_perplexity`) should still find the recipe
   via web search for popular creators.
 
+### Symptom: site returns "Could not extract a recipe from this URL"
+The dispatcher fetched the page directly, fell through to Perplexity, and
+Perplexity also couldn't access it. Three flavours, only one is fixable:
+
+| Pattern | Recognise it by | What to do |
+| --- | --- | --- |
+| **Cloudflare bot challenge** | direct fetch returns 403 with ~6KB body containing `challenge-platform` or `cf_chl_opt` | Nothing client-side works. Richer headers (`Sec-Fetch-*`, `Sec-Ch-Ua`) do not bypass it — verified for fattoincasadabenedetta.it, lacuisinedebernard.com, akispetretzikis.com. Only mitigation is a headless browser or a paid bypass service. |
+| **404 / page moved** | direct fetch returns 404 | URL is dead. Drop it from any test set and re-share the link. |
+| **JSON-LD present but missing Recipe block** | direct fetch returns 200, has JSON-LD, but `@type: Recipe` not found | Working as designed — Perplexity fallback runs and may succeed. If it returns only a summary, the page genuinely doesn't have machine-readable recipe data. |
+
+When a previously-working site starts failing, fetch it locally with curl:
+```bash
+curl -sI -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" "<url>"
+```
+Compare the status + body size to the table above to pick the right bucket.
+
 ### Symptom: lots of `parse_link` failures with "504"
 Perplexity is overloaded. We retry once on 504 (see `fetchViaPerplexity` in
 [`lib/parsers/perplexity.ts`](../lib/parsers/perplexity.ts)) but a second 504
