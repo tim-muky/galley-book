@@ -8,6 +8,7 @@ import { GalleySwitcher } from "@/components/galley-switcher";
 import { LibraryRecipes } from "./library-recipes-client";
 import Image from "next/image";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
+import { escapeLikePattern } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -71,7 +72,7 @@ export default async function LibraryPage({
   }
 
   if (params.search) {
-    recipesQuery = recipesQuery.ilike("name", `%${params.search}%`);
+    recipesQuery = recipesQuery.ilike("name", `%${escapeLikePattern(params.search)}%`);
   }
 
   const galleyIds = memberships.map((m) => m.galley_id);

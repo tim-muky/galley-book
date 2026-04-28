@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 import { fetchAuthor } from "@/lib/oembed";
 import { logger } from "@/lib/logger";
+import { escapeLikePattern } from "@/lib/utils";
 import { z } from "zod";
 
 const IngredientSchema = z.object({
@@ -116,7 +117,7 @@ export async function GET(request: Request) {
   if (filter === "quick") query = query.lte("prep_time", 30);
   else if (["starter", "main", "dessert", "breakfast", "snack", "drink", "side"].includes(filter))
     query = query.eq("type", filter);
-  if (search) query = query.ilike("name", `%${search}%`);
+  if (search) query = query.ilike("name", `%${escapeLikePattern(search)}%`);
 
   const { data: recipes } = await query;
   const hasMore = (recipes?.length ?? 0) > limit;
