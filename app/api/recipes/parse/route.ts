@@ -9,7 +9,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isSafeUrlAsync } from "@/lib/utils/url-validation";
+import { checkUrlSafety } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt } from "@/lib/recipe-prompts";
@@ -52,9 +52,17 @@ export async function POST(request: Request) {
 
   // SSRF guard — reject private IPs, loopback, cloud metadata endpoints,
   // non-HTTP schemes, and any hostname whose DNS resolves to private space
-  // (defends against DNS rebinding).
-  if (!(await isSafeUrlAsync(url.trim()))) {
-    return NextResponse.json({ error: "Invalid or disallowed URL." }, { status: 400 });
+  // (defends against DNS rebinding). Differentiated error for dead domains
+  // so users don't see a misleading "disallowed" message (GAL-178).
+  const safety = await checkUrlSafety(url.trim());
+  if (!safety.ok) {
+    const message =
+      safety.reason === "unresolvable"
+        ? "This URL doesn't resolve. Check that the address is correct and the site is reachable."
+        : safety.reason === "scheme"
+        ? "Only http:// and https:// URLs are supported."
+        : "This URL is not allowed.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const {

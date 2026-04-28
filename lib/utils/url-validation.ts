@@ -79,26 +79,40 @@ export function isSafeUrl(urlString: string): boolean {
  * `fetch()`. For full protection, callers should fetch using a custom HTTP
  * agent that pins resolution to the IP returned here.
  */
-export async function isSafeUrlAsync(urlString: string): Promise<boolean> {
-  if (!isSafeUrl(urlString)) return false;
+export type UrlSafetyResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid" | "scheme" | "private" | "unresolvable" };
 
+export async function checkUrlSafety(urlString: string): Promise<UrlSafetyResult> {
   let url: URL;
   try {
     url = new URL(urlString);
   } catch {
-    return false;
+    return { ok: false, reason: "invalid" };
   }
-  const host = url.hostname.toLowerCase();
 
-  // If the host is a literal IP, isSafeUrl already validated it.
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) return true;
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { ok: false, reason: "scheme" };
+  }
+
+  const host = url.hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.has(host) || isPrivateIp(host)) {
+    return { ok: false, reason: "private" };
+  }
+
+  // Literal IPs already validated above.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) return { ok: true };
 
   try {
     const addresses = await lookup(host, { all: true });
-    if (addresses.length === 0) return false;
-    return addresses.every((a) => !isPrivateIp(a.address));
+    if (addresses.length === 0) return { ok: false, reason: "unresolvable" };
+    if (addresses.some((a) => isPrivateIp(a.address))) return { ok: false, reason: "private" };
+    return { ok: true };
   } catch {
-    // DNS failure — refuse rather than allow
-    return false;
+    return { ok: false, reason: "unresolvable" };
   }
+}
+
+export async function isSafeUrlAsync(urlString: string): Promise<boolean> {
+  return (await checkUrlSafety(urlString)).ok;
 }
