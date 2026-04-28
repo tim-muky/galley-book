@@ -90,7 +90,6 @@ function extractJsonLd(
   }
 
   if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
 
   let urlTokens: string[] = [];
   if (pageUrl) {
@@ -111,6 +110,14 @@ function extractJsonLd(
       bestScore = score;
     }
   }
+
+  // Reject Recipe stubs: some article pages embed @type Recipe with just a
+  // name and image but no actual content. Returning the stub blocks the
+  // Perplexity fallback that would have found the real recipe (GAL-176).
+  const ingredients = Array.isArray(best.recipeIngredient) ? best.recipeIngredient.length : 0;
+  const steps = instructionCount(best.recipeInstructions);
+  if (ingredients < 3 && steps === 0) return null;
+
   return best;
 }
 
@@ -141,7 +148,21 @@ function formatJsonLdForModel(jsonLd: Record<string, unknown>): string {
   }
 
   const instructions = jsonLd.recipeInstructions;
-  if (Array.isArray(instructions) && instructions.length > 0) {
+  if (typeof instructions === "string" && instructions.trim()) {
+    // Many European sites encode the whole method as one string blob — split
+    // on sentence boundaries so Gemini sees discrete steps. Keeping the raw
+    // text as a single line caused 0-step partials (GAL-175).
+    lines.push("\nInstructions:");
+    const sentences = instructions
+      .split(/(?<=[.!?])\s+(?=[A-ZÄÖÜÉÈÀÇÑ])/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (sentences.length > 1) {
+      for (const sentence of sentences) lines.push(`- ${sentence}`);
+    } else {
+      lines.push(`- ${instructions.trim()}`);
+    }
+  } else if (Array.isArray(instructions) && instructions.length > 0) {
     lines.push("\nInstructions:");
     for (const step of instructions) {
       if (typeof step === "string") {
