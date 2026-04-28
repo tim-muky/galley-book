@@ -19,7 +19,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Skip intl routing for paths that never need a locale prefix
+  // Skip intl routing for paths that never need a locale prefix.
+  // /share MUST stay bypassed: Bring!'s server-side parser fetches the canonical
+  // /share/<token> URL and does not follow the locale redirect — removing it
+  // breaks the "Add to Shopping List" button (see GAL-172).
   if (
     pathname.startsWith("/api/") ||
     pathname === "/auth/callback" ||
@@ -28,7 +31,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/impressum") ||
     pathname.startsWith("/datenschutz") ||
     pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms")
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/share")
   ) {
     return updateSession(request);
   }
