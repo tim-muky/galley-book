@@ -82,3 +82,12 @@ body {
 .btn-progress-fill {
   animation: btn-progress 4s ease-out forwards;
 }
+
+/* Veggie scroll behind parse-button progress fill (GAL-194) */
+@keyframes veggie-scroll-lr {
+  from { background-position: 0 50%; }
+  to { background-position: 800px 50%; }
+}
+.veggie-scroll-a {
+  animation: veggie-scroll-lr 12s linear infinite;
+}

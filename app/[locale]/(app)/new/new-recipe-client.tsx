@@ -363,7 +363,19 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
           >
             {parsing && (
-              <span className="btn-progress-fill absolute inset-y-0 left-0 bg-red-800 rounded-full" />
+              <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
+                <span
+                  className="veggie-scroll-a absolute inset-0"
+                  style={{
+                    backgroundImage: "url(/landing-bg.webp)",
+                    backgroundSize: "auto 100%",
+                    backgroundRepeat: "repeat-x",
+                    filter: "grayscale(1)",
+                    opacity: 0.9,
+                  }}
+                />
+                <span className="absolute inset-0 bg-red-800/70" />
+              </span>
             )}
             <span className="relative z-10">{parsing ? t("link.parsing") : t("link.parse")}</span>
           </button>
@@ -438,10 +450,25 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
-                className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: "#dc2626", borderColor: "#dc2626", color: "#fff" }}
+                className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
               >
-                {parsing ? t("photo.parsing") : t("photo.parse")}
+                {parsing && (
+                  <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
+                    <span
+                      className="veggie-scroll-a absolute inset-0"
+                      style={{
+                        backgroundImage: "url(/landing-bg.webp)",
+                        backgroundSize: "auto 100%",
+                        backgroundRepeat: "repeat-x",
+                        filter: "grayscale(1)",
+                        opacity: 0.9,
+                      }}
+                    />
+                    <span className="absolute inset-0 bg-red-800/70" />
+                  </span>
+                )}
+                <span className="relative z-10">{parsing ? t("photo.parsing") : t("photo.parse")}</span>
               </button>
             </div>
           ) : (
@@ -488,10 +515,25 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
-                className="w-full border text-sm font-light py-4 rounded-full transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: "#dc2626", borderColor: "#dc2626", color: "#fff" }}
+                className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
               >
-                {parsing ? t("photo.parsing") : t("photo.parseMultiple", { n: cameraPreviews.length })}
+                {parsing && (
+                  <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
+                    <span
+                      className="veggie-scroll-a absolute inset-0"
+                      style={{
+                        backgroundImage: "url(/landing-bg.webp)",
+                        backgroundSize: "auto 100%",
+                        backgroundRepeat: "repeat-x",
+                        filter: "grayscale(1)",
+                        opacity: 0.9,
+                      }}
+                    />
+                    <span className="absolute inset-0 bg-red-800/70" />
+                  </span>
+                )}
+                <span className="relative z-10">{parsing ? t("photo.parsing") : t("photo.parseMultiple", { n: cameraPreviews.length })}</span>
               </button>
               <button
                 onClick={clearCamera}

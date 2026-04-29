@@ -46,12 +46,13 @@ export function CookNextClient({ initialItems, galleyName, memberNames }: { init
         {galleyName}
       </p>
       <div className="flex items-end justify-between mb-6">
-        <h1 className="text-4xl font-thin text-anthracite">{t("title")}</h1>
+        <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
         {items.length > 0 && (
           <button
             onClick={handleClear}
             disabled={clearing}
-            className="text-xs font-light text-on-surface-variant transition-opacity disabled:opacity-40 active:opacity-70"
+            style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+            className="border text-xs font-light px-4 py-1.5 rounded-full transition-opacity disabled:opacity-40 active:opacity-70"
           >
             {clearing ? t("clearing") : t("clearList")}
           </button>
