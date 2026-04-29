@@ -19,7 +19,7 @@ interface AIUsageParams {
 
 // USD per token
 const PRICING: Record<string, { input: number; output: number }> = {
-  "gemini-2.5-flash": { input: 0.075 / 1_000_000, output: 0.30 / 1_000_000 },
+  "gemini-2.5-flash": { input: 0.30 / 1_000_000, output: 2.50 / 1_000_000 },
   "perplexity-sonar": { input: 1.0 / 1_000_000, output: 1.0 / 1_000_000 },
 };
 
