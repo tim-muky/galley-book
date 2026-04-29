@@ -1,5 +1,11 @@
 /** Use Perplexity to search for recipe content — good for Instagram, JS-heavy pages.
- *  Retries once on 504/timeout — Perplexity is occasionally slow on the first call. */
+ *
+ *  Single attempt, capped at 12s. Earlier this code retried once on 504/timeout
+ *  with two 15s budgets — but that gave a 30s worst case which is exactly the
+ *  Vercel proxy timeout for non-streaming responses on Hobby plans. Result: 504s
+ *  in the user's face instead of a typed "service slow" error. Better to fail
+ *  fast and let the YouTube parser fall through to its other routes (or surface
+ *  a clean 422 to the caller) than to spend 30s producing a 504. See GAL-139. */
 
 type PerplexityKind = "youtube" | "instagram" | "generic";
 
@@ -57,18 +63,9 @@ Return only the raw recipe content, no commentary.`;
 
   let res: Response;
   try {
-    res = await callOnce(15000);
-    // 504 from upstream → one quick retry
-    if (res.status === 504) {
-      res = await callOnce(15000);
-    }
+    res = await callOnce(12000);
   } catch {
-    // First-attempt timeout → one retry
-    try {
-      res = await callOnce(15000);
-    } catch {
-      return "";
-    }
+    return "";
   }
 
   if (!res.ok) return "";
