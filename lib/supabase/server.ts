@@ -1,8 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
+/**
+ * Server-side Supabase client. Authenticates via cookies (web) and falls
+ * back to `Authorization: Bearer <jwt>` when the request carries one
+ * (native iOS app — see galley-book-native/lib/api.ts). The Bearer path is
+ * forwarded through `global.headers` so PostgREST sees the user JWT and RLS
+ * policies apply normally.
+ */
 export async function createClient() {
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  const authHeader = headerStore.get("authorization") ?? headerStore.get("Authorization");
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,6 +31,11 @@ export async function createClient() {
           }
         },
       },
+      // Forward an inbound Bearer token to PostgREST and to auth.getUser(),
+      // so native callers without cookies still authenticate correctly.
+      ...(authHeader?.toLowerCase().startsWith("bearer ")
+        ? { global: { headers: { Authorization: authHeader } } }
+        : {}),
     }
   );
 }
