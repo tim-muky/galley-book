@@ -63,11 +63,12 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(15000),
     }).catch((err) => {
       logger.warn("bring_fetch_threw", {
         recipeId,
         attempt,
+        shareUrl,
         error: err instanceof Error ? err.message : String(err),
       });
       return null;
@@ -76,12 +77,15 @@ export async function POST(request: Request) {
     if (bringRes?.ok) {
       const { deeplink } = (await bringRes.json()) as { deeplink?: string };
       if (deeplink) return NextResponse.json({ deeplink });
-      logger.warn("bring_response_missing_deeplink", { recipeId, attempt });
+      logger.warn("bring_response_missing_deeplink", { recipeId, attempt, shareUrl });
     } else if (bringRes) {
+      const responseBody = await bringRes.text().catch(() => "");
       logger.warn("bring_api_non_ok", {
         recipeId,
         attempt,
+        shareUrl,
         status: bringRes.status,
+        body: responseBody.slice(0, 500),
       });
       // Don't retry on 4xx — that's a request shape problem, not transient.
       if (bringRes.status >= 400 && bringRes.status < 500) break;
