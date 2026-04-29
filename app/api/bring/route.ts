@@ -24,7 +24,9 @@ import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 const BRING_API = "https://api.getbring.com/rest/bringrecipes/deeplink";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.galleybook.com";
+// Trim defensively — a stray leading/trailing space in NEXT_PUBLIC_APP_URL
+// makes Bring's parser fetch ` https://…` (with the space) and 500.
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.galleybook.com").trim();
 
 export async function POST(request: Request) {
   const supabase = await createClient();
