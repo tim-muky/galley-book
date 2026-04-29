@@ -101,7 +101,10 @@ export async function POST(request: Request) {
     }
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as never,
+  });
 
   // For Instagram captions (incl. reels) and TikTok the spoken/written recipe
   // is often thin — short videos in particular don't narrate ingredients. Adding
@@ -159,7 +162,10 @@ export async function POST(request: Request) {
         operation: operationLabel,
         model: "gemini-2.5-flash",
         inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-        outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+        outputTokens:
+          (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+            ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+              ?.thoughtsTokenCount ?? 0) || null,
         durationMs: duration,
         success: false,
       });
@@ -185,7 +191,10 @@ export async function POST(request: Request) {
       operation: operationLabel,
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      outputTokens:
+        (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+          ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+            ?.thoughtsTokenCount ?? 0) || null,
       durationMs: duration,
       success: true,
     });
@@ -196,7 +205,10 @@ export async function POST(request: Request) {
       operation: operationLabel,
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      outputTokens:
+        (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+          ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+            ?.thoughtsTokenCount ?? 0) || null,
       durationMs: duration,
       success: false,
     });

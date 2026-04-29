@@ -58,7 +58,10 @@ export async function POST(request: Request) {
     ? `These ${photos.length} images show a single recipe spread across multiple pages (e.g. a cookbook spread or multiple recipe cards). Combine ALL information from every page and extract the complete recipe. Return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Combine ingredients and steps from all pages in the correct order\n- Extract every ingredient with exact amounts and units\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If none of the images contain a recipe, return { "error": "No recipe found in image" }\n- Return ONLY JSON, no markdown fences, no explanation`
     : `This image shows a recipe. Extract ALL recipe information and return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Extract every ingredient with exact amounts and units visible in the image\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If the image is not a recipe, return { "error": "No recipe found in image" }\n- Return ONLY JSON, no markdown fences, no explanation`;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as never,
+  });
   const t0 = Date.now();
   const result = await model.generateContent([...imageParts, prompt]);
   const duration = Date.now() - t0;
@@ -77,7 +80,10 @@ export async function POST(request: Request) {
         operation: "parse_image",
         model: "gemini-2.5-flash",
         inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-        outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+        outputTokens:
+          (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+            ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+              ?.thoughtsTokenCount ?? 0) || null,
         durationMs: duration,
         success: false,
       });
@@ -89,7 +95,10 @@ export async function POST(request: Request) {
       operation: "parse_image",
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      outputTokens:
+        (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+          ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+            ?.thoughtsTokenCount ?? 0) || null,
       durationMs: duration,
       success: true,
     });
@@ -100,7 +109,10 @@ export async function POST(request: Request) {
       operation: "parse_image",
       model: "gemini-2.5-flash",
       inputTokens: result.response.usageMetadata?.promptTokenCount ?? null,
-      outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? null,
+      outputTokens:
+        (result.response.usageMetadata?.candidatesTokenCount ?? 0) +
+          ((result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+            ?.thoughtsTokenCount ?? 0) || null,
       durationMs: duration,
       success: false,
     });

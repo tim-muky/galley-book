@@ -121,12 +121,19 @@ ${JSON.stringify(ingredients ?? [])}
 Steps:
 ${JSON.stringify(steps ?? [])}`;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as never,
+  });
   const t0 = Date.now();
   const result = await model.generateContent(prompt);
   const durationMs = Date.now() - t0;
   const inputTokens = result.response.usageMetadata?.promptTokenCount ?? null;
-  const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? null;
+  const candidatesTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
+  const thoughtsTokens =
+    (result.response.usageMetadata as { thoughtsTokenCount?: number } | undefined)
+      ?.thoughtsTokenCount ?? 0;
+  const outputTokens = candidatesTokens + thoughtsTokens || null;
   const text = result.response.text().trim();
 
   let parsed: {
