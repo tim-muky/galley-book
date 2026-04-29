@@ -90,6 +90,39 @@ export default async function UsersPage() {
 
   const now = new Date();
 
+  // Build last 30 days (oldest → newest) for the two charts
+  const days: string[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setUTCHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const dayKey = (iso: string) => iso.slice(0, 10);
+
+  // Daily active users — distinct users who created a recipe or cast a vote that day
+  const dauSets = new Map<string, Set<string>>(days.map((d) => [d, new Set()]));
+  for (const r of recipes) {
+    if (!r.created_by) continue;
+    const k = dayKey(r.created_at);
+    dauSets.get(k)?.add(r.created_by);
+  }
+  for (const v of votes) {
+    const k = dayKey(v.created_at);
+    dauSets.get(k)?.add(v.user_id);
+  }
+  const dauSeries = days.map((d) => ({ day: d, value: dauSets.get(d)!.size }));
+  const maxDau = Math.max(1, ...dauSeries.map((p) => p.value));
+
+  // New users per day — bucketed signups
+  const signupCounts = new Map<string, number>(days.map((d) => [d, 0]));
+  for (const u of users) {
+    const k = dayKey(u.created_at);
+    if (signupCounts.has(k)) signupCounts.set(k, signupCounts.get(k)! + 1);
+  }
+  const newUserSeries = days.map((d) => ({ day: d, value: signupCounts.get(d) ?? 0 }));
+  const maxNew = Math.max(1, ...newUserSeries.map((p) => p.value));
+
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
   }
@@ -119,6 +152,22 @@ export default async function UsersPage() {
       <p className="text-xs font-light text-on-surface-variant mb-8">
         {users.length} {users.length === 1 ? "member" : "members"}
       </p>
+
+      {/* Activity charts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <DailyChart
+          title="Daily active users — last 30 days"
+          series={dauSeries}
+          max={maxDau}
+          color="#7FB76C"
+        />
+        <DailyChart
+          title="New users per day — last 30 days"
+          series={newUserSeries}
+          max={maxNew}
+          color="#D54CB1"
+        />
+      </div>
 
       {/* User table */}
       <div className="bg-white rounded-md shadow-ambient overflow-hidden mb-6">
@@ -236,6 +285,46 @@ export default async function UsersPage() {
             ))}
           </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+function DailyChart({
+  title,
+  series,
+  max,
+  color,
+}: {
+  title: string;
+  series: { day: string; value: number }[];
+  max: number;
+  color: string;
+}) {
+  const total = series.reduce((s, p) => s + p.value, 0);
+  return (
+    <div className="bg-white rounded-md p-4 shadow-ambient">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1">
+        {title}
+      </p>
+      <p className="text-2xl font-thin text-anthracite mb-4">{total}</p>
+      <div className="flex items-end gap-[3px]" style={{ height: "80px" }}>
+        {series.map(({ day, value }) => {
+          const barPx = value > 0 ? Math.max((value / max) * 80, 3) : 0;
+          return (
+            <div
+              key={day}
+              className="flex-1 rounded-[1px]"
+              style={{
+                height: `${barPx}px`,
+                backgroundColor: value > 0 ? color : undefined,
+              }}
+              title={`${day} · ${value}`}
+            >
+              {value === 0 && <div className="w-full h-full bg-surface-low rounded-[1px]" />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
