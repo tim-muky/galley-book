@@ -155,7 +155,7 @@ export default async function AICostPage() {
                     className="flex-shrink-0"
                     style={{
                       height: `${(costs.recommendation / total) * 100}%`,
-                      backgroundColor: "#D1D5DB",
+                      backgroundColor: "#DFB3EA",
                     }}
                   />
                 )}
@@ -164,7 +164,7 @@ export default async function AICostPage() {
                     className="flex-shrink-0"
                     style={{
                       height: `${(costs.parse_image / total) * 100}%`,
-                      backgroundColor: "#6B7280",
+                      backgroundColor: "#D54CB1",
                     }}
                   />
                 )}
@@ -173,7 +173,7 @@ export default async function AICostPage() {
                     className="flex-shrink-0"
                     style={{
                       height: `${(costs.parse_link / total) * 100}%`,
-                      backgroundColor: "#252729",
+                      backgroundColor: "#7FB76C",
                     }}
                   />
                 )}
@@ -184,9 +184,9 @@ export default async function AICostPage() {
         </div>
         <div className="flex gap-4 mt-3">
           {[
-            { color: "#252729", label: "Link parse" },
-            { color: "#6B7280", label: "Image parse" },
-            { color: "#D1D5DB", label: "Recommend" },
+            { color: "#7FB76C", label: "Link parse" },
+            { color: "#D54CB1", label: "Image parse" },
+            { color: "#DFB3EA", label: "Recommend" },
           ].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
@@ -299,8 +299,8 @@ function BreakdownCard({
               </div>
               <div className="h-1 bg-surface-low rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-anthracite rounded-full transition-all"
-                  style={{ width: `${(value / max) * 100}%` }}
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${(value / max) * 100}%`, backgroundColor: "#7FB76C" }}
                 />
               </div>
             </div>
