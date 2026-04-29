@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { FetchResult, ImageSource, ParsedVia } from "./types";
+import type { FetchResult, ImageSource, ParsedVia, ParseDiagnostics } from "./types";
 import { firstUsable } from "./utils";
 import { fetchViaPerplexity } from "./perplexity";
 
@@ -285,10 +285,12 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
   // to avoid Gemini video analysis timeout blowing the maxDuration budget.
   if (!extractYouTubeVideoId(url)) {
     if (process.env.PERPLEXITY_API_KEY) {
+      const t = Date.now();
       const content = await fetchViaPerplexity(url, {
         kind: "youtube",
         canonicalUrl: canonicalYouTubeUrl(url),
       });
+      const perplexityMs = Date.now() - t;
       if (content.length > 200 && !content.startsWith("Unable to find recipe")) {
         return {
           content,
@@ -296,6 +298,10 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
           imageCandidates: [],
           parsedVia: "youtube_perplexity",
           imageSource: "none",
+          diagnostics: {
+            latencyMs: { perplexity: perplexityMs },
+            routeWinner: "youtube_perplexity",
+          },
         };
       }
     }
@@ -309,13 +315,43 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
   }
 
   // Fetch thumbnails, watch-page meta, and transcript in parallel — cheapest first wins.
-  const [thumbnails, watchMeta, transcript] = await Promise.all([
-    extractYouTubeThumbnails(url),
-    fetchYouTubeWatchPageMeta(url),
-    fetchYouTubeTranscript(url),
+  // Track per-leg latency so we can tell which is the slow path in production.
+  const t0 = Date.now();
+  const [thumbnailsR, watchMetaR, transcriptR] = await Promise.all([
+    timed(extractYouTubeThumbnails(url)),
+    timed(fetchYouTubeWatchPageMeta(url)),
+    timed(fetchYouTubeTranscript(url)),
   ]);
+  const thumbnails = thumbnailsR.value;
+  const watchMeta = watchMetaR.value;
+  const transcript = transcriptR.value;
   const imageUrl = thumbnails[0] ?? null;
   const imageSource: ImageSource = imageUrl ? "youtube_thumbnail" : "none";
+
+  const descriptionLength = watchMeta?.description?.length ?? 0;
+  const transcriptLength = transcript?.length ?? 0;
+  const looksLikeRecipe =
+    watchMeta?.description ? descriptionLooksLikeRecipe(watchMeta.description) : null;
+
+  // Single structured log per parse — Vercel/Drains pick this up. Keeps the
+  // GAL-139 test harness honest about which route fell through and why.
+  console.info(
+    `[parseYouTube] ${canonicalYouTubeUrl(url)} desc=${descriptionLength}` +
+      ` looksLikeRecipe=${looksLikeRecipe} transcript=${transcriptLength}` +
+      ` thumbs=${thumbnailsR.ms}ms meta=${watchMetaR.ms}ms tx=${transcriptR.ms}ms` +
+      ` total=${Date.now() - t0}ms`
+  );
+
+  const baseDiagnostics: ParseDiagnostics = {
+    descriptionLength,
+    descriptionLooksLikeRecipe: looksLikeRecipe,
+    transcriptLength,
+    latencyMs: {
+      description: watchMetaR.ms,
+      transcript: transcriptR.ms,
+      thumbnails: thumbnailsR.ms,
+    },
+  };
 
   // Route 1: watch-page description — many recipe creators post the full recipe here.
   // Fast (~1s), free, deterministic — by far the best signal when present.
@@ -327,6 +363,7 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
       imageCandidates: thumbnails,
       parsedVia: "youtube_description",
       imageSource,
+      diagnostics: { ...baseDiagnostics, routeWinner: "youtube_description" },
     };
   }
 
@@ -340,6 +377,7 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
       imageCandidates: thumbnails,
       parsedVia: "youtube_transcript",
       imageSource,
+      diagnostics: { ...baseDiagnostics, routeWinner: "youtube_transcript" },
     };
   }
 
@@ -351,20 +389,31 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
   const titleLine = watchMeta?.title ? `Title: ${watchMeta.title}\n\n` : "";
   const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
 
-  const videoPromise: Promise<{ via: ParsedVia; content: string } | null> =
+  const tVideo = Date.now();
+  const videoPromise: Promise<{ via: ParsedVia; content: string; ms: number } | null> =
     analyzeYouTubeVideoWithGemini(canonicalYouTubeUrl(url))
-      .then((c) => (c.length > 200 ? { via: "youtube_video" as ParsedVia, content: c } : null))
+      .then((c) =>
+        c.length > 200
+          ? { via: "youtube_video" as ParsedVia, content: c, ms: Date.now() - tVideo }
+          : null
+      )
       .catch(() => null);
 
-  const perplexityPromise: Promise<{ via: ParsedVia; content: string } | null> = hasPerplexity
-    ? fetchViaPerplexity(url, { kind: "youtube", canonicalUrl: canonicalYouTubeUrl(url) })
-        .then((c) =>
-          c.length > 200 && !c.startsWith("Unable to find recipe")
-            ? { via: "youtube_perplexity" as ParsedVia, content: `${titleLine}${c}` }
-            : null
-        )
-        .catch(() => null)
-    : Promise.resolve(null);
+  const tPerp = Date.now();
+  const perplexityPromise: Promise<{ via: ParsedVia; content: string; ms: number } | null> =
+    hasPerplexity
+      ? fetchViaPerplexity(url, { kind: "youtube", canonicalUrl: canonicalYouTubeUrl(url) })
+          .then((c) =>
+            c.length > 200 && !c.startsWith("Unable to find recipe")
+              ? {
+                  via: "youtube_perplexity" as ParsedVia,
+                  content: `${titleLine}${c}`,
+                  ms: Date.now() - tPerp,
+                }
+              : null
+          )
+          .catch(() => null)
+      : Promise.resolve(null);
 
   const winner = await firstUsable([videoPromise, perplexityPromise]);
   if (winner) {
@@ -374,6 +423,16 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
       imageCandidates: thumbnails,
       parsedVia: winner.via,
       imageSource,
+      diagnostics: {
+        ...baseDiagnostics,
+        routeWinner: winner.via,
+        latencyMs: {
+          ...baseDiagnostics.latencyMs,
+          ...(winner.via === "youtube_video"
+            ? { geminiVideo: winner.ms }
+            : { perplexity: winner.ms }),
+        },
+      },
     };
   }
 
@@ -383,7 +442,15 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
     imageCandidates: thumbnails,
     parsedVia: "none",
     imageSource,
+    diagnostics: baseDiagnostics,
     error:
       "Could not extract a recipe from this YouTube video. The description has no recipe text and the video has no usable captions. Try pasting the recipe manually.",
   };
+}
+
+/** Wraps a promise to also report its wall-clock latency. */
+async function timed<T>(p: Promise<T>): Promise<{ value: T; ms: number }> {
+  const t = Date.now();
+  const value = await p;
+  return { value, ms: Date.now() - t };
 }

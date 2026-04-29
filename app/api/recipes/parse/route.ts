@@ -72,10 +72,14 @@ export async function POST(request: Request) {
     parsedVia,
     imageSource,
     error: fetchError,
+    diagnostics,
   } = await fetchPageContent(url);
 
   if (fetchError) {
-    return NextResponse.json({ error: fetchError }, { status: 422 });
+    return NextResponse.json(
+      diagnostics ? { error: fetchError, _diagnostics: diagnostics } : { error: fetchError },
+      { status: 422 }
+    );
   }
 
   if (!pageContent?.trim()) {
@@ -140,10 +144,15 @@ export async function POST(request: Request) {
       parsedVia === "youtube_perplexity" ||
       parsedVia === "instagram_perplexity" ||
       parsedVia === "perplexity";
-    const hasNoRecipeContent =
-      !parsed.name &&
-      (!Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0) &&
-      (!Array.isArray(parsed.steps) || parsed.steps.length === 0);
+    // Tightened guard (GAL-139): a Perplexity-route response is "empty" if the
+    // recipe name is missing OR both ingredients and steps are empty. Earlier
+    // we required all three to be empty, which let thumbnail-only responses
+    // through and dumped a blank form on the user. A name with no body is
+    // never a usable recipe, so reject early.
+    const ingredientsEmpty =
+      !Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0;
+    const stepsEmpty = !Array.isArray(parsed.steps) || parsed.steps.length === 0;
+    const hasNoRecipeContent = !parsed.name || (ingredientsEmpty && stepsEmpty);
     if (isPerplexityRoute && hasNoRecipeContent) {
       await logAIUsage({
         userId: user.id,
@@ -158,6 +167,7 @@ export async function POST(request: Request) {
         {
           error:
             "Could not extract a recipe from this URL. Web search returned only a summary, not the actual recipe. Try pasting it manually.",
+          ...(diagnostics ? { _diagnostics: diagnostics } : {}),
         },
         { status: 422 }
       );
@@ -169,6 +179,7 @@ export async function POST(request: Request) {
     parsed.image_candidates = imageCandidates;
     parsed.parsed_via = parsedVia;
     parsed.image_source = imageSource;
+    if (diagnostics) parsed._diagnostics = diagnostics;
     await logAIUsage({
       userId: user.id,
       operation: operationLabel,
