@@ -38,8 +38,28 @@ export async function POST(request: Request) {
     serviceClient.from("users").select("id").eq("email", email.trim().toLowerCase()).single(),
   ]);
 
+  const lowerEmail = email.trim().toLowerCase();
+
   if (!invitee) {
-    return NextResponse.json({ error: "User not found. They need to sign up first." }, { status: 404 });
+    // Queue a pending invite — the trigger redeems it when they first sign in.
+    const { error: pendingErr } = await supabase
+      .from("pending_galley_invites")
+      .upsert(
+        { galley_id: galleyId, email: lowerEmail, inviter_id: user.id },
+        { onConflict: "galley_id,email" }
+      );
+    if (pendingErr) {
+      return NextResponse.json({ error: pendingErr.message }, { status: 500 });
+    }
+
+    sendGalleyInvite({
+      inviterName: inviterUser?.name ?? "Someone",
+      galleyName: galley?.name ?? "a galley",
+      inviteUrl: "https://app.galleybook.com/auth/login",
+      toEmail: lowerEmail,
+    }).catch(() => {});
+
+    return NextResponse.json({ success: true, pending: true }, { status: 201 });
   }
 
   // Check if already a member
@@ -63,13 +83,12 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Send invite notification — fire and forget, don't block the response
   sendGalleyInvite({
     inviterName: inviterUser?.name ?? "Someone",
     galleyName: galley?.name ?? "a galley",
     inviteUrl: "https://app.galleybook.com/library",
-    toEmail: email.trim().toLowerCase(),
+    toEmail: lowerEmail,
   }).catch(() => {});
 
-  return NextResponse.json({ success: true }, { status: 201 });
+  return NextResponse.json({ success: true, pending: false }, { status: 201 });
 }
