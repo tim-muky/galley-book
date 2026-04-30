@@ -23,8 +23,11 @@ export async function proxy(request: NextRequest) {
   // /share MUST stay bypassed: Bring!'s server-side parser fetches the canonical
   // /share/<token> URL and does not follow the locale redirect — removing it
   // breaks the "Add to Shopping List" button (see GAL-172).
+  // /.well-known MUST stay bypassed: Apple's AASA fetcher demands the exact
+  // canonical URL and does not follow locale redirects.
   if (
     pathname.startsWith("/api/") ||
+    pathname.startsWith("/.well-known/") ||
     pathname === "/auth/callback" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/admin") ||
