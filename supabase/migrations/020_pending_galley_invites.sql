@@ -1,10 +1,13 @@
 -- Lets a galley owner invite an email that doesn't have a Galley Book
 -- account yet. The invite is queued in pending_galley_invites and
 -- consumed automatically the first time the invitee signs in (handled
--- in app/auth/callback/route.ts and the native sign-in flow).
+-- by an AFTER INSERT trigger on public.users).
 --
 -- Reported on 2026-04-30 device review — see GAL-220 for the full
 -- product rationale.
+--
+-- Note: written idempotently (drop-if-exists before each create policy)
+-- so partial reapplies don't fail with 42710 "policy already exists".
 
 create table if not exists public.pending_galley_invites (
   id          uuid primary key default gen_random_uuid(),
@@ -20,6 +23,10 @@ create index if not exists idx_pending_galley_invites_email
   on public.pending_galley_invites (lower(email));
 
 alter table public.pending_galley_invites enable row level security;
+
+drop policy if exists "galley_members_read_pending_invites"   on public.pending_galley_invites;
+drop policy if exists "galley_members_insert_pending_invites" on public.pending_galley_invites;
+drop policy if exists "galley_members_delete_pending_invites" on public.pending_galley_invites;
 
 -- Galley members can read pending invites for their galley
 create policy "galley_members_read_pending_invites"
