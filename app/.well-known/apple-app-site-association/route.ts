@@ -25,7 +25,12 @@ export async function GET() {
         {
           appID,
           appIDs: teamId ? [appID] : undefined,
-          paths: ["/join/*", "/share/*"],
+          // /share/* intentionally absent: clicking a share URL on a phone
+          // with the app installed should fall through to the web share
+          // page, where the recipe renders without needing a native
+          // RecipeDetail navigation flow that handles non-member galleys.
+          // Re-add once GAL-221 ships native /share/:token handling.
+          paths: ["/join/*"],
         },
       ],
     },

@@ -110,11 +110,20 @@ export async function DELETE() {
     }
   }
 
+  // Null out attribution that doesn't have ON DELETE handling (defensive —
+  // migration 021 should have covered this but a stale schema would
+  // otherwise blow up the cascade).
+  await service.from("recipe_translations").update({ translated_by: null }).eq("translated_by", userId);
+
   // 5. Delete the auth user — cascades to public.users → galleys → everything else
   const { error: deleteError } = await service.auth.admin.deleteUser(userId);
 
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    console.error("[account/delete]", { userId, message: deleteError.message, status: deleteError.status });
+    return NextResponse.json(
+      { error: `${deleteError.message} (status ${deleteError.status ?? "unknown"})` },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ success: true });
