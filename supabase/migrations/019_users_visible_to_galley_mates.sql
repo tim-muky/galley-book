@@ -11,6 +11,7 @@
 -- The original "users can read own profile" policy stays — this one is
 -- additive (Postgres RLS is OR across policies of the same command).
 
+drop policy if exists "users_readable_to_galley_mates" on public.users;
 create policy "users_readable_to_galley_mates"
   on public.users
   for select
