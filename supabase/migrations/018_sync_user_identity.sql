@@ -12,8 +12,12 @@
 --   2. Replaces handle_new_user so it writes both name and avatar_url
 --      with a sensible coalesce ladder.
 --   3. Adds an AFTER UPDATE trigger so subsequent metadata changes from
---      Google flow through to public.users. Like the insert trigger,
---      only fills nulls / refreshes when the metadata actually changed.
+--      Google flow through to public.users.
+--
+-- Note: each function uses a uniquely tagged dollar-quote ($func_new$,
+-- $func_upd$) instead of bare $$. The Supabase dashboard SQL editor
+-- splits on `;` without tracking dollar-quote scope, so two functions
+-- in one script with bare $$ would confuse it.
 
 -- ----------------------------------------------------------------------
 -- 1. Backfill existing rows
@@ -38,7 +42,7 @@ where a.id = u.id
 -- 2. Replace insert handler with broader coalesce ladder
 -- ----------------------------------------------------------------------
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $func_new$
 begin
   insert into public.users (id, email, name, avatar_url)
   values (
@@ -57,13 +61,13 @@ begin
   on conflict (id) do nothing;
   return new;
 end;
-$$;
+$func_new$;
 
 -- ----------------------------------------------------------------------
 -- 3. UPDATE trigger so identity changes propagate
 -- ----------------------------------------------------------------------
 create or replace function public.handle_user_metadata_update()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $func_upd$
 begin
   update public.users
   set
@@ -80,7 +84,7 @@ begin
   where id = new.id;
   return new;
 end;
-$$;
+$func_upd$;
 
 drop trigger if exists on_auth_user_metadata_updated on auth.users;
 create trigger on_auth_user_metadata_updated
