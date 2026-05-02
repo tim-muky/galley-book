@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 
-// The icon from the reference: a "C" arc (circle open on the right) with a + inside.
-// Active (in list) = anthracite fill, white icon. Inactive = frosted white, anthracite icon.
 function CookNextIcon({ color = "#252729" }: { color?: string }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      {/* C-arc: starts upper-right, goes counter-clockwise through left, ends lower-right */}
+    <svg width="15" height="15" viewBox="0 0 22 22" fill="none">
       <path
-        d="M11 2.7A5.5 5.5 0 1 0 11 12.3"
+        d="M7.5 2.5c-1 1.3 1 2.4 0 3.7M11 2.5c-1 1.3 1 2.4 0 3.7M14.5 2.5c-1 1.3 1 2.4 0 3.7"
         stroke={color}
         strokeWidth="1.5"
         strokeLinecap="round"
       />
-      {/* Plus sign */}
       <path
-        d="M7.5 5v5M5 7.5h5"
+        d="M2.5 8.5h17"
         stroke={color}
         strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.75 8.5 5 17.25c0.18 1.27 1.27 2.25 2.55 2.25h6.9c1.28 0 2.37-0.98 2.55-2.25L18.25 8.5"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
         strokeLinecap="round"
       />
     </svg>
