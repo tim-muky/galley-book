@@ -17,7 +17,7 @@ export default async function EditRecipePage({
 
   const { data: recipe } = await supabase
     .from("recipes")
-    .select(`*, ingredients(*), preparation_steps(*), recipe_photos(*)`)
+    .select(`*, ingredients(*), preparation_steps(*), recipe_photos(*), recipe_tags(*)`)
     .eq("id", id)
     .single();
 

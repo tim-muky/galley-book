@@ -46,7 +46,7 @@ export default async function RecipeDetailPage({
   const [{ data: recipe }, { data: cookNextRow }, { data: userRow }, { data: voteSummary }, { data: userVoteRow }] = await Promise.all([
     supabase
       .from("recipes")
-      .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*)`)
+      .select(`*, recipe_photos(*), ingredients(*), preparation_steps(*), recipe_tags(*)`)
       .eq("id", id)
       .single(),
     membership?.galley_id

@@ -26,6 +26,8 @@ const RECIPE_SCHEMA = `{
   "prep_time": number (in minutes),
   "season": "all_year" | "spring" | "summer" | "autumn" | "winter",
   "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side",
+  "cuisine": "string | null (single cuisine label, lowercase, e.g. 'italian', 'thai', 'levantine'; null if not clearly inferable)",
+  "main_ingredients": ["string", ... 1–3 dominant ingredients, lowercase, singular, e.g. 'chicken', 'fennel', 'chickpea'],
   "image_url": "string | null (direct image URL if found)",
   "ingredients": [{ "name": "string", "amount": number | null, "unit": "string | null", "group": "string | null" }],
   "steps": [{ "instruction": "string" }]
@@ -37,6 +39,8 @@ const COMMON_RULES = `Common rules:
 - prep_time: total active + passive cooking time in minutes
 - season: infer from dish characteristics if not stated
 - type: infer from dish if not stated (default "main")
+- cuisine: a single short lowercase label naming the regional/national cuisine (e.g. "italian", "japanese", "moroccan", "tex-mex"); null if the dish is not clearly tied to a cuisine
+- main_ingredients: 1–3 dominant ingredients only — what the dish is "about" (e.g. for "chicken tikka masala" → ["chicken"]; for "fennel & orange salad" → ["fennel", "orange"]). Lowercase, singular, no quantities, no descriptors
 - ingredients.group: if ingredients are divided into sections (e.g. "Marinade", "Sauce", "Dressing"), set group to the section name; otherwise null
 - Return null for fields you cannot determine
 - Return ONLY JSON, no markdown, no explanation`;

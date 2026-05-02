@@ -13,9 +13,14 @@ const RECIPE_SCHEMA = `{
   "prep_time": number (total minutes),
   "season": "all_year" | "spring" | "summer" | "autumn" | "winter",
   "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side",
+  "cuisine": "string | null (single cuisine label, lowercase, e.g. 'italian', 'thai', 'levantine'; null if not clearly inferable)",
+  "main_ingredients": ["string", ... 1–3 dominant ingredients, lowercase, singular, e.g. 'chicken', 'fennel', 'chickpea'],
   "ingredients": [{ "name": "string", "amount": number | null, "unit": "string | null" }],
   "steps": [{ "instruction": "string" }]
 }`;
+
+const TAG_RULES = `- cuisine: a single short lowercase label naming the regional/national cuisine (e.g. "italian", "japanese", "moroccan"); null if the dish is not clearly tied to a cuisine
+- main_ingredients: 1–3 dominant ingredients only — what the dish is "about". Lowercase, singular, no quantities, no descriptors`;
 
 export async function POST(request: Request) {
   if (!process.env.GOOGLE_AI_API_KEY) {
@@ -55,8 +60,8 @@ export async function POST(request: Request) {
   );
 
   const prompt = photos.length > 1
-    ? `These ${photos.length} images show a single recipe spread across multiple pages (e.g. a cookbook spread or multiple recipe cards). Combine ALL information from every page and extract the complete recipe. Return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Combine ingredients and steps from all pages in the correct order\n- Extract every ingredient with exact amounts and units\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If none of the images contain a recipe, return { "error": "No recipe found in image" }\n- Return ONLY JSON, no markdown fences, no explanation`
-    : `This image shows a recipe. Extract ALL recipe information and return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Extract every ingredient with exact amounts and units visible in the image\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If the image is not a recipe, return { "error": "No recipe found in image" }\n- Return ONLY JSON, no markdown fences, no explanation`;
+    ? `These ${photos.length} images show a single recipe spread across multiple pages (e.g. a cookbook spread or multiple recipe cards). Combine ALL information from every page and extract the complete recipe. Return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Combine ingredients and steps from all pages in the correct order\n- Extract every ingredient with exact amounts and units\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If none of the images contain a recipe, return { "error": "No recipe found in image" }\n${TAG_RULES}\n- Return ONLY JSON, no markdown fences, no explanation`
+    : `This image shows a recipe. Extract ALL recipe information and return ONLY valid JSON matching this schema:\n${RECIPE_SCHEMA}\n\nRules:\n- Extract every ingredient with exact amounts and units visible in the image\n- Convert fractions to decimals (½ → 0.5, ¼ → 0.25)\n- Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null\n- prep_time: total time in minutes (combine prep + cooking if both shown)\n- If the image is not a recipe, return { "error": "No recipe found in image" }\n${TAG_RULES}\n- Return ONLY JSON, no markdown fences, no explanation`;
 
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",

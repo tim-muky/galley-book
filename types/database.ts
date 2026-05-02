@@ -429,6 +429,38 @@ export type Database = {
           },
         ]
       }
+      recipe_tags: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["tag_kind"]
+          recipe_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["tag_kind"]
+          recipe_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["tag_kind"]
+          recipe_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_tags_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_translations: {
         Row: {
           created_at: string | null
@@ -709,7 +741,7 @@ export type Database = {
         Returns: string
       }
       create_recipe_with_children: {
-        Args: { p_ingredients: Json; p_recipe: Json; p_steps: Json }
+        Args: { p_ingredients: Json; p_recipe: Json; p_steps: Json; p_tags?: Json }
         Returns: string
       }
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
@@ -727,6 +759,7 @@ export type Database = {
         | "drink"
         | "side"
       source_type: "instagram" | "youtube" | "website" | "tiktok"
+      tag_kind: "cuisine" | "type" | "season" | "ingredient"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -866,6 +899,7 @@ export const Constants = {
         "side",
       ],
       source_type: ["instagram", "youtube", "website", "tiktok"],
+      tag_kind: ["cuisine", "type", "season", "ingredient"],
     },
   },
 } as const
@@ -877,6 +911,9 @@ export type RecipeType = Database["public"]["Enums"]["recipe_type"];
 export type GalleyRole = Database["public"]["Enums"]["galley_role"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
+
+export type TagKind = Database["public"]["Enums"]["tag_kind"];
+export type RecipeTag = Database["public"]["Tables"]["recipe_tags"]["Row"];
 
 export type Recipe = Database["public"]["Tables"]["recipes"]["Row"];
 export type Ingredient = Database["public"]["Tables"]["ingredients"]["Row"];

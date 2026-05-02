@@ -17,6 +17,11 @@ const StepSchema = z.object({
   instruction: z.string().min(1).max(3000),
 });
 
+const TagSchema = z.object({
+  kind: z.enum(["cuisine", "type", "season", "ingredient"]),
+  value: z.string().min(1).max(120),
+});
+
 const RecipeCreateSchema = z.object({
   name: z.string().min(1).max(300),
   description: z.string().max(2000).optional().nullable(),
@@ -24,12 +29,49 @@ const RecipeCreateSchema = z.object({
   prep_time: z.number().int().min(0).max(10080).optional().nullable(),
   season: z.enum(["spring", "summer", "autumn", "winter", "all_year"]).optional(),
   type: z.enum(["starter", "main", "dessert", "breakfast", "snack", "drink", "side"]).optional().nullable(),
+  cuisine: z.string().max(120).optional().nullable(),
+  main_ingredients: z.array(z.string().max(120)).max(10).optional().default([]),
+  tags: z.array(TagSchema).max(40).optional().default([]),
   source_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
   image_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
   ingredients: z.array(IngredientSchema).max(100).default([]),
   steps: z.array(StepSchema).max(50).default([]),
   galleyId: z.string().uuid().optional().nullable(),
 });
+
+type TagKind = "cuisine" | "type" | "season" | "ingredient";
+
+/**
+ * Build the unified tag list from parsed AI fields + any user-edited overrides.
+ * Lowercases + trims values; dedupes on (kind, value); skips blanks. season=all_year
+ * is intentionally not stored as a tag (it's the "no preference" sentinel).
+ */
+function buildTags(input: {
+  cuisine?: string | null;
+  type?: string | null;
+  season?: string;
+  main_ingredients?: string[];
+  tags?: { kind: TagKind; value: string }[];
+}): { kind: TagKind; value: string }[] {
+  const collected: { kind: TagKind; value: string }[] = [];
+  if (input.cuisine) collected.push({ kind: "cuisine", value: input.cuisine });
+  if (input.type) collected.push({ kind: "type", value: input.type });
+  if (input.season && input.season !== "all_year") collected.push({ kind: "season", value: input.season });
+  for (const v of input.main_ingredients ?? []) collected.push({ kind: "ingredient", value: v });
+  for (const t of input.tags ?? []) collected.push({ kind: t.kind, value: t.value });
+
+  const seen = new Set<string>();
+  const out: { kind: TagKind; value: string }[] = [];
+  for (const t of collected) {
+    const value = t.value.trim().toLowerCase();
+    if (!value) continue;
+    const key = `${t.kind}::${value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ kind: t.kind, value });
+  }
+  return out;
+}
 
 type SourceEntry = { sourceType: string; handleOrName: string; normalizedUrl: string };
 
@@ -107,7 +149,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("recipes")
-    .select("*, recipe_photos(*)")
+    .select("*, recipe_photos(*), recipe_tags(*)")
     .eq("galley_id", galleyId)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false })
@@ -145,7 +187,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { name, description, servings, prep_time, season, type, source_url, image_url, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
+  const { name, description, servings, prep_time, season, type, cuisine, main_ingredients, tags, source_url, image_url, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
 
   // Resolve galley: explicit selection → default → oldest
   let resolvedGalleyId: string;
@@ -197,7 +239,9 @@ export async function POST(request: Request) {
       instruction: s.instruction.trim(),
     }));
 
-  // Single atomic RPC: recipe + ingredients + steps in one transaction.
+  const tagRows = buildTags({ cuisine, type, season, main_ingredients, tags });
+
+  // Single atomic RPC: recipe + ingredients + steps + tags in one transaction.
   const { data: newRecipeId, error: rpcError } = await supabase.rpc(
     "create_recipe_with_children",
     {
@@ -213,6 +257,7 @@ export async function POST(request: Request) {
       },
       p_ingredients: validIngredients,
       p_steps: validSteps,
+      p_tags: tagRows,
     }
   );
 
@@ -250,7 +295,7 @@ export async function POST(request: Request) {
         image_url.includes("cdninstagram.com") || image_url.includes("fbcdn.net");
       const imgRes = await fetch(image_url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)",
+          "User-Agent": "Mozilla/5.0 (compatible; galleybook/1.0; +https://galleybook.com)",
           ...(isInstagramCdn ? { Referer: "https://www.instagram.com/" } : {}),
         },
         signal: AbortSignal.timeout(12000),

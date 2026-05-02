@@ -43,7 +43,7 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { ingredients, steps, ...recipeFields } = body;
+  const { ingredients, steps, tags, ...recipeFields } = body;
 
   // Update recipe fields
   const { error } = await supabase
@@ -61,7 +61,7 @@ export async function PUT(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Replace ingredients and steps in parallel — independent tables
+  // Replace ingredients, steps and tags in parallel — independent tables
   await Promise.all([
     (async () => {
       if (ingredients === undefined) return;
@@ -89,6 +89,23 @@ export async function PUT(
           instruction: s.instruction.trim(),
         }));
       if (valid.length > 0) await supabase.from("preparation_steps").insert(valid);
+    })(),
+    (async () => {
+      if (tags === undefined) return;
+      await supabase.from("recipe_tags").delete().eq("recipe_id", id);
+      const allowedKinds = new Set(["cuisine", "type", "season", "ingredient"]);
+      const seen = new Set<string>();
+      const valid: { recipe_id: string; kind: string; value: string }[] = [];
+      for (const t of tags as { kind?: string; value?: string }[]) {
+        if (!t?.kind || !allowedKinds.has(t.kind)) continue;
+        const value = (t.value ?? "").trim().toLowerCase();
+        if (!value) continue;
+        const key = `${t.kind}::${value}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        valid.push({ recipe_id: id, kind: t.kind, value });
+      }
+      if (valid.length > 0) await supabase.from("recipe_tags").insert(valid);
     })(),
   ]);
 
