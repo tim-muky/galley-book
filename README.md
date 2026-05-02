@@ -1,4 +1,4 @@
-# Galley Book
+# galleybook
 
 A mobile-first web app for private family recipe storage. Share a Galley (library) with your household, import recipes via AI, and send shopping lists directly to Bring!.
 

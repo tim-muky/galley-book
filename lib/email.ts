@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "Galley Book <waiter@galleybook.com>";
+const FROM = "galleybook <waiter@galleybook.com>";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -11,16 +11,16 @@ export async function sendWaitlistConfirmation(email: string) {
   await getResend().emails.send({
     from: FROM,
     to: email,
-    subject: "You're on the list — Galley Book",
+    subject: "You're on the list — galleybook",
     html: `
       <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; color: #252729;">
         <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">You're on the list.</p>
         <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #474747;">
-          Thanks for signing up for Galley Book — a private recipe library for the people you cook for.
+          Thanks for signing up for galleybook — a private recipe library for the people you cook for.
           We'll reach out as soon as your spot is ready.
         </p>
         <p style="font-size: 0.875rem; font-weight: 300; color: #474747; margin-top: 2rem;">
-          — The Galley Book team
+          — The galleybook team
         </p>
       </div>
     `,
@@ -56,7 +56,7 @@ export async function sendGalleyInvite({
         <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">You've been invited.</p>
         <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #474747;">
           <strong style="font-weight: 600;">${inviterName}</strong> invited you to join
-          <strong style="font-weight: 600;">${galleyName}</strong> on Galley Book —
+          <strong style="font-weight: 600;">${galleyName}</strong> on galleybook —
           a private recipe library for the people you cook for.
         </p>
         <a href="${inviteUrl}"

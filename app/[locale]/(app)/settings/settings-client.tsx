@@ -196,9 +196,9 @@ export function SettingsClient({
 
   async function shareAppInvite() {
     const url = window.location.origin;
-    const text = "Join me on Galley Book — a shared recipe library for families.";
+    const text = "Join me on galleybook — a shared recipe library for families.";
     if (navigator.share) {
-      try { await navigator.share({ title: "Galley Book", text, url }); } catch { /* cancelled */ }
+      try { await navigator.share({ title: "galleybook", text, url }); } catch { /* cancelled */ }
     } else {
       await navigator.clipboard.writeText(`${text} ${url}`);
     }
@@ -220,7 +220,7 @@ export function SettingsClient({
       }
       const { url } = await res.json();
       if (navigator.share) {
-        try { await navigator.share({ title: "Join our Galley", text: `Join "${galleyName}" on Galley Book`, url }); } catch { /* cancelled */ }
+        try { await navigator.share({ title: "Join our Galley", text: `Join "${galleyName}" on galleybook`, url }); } catch { /* cancelled */ }
       } else {
         await navigator.clipboard.writeText(url);
       }

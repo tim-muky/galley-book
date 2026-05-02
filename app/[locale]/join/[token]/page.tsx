@@ -70,7 +70,7 @@ export default async function JoinPage({
       <div className="w-full max-w-sm flex flex-col items-center text-center">
         <Image
           src="/logo.png"
-          alt="Galley Book"
+          alt="galleybook"
           width={80}
           height={80}
           className="object-contain mb-8"
@@ -84,7 +84,7 @@ export default async function JoinPage({
           Join {galleyName}
         </h1>
         <p className="text-sm font-light text-on-surface-variant mb-10">
-          Someone has invited you to their shared recipe library on Galley Book.
+          Someone has invited you to their shared recipe library on galleybook.
         </p>
 
         <form action={joinGalley} className="w-full space-y-3">
@@ -107,7 +107,7 @@ function JoinError({ message }: { message: string }) {
       <div className="w-full max-w-sm flex flex-col items-center text-center">
         <Image
           src="/logo.png"
-          alt="Galley Book"
+          alt="galleybook"
           width={80}
           height={80}
           className="object-contain mb-8"

@@ -13,7 +13,7 @@ const copy = {
       headline2: "everywhere.",
       headline3: "Take them wherever",
       headline4: "you go.",
-      sub: "Galley Book imports any recipe from Instagram, YouTube, TikTok, or any website in seconds — and keeps your whole collection beautifully organised, always with you.",
+      sub: "galleybook imports any recipe from Instagram, YouTube, TikTok, or any website in seconds — and keeps your whole collection beautifully organised, always with you.",
       inputPlaceholder: "your@email.com",
       cta: "Join the waitlist",
       ctaPending: "Joining…",
@@ -54,7 +54,7 @@ const copy = {
         {
           num: "01",
           title: "Share a link",
-          body: "Copy any recipe URL — from Instagram, YouTube, TikTok, or your favourite food blog. Paste it into Galley Book.",
+          body: "Copy any recipe URL — from Instagram, YouTube, TikTok, or your favourite food blog. Paste it into galleybook.",
         },
         {
           num: "02",
@@ -73,7 +73,7 @@ const copy = {
     },
     cta2: {
       heading: "Your recipes deserve\na better home.",
-      sub: "Join the waitlist and be the first to know when Galley Book opens.",
+      sub: "Join the waitlist and be the first to know when galleybook opens.",
       inputPlaceholder: "your@email.com",
       cta: "Get early access",
       ctaPending: "Joining…",
@@ -81,7 +81,7 @@ const copy = {
       ctaNote: "Free to join. No credit card required.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Privacy", href: "/privacy" },
         { label: "Terms", href: "/terms" },
@@ -97,7 +97,7 @@ const copy = {
       headline2: "überall speichern.",
       headline3: "Überall dabei",
       headline4: "haben.",
-      sub: "Galley Book importiert jedes Rezept von Instagram, YouTube, TikTok oder jeder Website in Sekunden — und hält deine gesamte Sammlung wunderschön organisiert, immer mit dir.",
+      sub: "galleybook importiert jedes Rezept von Instagram, YouTube, TikTok oder jeder Website in Sekunden — und hält deine gesamte Sammlung wunderschön organisiert, immer mit dir.",
       inputPlaceholder: "deine@email.de",
       cta: "Auf die Warteliste",
       ctaPending: "Eintragen…",
@@ -138,7 +138,7 @@ const copy = {
         {
           num: "01",
           title: "Link teilen",
-          body: "Kopiere eine beliebige Rezept-URL — von Instagram, YouTube, TikTok oder deinem Lieblings-Foodblog. Füge sie in Galley Book ein.",
+          body: "Kopiere eine beliebige Rezept-URL — von Instagram, YouTube, TikTok oder deinem Lieblings-Foodblog. Füge sie in galleybook ein.",
         },
         {
           num: "02",
@@ -157,7 +157,7 @@ const copy = {
     },
     cta2: {
       heading: "Deine Rezepte verdienen\nein besseres Zuhause.",
-      sub: "Trage dich auf die Warteliste ein und erfahre als Erste, wenn Galley Book öffnet.",
+      sub: "Trage dich auf die Warteliste ein und erfahre als Erste, wenn galleybook öffnet.",
       inputPlaceholder: "deine@email.de",
       cta: "Frühen Zugang sichern",
       ctaPending: "Eintragen…",
@@ -165,7 +165,7 @@ const copy = {
       ctaNote: "Kostenlos. Keine Kreditkarte erforderlich.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Impressum", href: "/impressum" },
         { label: "Datenschutz", href: "/datenschutz" },
@@ -180,7 +180,7 @@ const copy = {
       headline2: "partout.",
       headline3: "Emportez-les",
       headline4: "où vous voulez.",
-      sub: "Galley Book importe n'importe quelle recette depuis Instagram, YouTube, TikTok ou n'importe quel site en quelques secondes — et garde toute votre collection magnifiquement organisée, toujours avec vous.",
+      sub: "galleybook importe n'importe quelle recette depuis Instagram, YouTube, TikTok ou n'importe quel site en quelques secondes — et garde toute votre collection magnifiquement organisée, toujours avec vous.",
       inputPlaceholder: "votre@email.fr",
       cta: "Rejoindre la liste d'attente",
       ctaPending: "Inscription…",
@@ -202,7 +202,7 @@ const copy = {
       label: "Comment ça marche",
       heading: "Trois étapes vers votre\ncollection de recettes idéale.",
       steps: [
-        { num: "01", title: "Partagez un lien", body: "Copiez n'importe quelle URL de recette — depuis Instagram, YouTube, TikTok ou votre blog culinaire préféré. Collez-la dans Galley Book." },
+        { num: "01", title: "Partagez un lien", body: "Copiez n'importe quelle URL de recette — depuis Instagram, YouTube, TikTok ou votre blog culinaire préféré. Collez-la dans galleybook." },
         { num: "02", title: "L'IA fait le reste", body: "Notre IA extrait chaque détail : ingrédients avec quantités, instructions étape par étape, temps de cuisson et photos." },
         { num: "03", title: "Cuisinez & partagez", body: "Votre recette est sauvegardée et prête. Cuisinez d'après elle, partagez-la avec votre Galley et construisez votre collection personnelle." },
       ],
@@ -210,7 +210,7 @@ const copy = {
     sources: { label: "Compatible avec" },
     cta2: {
       heading: "Vos recettes méritent\nune meilleure maison.",
-      sub: "Rejoignez la liste d'attente et soyez les premiers informés à l'ouverture de Galley Book.",
+      sub: "Rejoignez la liste d'attente et soyez les premiers informés à l'ouverture de galleybook.",
       inputPlaceholder: "votre@email.fr",
       cta: "Accès anticipé",
       ctaPending: "Inscription…",
@@ -218,7 +218,7 @@ const copy = {
       ctaNote: "Gratuit. Aucune carte de crédit requise.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Confidentialité", href: "/privacy" },
         { label: "Conditions", href: "/terms" },
@@ -234,7 +234,7 @@ const copy = {
       headline2: "todas partes.",
       headline3: "Llévelas contigo",
       headline4: "a donde vayas.",
-      sub: "Galley Book importa cualquier receta de Instagram, YouTube, TikTok o cualquier sitio web en segundos — y mantiene toda tu colección hermosamente organizada, siempre contigo.",
+      sub: "galleybook importa cualquier receta de Instagram, YouTube, TikTok o cualquier sitio web en segundos — y mantiene toda tu colección hermosamente organizada, siempre contigo.",
       inputPlaceholder: "tu@email.es",
       cta: "Unirse a la lista de espera",
       ctaPending: "Uniéndose…",
@@ -256,7 +256,7 @@ const copy = {
       label: "Cómo funciona",
       heading: "Tres pasos hacia tu\ncolección de recetas perfecta.",
       steps: [
-        { num: "01", title: "Comparte un enlace", body: "Copia cualquier URL de receta — de Instagram, YouTube, TikTok o tu blog de comida favorito. Pégala en Galley Book." },
+        { num: "01", title: "Comparte un enlace", body: "Copia cualquier URL de receta — de Instagram, YouTube, TikTok o tu blog de comida favorito. Pégala en galleybook." },
         { num: "02", title: "La IA hace el resto", body: "Nuestra IA extrae cada detalle: ingredientes con cantidades, instrucciones paso a paso, tiempo de cocción y fotos." },
         { num: "03", title: "Cocina y comparte", body: "Tu receta está guardada y lista. Cocina con ella, compártela con tu Galley y construye tu colección personal." },
       ],
@@ -264,7 +264,7 @@ const copy = {
     sources: { label: "Compatible con" },
     cta2: {
       heading: "Tus recetas merecen\nun mejor hogar.",
-      sub: "Únete a la lista de espera y sé el primero en saber cuando Galley Book abra.",
+      sub: "Únete a la lista de espera y sé el primero en saber cuando galleybook abra.",
       inputPlaceholder: "tu@email.es",
       cta: "Acceso anticipado",
       ctaPending: "Uniéndose…",
@@ -272,7 +272,7 @@ const copy = {
       ctaNote: "Gratis. No se requiere tarjeta de crédito.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Privacidad", href: "/privacy" },
         { label: "Términos", href: "/terms" },
@@ -288,7 +288,7 @@ const copy = {
       headline2: "ovunque.",
       headline3: "Portale con te",
       headline4: "ovunque tu vada.",
-      sub: "Galley Book importa qualsiasi ricetta da Instagram, YouTube, TikTok o qualsiasi sito web in pochi secondi — e mantiene tutta la tua collezione magnificamente organizzata, sempre con te.",
+      sub: "galleybook importa qualsiasi ricetta da Instagram, YouTube, TikTok o qualsiasi sito web in pochi secondi — e mantiene tutta la tua collezione magnificamente organizzata, sempre con te.",
       inputPlaceholder: "tua@email.it",
       cta: "Unisciti alla lista d'attesa",
       ctaPending: "Iscrizione…",
@@ -310,7 +310,7 @@ const copy = {
       label: "Come funziona",
       heading: "Tre passi verso la tua\ncollection di ricette perfetta.",
       steps: [
-        { num: "01", title: "Condividi un link", body: "Copia qualsiasi URL di ricetta — da Instagram, YouTube, TikTok o il tuo blog culinario preferito. Incollalo in Galley Book." },
+        { num: "01", title: "Condividi un link", body: "Copia qualsiasi URL di ricetta — da Instagram, YouTube, TikTok o il tuo blog culinario preferito. Incollalo in galleybook." },
         { num: "02", title: "L'IA fa il resto", body: "La nostra IA estrae ogni dettaglio: ingredienti con quantità, istruzioni passo-passo, tempo di cottura e foto." },
         { num: "03", title: "Cucina e condividi", body: "La tua ricetta è salvata e pronta. Cucinaci, condividila con la tua Galley e costruisci la tua collezione personale." },
       ],
@@ -318,7 +318,7 @@ const copy = {
     sources: { label: "Compatibile con" },
     cta2: {
       heading: "Le tue ricette meritano\nuna casa migliore.",
-      sub: "Unisciti alla lista d'attesa e sii tra i primi a sapere quando Galley Book apre.",
+      sub: "Unisciti alla lista d'attesa e sii tra i primi a sapere quando galleybook apre.",
       inputPlaceholder: "tua@email.it",
       cta: "Accesso anticipato",
       ctaPending: "Iscrizione…",
@@ -326,7 +326,7 @@ const copy = {
       ctaNote: "Gratis. Nessuna carta di credito richiesta.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Privacy", href: "/privacy" },
         { label: "Termini", href: "/terms" },
@@ -342,7 +342,7 @@ const copy = {
       headline2: "skąd chcesz.",
       headline3: "Miej je zawsze",
       headline4: "przy sobie.",
-      sub: "Galley Book importuje każdy przepis z Instagrama, YouTube, TikToka lub dowolnej strony w ciągu sekund — i przechowuje całą kolekcję pięknie zorganizowaną, zawsze z tobą.",
+      sub: "galleybook importuje każdy przepis z Instagrama, YouTube, TikToka lub dowolnej strony w ciągu sekund — i przechowuje całą kolekcję pięknie zorganizowaną, zawsze z tobą.",
       inputPlaceholder: "twoj@email.pl",
       cta: "Dołącz do listy oczekujących",
       ctaPending: "Dołączanie…",
@@ -364,7 +364,7 @@ const copy = {
       label: "Jak to działa",
       heading: "Trzy kroki do idealnej\nkolekcji przepisów.",
       steps: [
-        { num: "01", title: "Udostępnij link", body: "Skopiuj dowolny URL przepisu — z Instagrama, YouTube, TikToka lub ulubionego bloga kulinarnego. Wklej go do Galley Book." },
+        { num: "01", title: "Udostępnij link", body: "Skopiuj dowolny URL przepisu — z Instagrama, YouTube, TikToka lub ulubionego bloga kulinarnego. Wklej go do galleybook." },
         { num: "02", title: "AI robi resztę", body: "Nasza AI wyodrębnia każdy szczegół: składniki z ilościami, instrukcje krok po kroku, czas gotowania i zdjęcia." },
         { num: "03", title: "Gotuj i udostępniaj", body: "Twój przepis jest zapisany i gotowy. Gotuj według niego, udostępnij go w swojej Galley i buduj osobistą kolekcję." },
       ],
@@ -372,7 +372,7 @@ const copy = {
     sources: { label: "Działa z" },
     cta2: {
       heading: "Twoje przepisy zasługują\nna lepszy dom.",
-      sub: "Dołącz do listy oczekujących i jako pierwszy dowiedz się, gdy Galley Book otworzy się.",
+      sub: "Dołącz do listy oczekujących i jako pierwszy dowiedz się, gdy galleybook otworzy się.",
       inputPlaceholder: "twoj@email.pl",
       cta: "Wczesny dostęp",
       ctaPending: "Dołączanie…",
@@ -380,7 +380,7 @@ const copy = {
       ctaNote: "Bezpłatnie. Karta kredytowa nie jest wymagana.",
     },
     footer: {
-      copy: `© ${new Date().getFullYear()} Galley Book`,
+      copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
         { label: "Prywatność", href: "/privacy" },
         { label: "Warunki", href: "/terms" },
@@ -580,7 +580,7 @@ export default function LandingPage() {
       {/* ── Nav ── */}
       <header className="flex items-center justify-between px-6 py-5 md:px-16 sticky top-0 bg-transparent z-50">
         <a href="/" className="select-none flex-shrink-0">
-          <Image src="/logo.png" alt="Galley Book" width={40} height={32} className="object-contain" />
+          <Image src="/logo.png" alt="galleybook" width={40} height={32} className="object-contain" />
         </a>
         <div className="flex items-center gap-3">
           <a

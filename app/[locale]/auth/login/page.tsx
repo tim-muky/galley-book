@@ -28,14 +28,14 @@ function LoginContent() {
         <div className="flex flex-col items-center gap-3 w-full">
           <Image
             src="/logo.png"
-            alt="Galley Book"
+            alt="galleybook"
             width={400}
             height={400}
             className="w-full h-auto object-contain"
             priority
           />
           <h1 className="text-2xl font-thin tracking-widest text-anthracite uppercase">
-            Galley Book
+            galleybook
           </h1>
           <p className="text-sm font-light text-on-surface-variant text-center">
             {t("tagline")}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Galley Book",
+  title: "Privacy Policy — galleybook",
 };
 
 export default function PrivacyPage() {
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             1. Who We Are
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            Galley Book is a private recipe management app for families and households. It is operated
+            galleybook is a private recipe management app for families and households. It is operated
             as a personal project. If you have any questions about this policy or your data, please
             contact us at{" "}
             <a href="mailto:contact@galleybook.com" className="underline underline-offset-2">
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
             3. Third-Party Services We Use
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            To operate, Galley Book shares data with the following processors. Each processes only
+            To operate, galleybook shares data with the following processors. Each processes only
             the data described below and is bound by their own privacy policy.
           </p>
           <div className="space-y-4">
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
             8. Children
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            Galley Book is not directed at children under 13. We do not knowingly collect personal
+            galleybook is not directed at children under 13. We do not knowingly collect personal
             data from children. If you believe a child has provided us with their data, please
             contact us to have it removed.
           </p>

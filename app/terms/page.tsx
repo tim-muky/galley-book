@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Galley Book",
+  title: "Terms of Service — galleybook",
 };
 
 export default function TermsPage() {
@@ -31,7 +31,7 @@ export default function TermsPage() {
             1. Acceptance
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            By creating an account or using Galley Book, you agree to these Terms of Service. If you
+            By creating an account or using galleybook, you agree to these Terms of Service. If you
             do not agree, please do not use the app.
           </p>
         </section>
@@ -42,11 +42,11 @@ export default function TermsPage() {
             2. Personal and Family Use Only
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            Galley Book is intended for personal and household use — for example, to manage a shared
+            galleybook is intended for personal and household use — for example, to manage a shared
             family recipe collection.
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
-            <li>You may not use Galley Book for commercial purposes.</li>
+            <li>You may not use galleybook for commercial purposes.</li>
             <li>You may not resell, redistribute, or sublicence access to the service.</li>
             <li>
               You may not use automated scripts, bots, or scrapers against the service without prior
@@ -61,7 +61,7 @@ export default function TermsPage() {
             3. Your Content
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            You retain ownership of the recipes, photos, and other content you add to Galley Book.
+            You retain ownership of the recipes, photos, and other content you add to galleybook.
             By uploading content, you grant us a limited, non-exclusive licence to store and display
             it within the app solely to operate the service for you and your galley members.
           </p>
@@ -77,7 +77,7 @@ export default function TermsPage() {
             4. AI-Assisted Features
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            Galley Book uses third-party AI services to power recipe import and recommendations:
+            galleybook uses third-party AI services to power recipe import and recommendations:
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
             <li>
@@ -109,7 +109,7 @@ export default function TermsPage() {
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
             Recipes imported from external websites, Instagram, YouTube, or other sources may be
-            protected by copyright. Galley Book provides import tools for personal convenience — it
+            protected by copyright. galleybook provides import tools for personal convenience — it
             is your responsibility to respect the intellectual property rights of original creators.
             We are not liable for any copyright infringement arising from content you import.
           </p>
@@ -121,7 +121,7 @@ export default function TermsPage() {
             6. Limitation of Liability
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
-            Galley Book is provided &ldquo;as is&rdquo; without warranty of any kind, express or implied. To the
+            galleybook is provided &ldquo;as is&rdquo; without warranty of any kind, express or implied. To the
             fullest extent permitted by law:
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
@@ -159,7 +159,7 @@ export default function TermsPage() {
             8. Service Availability
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            We aim to keep Galley Book available but cannot guarantee uninterrupted access. We may
+            We aim to keep galleybook available but cannot guarantee uninterrupted access. We may
             modify, suspend, or discontinue the service at any time. We will provide reasonable
             notice where possible.
           </p>

@@ -79,7 +79,7 @@ export async function fetchInlineImage(
     const isInstagramCdn = url.includes("cdninstagram.com") || url.includes("fbcdn.net");
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; GalleyBook/1.0; +https://galleybook.com)",
+        "User-Agent": "Mozilla/5.0 (compatible; galleybook/1.0; +https://galleybook.com)",
         ...(isInstagramCdn ? { Referer: "https://www.instagram.com/" } : {}),
       },
       signal: AbortSignal.timeout(8000),

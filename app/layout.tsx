@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Galley Book",
+  title: "galleybook",
   description: "Your family's private recipe collection",
   manifest: "/manifest.json",
 };

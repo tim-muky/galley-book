@@ -1,4 +1,4 @@
-# Galley Book — Claude Code Instructions
+# galleybook — Claude Code Instructions
 
 ## Project
 

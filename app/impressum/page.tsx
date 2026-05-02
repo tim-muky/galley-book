@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Impressum — Galley Book",
+  title: "Impressum — galleybook",
 };
 
 export default function ImpressumPage() {

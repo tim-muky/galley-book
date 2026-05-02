@@ -182,7 +182,7 @@
     "galleyNamePlaceholder": "Nom de la Galley",
     "createGalley": "Créer une Galley",
     "inviteSomeone": "Inviter quelqu'un",
-    "inviteSomeoneButton": "Inviter quelqu'un sur Galley Book",
+    "inviteSomeoneButton": "Inviter quelqu'un sur galleybook",
     "recommendationSources": "Sources de recommandations",
     "sourcesSubtitle": "Ajoutez des comptes Instagram, des chaînes YouTube, des comptes TikTok ou des sites web pour alimenter vos recommandations IA.",
     "urlOrHandle": "URL ou @pseudo",
@@ -215,13 +215,13 @@
   "auth": {
     "tagline": "La collection de recettes de votre famille",
     "continueWithGoogle": "Continuer avec Google",
-    "termsNotice": "En continuant, vous acceptez les {terms} et la {privacy} de Galley Book.",
+    "termsNotice": "En continuant, vous acceptez les {terms} et la {privacy} de galleybook.",
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité"
   },
   "onboarding": {
     "step1": {
-      "title": "Bienvenue sur Galley Book.",
+      "title": "Bienvenue sur galleybook.",
       "subtitle": "Configurons votre cuisine.",
       "nameLabel": "Votre nom",
       "galleyLabel": "Nom de votre cuisine",

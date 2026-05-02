@@ -35,7 +35,7 @@ export async function generateMetadata({
 
   return {
     title: recipe.name,
-    description: recipe.description ?? `Recipe from Galley Book`,
+    description: recipe.description ?? `Recipe from galleybook`,
   };
 }
 
@@ -123,7 +123,7 @@ export default async function SharePage({
     "@context": "https://schema.org",
     "@type": "Recipe",
     name: recipe.name,
-    author: { "@type": "Organization", name: "Galley Book" },
+    author: { "@type": "Organization", name: "galleybook" },
     description: recipe.description ?? undefined,
     // Use both old name ("ingredients") and current name ("recipeIngredient") for
     // maximum parser compatibility — Bring! documents the old Schema.org property names.
@@ -151,7 +151,7 @@ export default async function SharePage({
       className="max-w-lg mx-auto px-5 py-8 bg-white min-h-screen"
     >
       {/* Hidden metadata for parsers — use old Schema.org names that Bring! recognises */}
-      <meta itemProp="author" content="Galley Book" />
+      <meta itemProp="author" content="galleybook" />
       {recipe.servings && (
         <meta itemProp="yield" content={String(recipe.servings)} />
       )}
@@ -324,7 +324,7 @@ export default async function SharePage({
         )}
         <p className="text-xs font-light text-on-surface-variant text-center pt-2">
           Shared from{" "}
-          <span className="font-semibold text-anthracite">Galley Book</span>
+          <span className="font-semibold text-anthracite">galleybook</span>
         </p>
       </div>
     </div>
