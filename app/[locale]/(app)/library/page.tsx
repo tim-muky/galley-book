@@ -9,12 +9,23 @@ import { LibraryRecipes } from "./library-recipes-client";
 import Image from "next/image";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { escapeLikePattern } from "@/lib/utils";
+import { LibraryFilters } from "./library-filters-client";
+import {
+  parseTagFilters,
+  resolveFilteredRecipeIds,
+  loadAvailableTags,
+} from "@/lib/recipe-filters";
 
 const PAGE_SIZE = 20;
 
 interface SearchParams {
   filter?: string;
   search?: string;
+  quick?: string;
+  cuisine?: string;
+  type?: string;
+  season?: string;
+  ingredient?: string;
 }
 
 export default async function LibraryPage({
@@ -55,6 +66,9 @@ export default async function LibraryPage({
 
   const galleyId = (await resolveActiveGalleyId(supabase, user.id))!;
 
+  const tagFilters = parseTagFilters(params as Record<string, string | undefined>);
+  const matchingRecipeIds = await resolveFilteredRecipeIds(supabase, galleyId, tagFilters);
+
   let recipesQuery = supabase
     .from("recipes")
     .select(`*, recipe_photos(*), recipe_tags(*)`)
@@ -62,13 +76,15 @@ export default async function LibraryPage({
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
-  if (params.filter === "quick") {
+  if (tagFilters.quick) {
     recipesQuery = recipesQuery.lte("prep_time", 30);
-  } else if (
-    params.filter &&
-    ["starter", "main", "dessert", "breakfast", "snack", "drink", "side"].includes(params.filter)
-  ) {
-    recipesQuery = recipesQuery.eq("type", params.filter);
+  }
+  if (matchingRecipeIds !== null) {
+    if (matchingRecipeIds.length === 0) {
+      recipesQuery = recipesQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else {
+      recipesQuery = recipesQuery.in("id", matchingRecipeIds);
+    }
   }
 
   if (params.search) {
@@ -77,7 +93,7 @@ export default async function LibraryPage({
 
   const galleyIds = memberships.map((m) => m.galley_id);
 
-  const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }, { data: allRecipeCounts }] = await Promise.all([
+  const [{ data: galley }, { data: members }, { data: recipes }, { data: cookNextRows }, { data: allRecipeCounts }, availableTags] = await Promise.all([
     supabase.from("galleys").select("id, name, header_image_path").eq("id", galleyId).single(),
     supabase
       .from("galley_members")
@@ -87,6 +103,7 @@ export default async function LibraryPage({
     recipesQuery.limit(PAGE_SIZE + 1),
     supabase.from("cook_next_list").select("recipe_id").eq("galley_id", galleyId),
     supabase.from("recipes").select("galley_id").in("galley_id", galleyIds).is("deleted_at", null),
+    loadAvailableTags(supabase, galleyId),
   ]);
 
   const recipeCountByGalley: Record<string, number> = {};
@@ -134,14 +151,6 @@ export default async function LibraryPage({
         .from("recipe-photos")
         .getPublicUrl((galley as unknown as { header_image_path: string }).header_image_path).data.publicUrl
     : null;
-
-  const FILTER_TYPES = [
-    { label: t("filter.all"), value: "" },
-    { label: t("filter.quick"), value: "quick" },
-    { label: t("filter.starter"), value: "starter" },
-    { label: t("filter.main"), value: "main" },
-    { label: t("filter.dessert"), value: "dessert" },
-  ];
 
   return (
     <div className="pb-6">
@@ -211,21 +220,11 @@ export default async function LibraryPage({
         />
       </form>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-5 px-5 scrollbar-hide">
-        {FILTER_TYPES.map((f) => {
-          const active = (params.filter ?? "") === f.value;
-          return (
-            <Link
-              key={f.value}
-              href={f.value ? `/library?filter=${f.value}` : "/library"}
-              style={active ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
-              className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
-            >
-              {f.label}
-            </Link>
-          );
-        })}
-      </div>
+      <LibraryFilters
+        filters={tagFilters}
+        available={availableTags}
+        search={params.search ?? ""}
+      />
 
       {pagedRecipes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -247,7 +246,7 @@ export default async function LibraryPage({
           initialHasMore={hasMore}
           initialCookNextIds={[...cookNextIds]}
           galleyId={galleyId}
-          filter={params.filter ?? ""}
+          tagFilters={tagFilters}
           search={params.search ?? ""}
           otherGalleys={otherGalleys}
         />

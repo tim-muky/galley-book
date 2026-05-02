@@ -6,6 +6,7 @@ import { RecipeCard } from "@/components/recipe-card";
 import { AddToCookNextButton } from "@/components/add-to-cook-next-button";
 import { RecipeContextMenu } from "@/components/recipe-context-menu";
 import type { Recipe, RecipePhoto } from "@/types/database";
+import { TAG_KINDS, type TagFilters } from "@/lib/recipe-filters";
 
 type RecipeWithPhotos = Recipe & { recipe_photos?: RecipePhoto[] };
 
@@ -14,7 +15,7 @@ interface Props {
   initialHasMore: boolean;
   initialCookNextIds: string[];
   galleyId: string;
-  filter: string;
+  tagFilters: TagFilters;
   search: string;
   otherGalleys: { id: string; name: string }[];
 }
@@ -24,7 +25,7 @@ export function LibraryRecipes({
   initialHasMore,
   initialCookNextIds,
   galleyId,
-  filter,
+  tagFilters,
   search,
   otherGalleys,
 }: Props) {
@@ -40,7 +41,10 @@ export function LibraryRecipes({
     const cursor = recipes[recipes.length - 1]?.updated_at;
     const params = new URLSearchParams({ galleyId, limit: "20" });
     if (cursor) params.set("cursor", cursor);
-    if (filter) params.set("filter", filter);
+    if (tagFilters.quick) params.set("quick", "1");
+    for (const kind of TAG_KINDS) {
+      if (tagFilters[kind].length > 0) params.set(kind, tagFilters[kind].join(","));
+    }
     if (search) params.set("search", search);
     try {
       const res = await fetch(`/api/recipes?${params}`);

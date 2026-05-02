@@ -4,6 +4,7 @@ import { isSafeUrlAsync } from "@/lib/utils/url-validation";
 import { fetchAuthor } from "@/lib/oembed";
 import { logger } from "@/lib/logger";
 import { escapeLikePattern } from "@/lib/utils";
+import { parseTagFilters, resolveFilteredRecipeIds } from "@/lib/recipe-filters";
 import { z } from "zod";
 
 const IngredientSchema = z.object({
@@ -141,11 +142,20 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const galleyId = searchParams.get("galleyId");
   const cursor = searchParams.get("cursor");
-  const filter = searchParams.get("filter") ?? "";
   const search = searchParams.get("search") ?? "";
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
 
   if (!galleyId) return NextResponse.json({ error: "galleyId required" }, { status: 400 });
+
+  const tagFilters = parseTagFilters({
+    filter: searchParams.get("filter") ?? undefined,
+    quick: searchParams.get("quick") ?? undefined,
+    cuisine: searchParams.get("cuisine") ?? undefined,
+    type: searchParams.get("type") ?? undefined,
+    season: searchParams.get("season") ?? undefined,
+    ingredient: searchParams.get("ingredient") ?? undefined,
+  });
+  const matchingRecipeIds = await resolveFilteredRecipeIds(supabase, galleyId, tagFilters);
 
   let query = supabase
     .from("recipes")
@@ -156,9 +166,13 @@ export async function GET(request: Request) {
     .limit(limit + 1);
 
   if (cursor) query = query.lt("updated_at", cursor);
-  if (filter === "quick") query = query.lte("prep_time", 30);
-  else if (["starter", "main", "dessert", "breakfast", "snack", "drink", "side"].includes(filter))
-    query = query.eq("type", filter);
+  if (tagFilters.quick) query = query.lte("prep_time", 30);
+  if (matchingRecipeIds !== null) {
+    if (matchingRecipeIds.length === 0) {
+      return NextResponse.json({ recipes: [], hasMore: false, cookNextIds: [] });
+    }
+    query = query.in("id", matchingRecipeIds);
+  }
   if (search) query = query.ilike("name", `%${escapeLikePattern(search)}%`);
 
   const { data: recipes } = await query;
