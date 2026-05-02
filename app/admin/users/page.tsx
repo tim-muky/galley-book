@@ -123,6 +123,22 @@ export default async function UsersPage() {
   const newUserSeries = days.map((d) => ({ day: d, value: signupCounts.get(d) ?? 0 }));
   const maxNew = Math.max(1, ...newUserSeries.map((p) => p.value));
 
+  // Recipes created per day (by all users) — last 30 days
+  const recipesPerDay = new Map<string, number>(days.map((d) => [d, 0]));
+  for (const r of recipes) {
+    const k = dayKey(r.created_at);
+    if (recipesPerDay.has(k)) recipesPerDay.set(k, recipesPerDay.get(k)! + 1);
+  }
+  const recipesPerDaySeries = days.map((d) => ({ day: d, value: recipesPerDay.get(d) ?? 0 }));
+  const maxRecipesPerDay = Math.max(1, ...recipesPerDaySeries.map((p) => p.value));
+  const recipesLast30d = recipesPerDaySeries.reduce((s, p) => s + p.value, 0);
+
+  // Average recipes per user — over the last 30 days
+  const userCount = Math.max(1, users.length);
+  const avgPerUserPerDay = recipesLast30d / userCount / 30;
+  const avgPerUserPerWeek = avgPerUserPerDay * 7;
+  const avgPerUserPerMonth = avgPerUserPerDay * 30;
+
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
   }
@@ -167,6 +183,108 @@ export default async function UsersPage() {
           max={maxNew}
           color="#D54CB1"
         />
+      </div>
+
+      {/* Recipes created per day — chart + table */}
+      <div className="bg-white rounded-md shadow-ambient overflow-hidden mb-6">
+        <div className="px-4 pt-4 pb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1">
+            Recipes created per day — last 30 days
+          </p>
+          <p className="text-2xl font-thin text-anthracite mb-4">{recipesLast30d}</p>
+          <div className="flex items-end gap-[3px]" style={{ height: "80px" }}>
+            {recipesPerDaySeries.map(({ day, value }) => {
+              const barPx = value > 0 ? Math.max((value / maxRecipesPerDay) * 80, 3) : 0;
+              return (
+                <div
+                  key={day}
+                  className="flex-1 rounded-[1px]"
+                  style={{
+                    height: `${barPx}px`,
+                    backgroundColor: value > 0 ? "#4C8FD5" : undefined,
+                  }}
+                  title={`${day} · ${value}`}
+                >
+                  {value === 0 && <div className="w-full h-full bg-surface-low rounded-[1px]" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-light">
+            <thead>
+              <tr className="bg-surface-low">
+                {["Day", "Recipes created"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...recipesPerDaySeries].reverse().map(({ day, value }) => (
+                <tr key={day} className="border-t border-surface-low">
+                  <td className="px-4 py-2 text-on-surface-variant whitespace-nowrap">
+                    {fmtDate(day)}
+                  </td>
+                  <td className="px-4 py-2 font-normal text-anthracite">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Average recipes per user — table */}
+      <div className="bg-white rounded-md shadow-ambient overflow-hidden mb-6">
+        <div className="px-4 pt-4 pb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            Average recipes per user
+          </p>
+          <p className="text-[10px] font-light text-on-surface-variant mt-0.5">
+            Based on the last 30 days · {userCount} {userCount === 1 ? "user" : "users"}
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-light">
+            <thead>
+              <tr className="bg-surface-low">
+                {["Period", "Avg recipes / user"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-surface-low">
+                <td className="px-4 py-2 text-on-surface-variant">Per day</td>
+                <td className="px-4 py-2 font-normal text-anthracite">
+                  {avgPerUserPerDay.toFixed(2)}
+                </td>
+              </tr>
+              <tr className="border-t border-surface-low">
+                <td className="px-4 py-2 text-on-surface-variant">Per week</td>
+                <td className="px-4 py-2 font-normal text-anthracite">
+                  {avgPerUserPerWeek.toFixed(2)}
+                </td>
+              </tr>
+              <tr className="border-t border-surface-low">
+                <td className="px-4 py-2 text-on-surface-variant">Per month</td>
+                <td className="px-4 py-2 font-normal text-anthracite">
+                  {avgPerUserPerMonth.toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* User table */}
