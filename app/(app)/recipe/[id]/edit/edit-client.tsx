@@ -3,9 +3,8 @@
 import { useState, useRef } from "react";
 import { useRouter, Link } from "@/i18n/routing";
 import Image from "next/image";
+import { TagEditor, type TagInput } from "@/components/tag-editor";
 
-const SEASONS = ["all_year", "spring", "summer", "autumn", "winter"] as const;
-const TYPES = ["starter", "main", "dessert", "breakfast", "snack", "drink", "side"] as const;
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
 interface Ingredient {
@@ -31,6 +30,7 @@ interface RecipeForm {
   source_url: string;
   ingredients: Ingredient[];
   steps: Step[];
+  tags: TagInput[];
 }
 
 interface Props {
@@ -281,37 +281,11 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
           </div>
         </div>
 
-        {/* Season + Type */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
-              Season
-            </label>
-            <select
-              value={form.season}
-              onChange={(e) => updateField("season", e.target.value)}
-              className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite outline-none"
-            >
-              {SEASONS.map((s) => (
-                <option key={s} value={s}>{s.replace("_", " ")}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
-              Type
-            </label>
-            <select
-              value={form.type}
-              onChange={(e) => updateField("type", e.target.value)}
-              className="w-full bg-surface-highest rounded-sm px-4 py-3 text-sm font-light text-anthracite outline-none"
-            >
-              {TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {/* Tags */}
+        <TagEditor
+          tags={form.tags}
+          onChange={(tags) => updateField("tags", tags)}
+        />
 
         {/* Source URL */}
         <div>

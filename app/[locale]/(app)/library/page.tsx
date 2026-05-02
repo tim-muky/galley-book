@@ -57,7 +57,7 @@ export default async function LibraryPage({
 
   let recipesQuery = supabase
     .from("recipes")
-    .select(`*, recipe_photos(*)`)
+    .select(`*, recipe_photos(*), recipe_tags(*)`)
     .eq("galley_id", galleyId)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });
@@ -159,7 +159,7 @@ export default async function LibraryPage({
           <h1 className="text-4xl font-thin text-anthracite leading-none">{t("title")}</h1>
           <Image
             src="/logo.png"
-            alt="Galley Book"
+            alt="galleybook"
             width={75}
             height={75}
             className="object-contain object-right flex-shrink-0"

@@ -5,11 +5,11 @@ import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { clsx } from "clsx";
+import { TagEditor, type TagInput } from "@/components/tag-editor";
+import type { TagKind } from "@/types/database";
 
 type Mode = "link" | "photo" | "manual";
 
-const SEASONS = ["all_year", "spring", "summer", "autumn", "winter"] as const;
-const TYPES = ["starter", "main", "dessert", "breakfast", "snack", "drink", "side"] as const;
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
 // Names that don't identify a specific dish — flagged so users replace them
@@ -52,6 +52,7 @@ interface RecipeForm {
   image_url: string;
   ingredients: Ingredient[];
   steps: Step[];
+  tags: TagInput[];
 }
 
 const emptyForm: RecipeForm = {
@@ -65,7 +66,38 @@ const emptyForm: RecipeForm = {
   image_url: "",
   ingredients: [{ _key: "ing-init", name: "", amount: "", unit: "g", group: "" }],
   steps: [{ _key: "step-init", instruction: "" }],
+  tags: [],
 };
+
+/**
+ * Parser output gives cuisine (single string) + main_ingredients (string[]) plus
+ * the legacy single-value `season` and `type`. Convert that to the unified tag
+ * list the editor renders. season=all_year is the "no preference" sentinel and
+ * is intentionally not surfaced as a chip.
+ */
+function tagsFromParsed(parsed: {
+  cuisine?: string | null;
+  main_ingredients?: string[] | null;
+  season?: string | null;
+  type?: string | null;
+}): TagInput[] {
+  const out: TagInput[] = [];
+  const seen = new Set<string>();
+  const push = (kind: TagKind, raw: string | null | undefined) => {
+    if (!raw) return;
+    const value = raw.trim().toLowerCase();
+    if (!value) return;
+    const key = `${kind}::${value}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ kind, value });
+  };
+  push("cuisine", parsed.cuisine ?? null);
+  push("type", parsed.type ?? null);
+  if (parsed.season && parsed.season !== "all_year") push("season", parsed.season);
+  for (const ing of parsed.main_ingredients ?? []) push("ingredient", ing);
+  return out;
+}
 
 interface Props {
   galleys: { id: string; name: string; isDefault: boolean }[];
@@ -111,13 +143,19 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Failed to parse recipe");
       }
-      const parsed: RecipeForm & { image_url?: string; image_candidates?: string[] } = await res.json();
+      const parsed: RecipeForm & {
+        image_url?: string;
+        image_candidates?: string[];
+        cuisine?: string | null;
+        main_ingredients?: string[] | null;
+      } = await res.json();
       setForm({
         ...emptyForm,
         ...parsed,
         ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID(), group: ing.group ?? "" })),
         steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
         source_url: linkUrl,
+        tags: tagsFromParsed(parsed),
       });
       const candidates = parsed.image_candidates ?? (parsed.image_url ? [parsed.image_url] : []);
       setImageCandidates(candidates);
@@ -160,7 +198,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
         const err = await res.json();
         throw new Error(err.error ?? "Could not read recipe from photo");
       }
-      const parsed: RecipeForm = await res.json();
+      const parsed: RecipeForm & {
+        cuisine?: string | null;
+        main_ingredients?: string[] | null;
+      } = await res.json();
       setPhotoFile(cameraFiles[0]);
       setPhotoPreview(cameraPreviews[0]);
       setForm({
@@ -168,6 +209,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
         ...parsed,
         ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID() })),
         steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
+        tags: tagsFromParsed(parsed),
       });
       setShowForm(true);
     } catch (err) {
@@ -651,30 +693,14 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
-                {t("form.season")}
-              </label>
-              <select value={form.season} onChange={(e) => updateField("season", e.target.value)}
-                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2">
-                {SEASONS.map((s) => (
-                  <option key={s} value={s}>{t(`seasons.${s}`)}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">
-                {t("form.type")}
-              </label>
-              <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
-                className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2">
-                {TYPES.map((tp) => (
-                  <option key={tp} value={tp}>{t(`types.${tp}`)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <TagEditor
+            tags={form.tags}
+            onChange={(tags) => updateField("tags", tags)}
+          />
+
+          {/* Keep the hidden season/type fields wired to whatever the parser
+              picked so the legacy DB columns stay in sync until Phase 5
+              drops them. The TagEditor is the user-facing surface. */}
 
           <div>
             <label className="text-xs font-semibold text-anthracite uppercase tracking-wide block mb-1.5">

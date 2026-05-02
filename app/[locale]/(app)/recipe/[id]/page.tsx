@@ -145,6 +145,10 @@ export default async function RecipeDetailPage({
 
   const isInCookNext = !!cookNextRow;
 
+  const recipeTags = (recipe.recipe_tags ?? []) as Array<{ kind: "cuisine" | "type" | "season" | "ingredient"; value: string }>;
+  const tagOrder = { cuisine: 0, type: 1, season: 2, ingredient: 3 };
+  const sortedTags = [...recipeTags].sort((a, b) => (tagOrder[a.kind] - tagOrder[b.kind]) || a.value.localeCompare(b.value));
+
   const photos = (recipe.recipe_photos ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
   const primaryPhoto = photos.find((p: { is_primary: boolean }) => p.is_primary) ?? photos[0];
   const ingredients = (recipe.ingredients ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
@@ -233,16 +237,14 @@ export default async function RecipeDetailPage({
 
       <div className="px-5 py-6 space-y-8">
         <div className="flex flex-wrap gap-2">
-          {recipe.season && recipe.season !== "all_year" && (
-            <span className="px-3 py-1 bg-surface-low rounded-full text-xs font-light text-on-surface-variant capitalize">
-              {recipe.season}
+          {sortedTags.map((tag) => (
+            <span
+              key={`${tag.kind}::${tag.value}`}
+              className="px-3 py-1 bg-surface-low rounded-full text-xs font-light text-on-surface-variant capitalize"
+            >
+              {tag.value}
             </span>
-          )}
-          {recipe.type && (
-            <span className="px-3 py-1 bg-surface-low rounded-full text-xs font-light text-on-surface-variant capitalize">
-              {recipe.type}
-            </span>
-          )}
+          ))}
           {recipe.source_url && (
             <a
               href={recipe.source_url}

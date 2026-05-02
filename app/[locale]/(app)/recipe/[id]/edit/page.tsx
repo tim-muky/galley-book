@@ -36,6 +36,13 @@ export default async function EditRecipePage({
     .sort((a: { step_number: number }, b: { step_number: number }) => a.step_number - b.step_number)
     .map((s: { instruction: string }) => ({ instruction: s.instruction }));
 
+  const tags = (recipe.recipe_tags ?? []).map(
+    (t: { kind: "cuisine" | "type" | "season" | "ingredient"; value: string }) => ({
+      kind: t.kind,
+      value: t.value,
+    })
+  );
+
   const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
   const photos = (recipe.recipe_photos ?? []) as Array<{ storage_path: string; is_primary: boolean }>;
   const primaryPhoto = photos.find((p) => p.is_primary) ?? photos[0];
@@ -57,6 +64,7 @@ export default async function EditRecipePage({
         source_url: recipe.source_url ?? "",
         ingredients: ingredients.length > 0 ? ingredients : [{ name: "", amount: "", unit: "g" }],
         steps: steps.length > 0 ? steps : [{ instruction: "" }],
+        tags,
       }}
     />
   );
