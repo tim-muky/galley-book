@@ -8,7 +8,6 @@ export interface TagFilters {
   type: string[];
   season: string[];
   ingredient: string[];
-  quick: boolean;
 }
 
 export const EMPTY_FILTERS: TagFilters = {
@@ -16,7 +15,6 @@ export const EMPTY_FILTERS: TagFilters = {
   type: [],
   season: [],
   ingredient: [],
-  quick: false,
 };
 
 function splitCsv(raw: string | null | undefined): string[] {
@@ -30,27 +28,22 @@ function splitCsv(raw: string | null | undefined): string[] {
 /**
  * Parse the URL search params used by the Library:
  *   - cuisine, type, season, ingredient — comma-separated values
- *   - quick=1 — prep_time <= 30 toggle
- * Backwards compat: legacy ?filter=quick / ?filter=<type> values are mapped
- * onto the new shape so old links still work.
+ * Backwards compat: legacy ?filter=<type> values are mapped onto type array.
  */
 export function parseTagFilters(params: Record<string, string | undefined>): TagFilters {
   const cuisine = splitCsv(params.cuisine);
   const type = splitCsv(params.type);
   const season = splitCsv(params.season);
   const ingredient = splitCsv(params.ingredient);
-  let quick = params.quick === "1" || params.quick === "true";
 
-  if (params.filter === "quick") {
-    quick = true;
-  } else if (
+  if (
     params.filter &&
     ["starter", "main", "dessert", "breakfast", "snack", "drink", "side"].includes(params.filter)
   ) {
     if (!type.includes(params.filter)) type.push(params.filter);
   }
 
-  return { cuisine, type, season, ingredient, quick };
+  return { cuisine, type, season, ingredient };
 }
 
 export function hasAnyTagFilter(f: TagFilters): boolean {
@@ -58,7 +51,7 @@ export function hasAnyTagFilter(f: TagFilters): boolean {
 }
 
 export function isFiltering(f: TagFilters): boolean {
-  return hasAnyTagFilter(f) || f.quick;
+  return hasAnyTagFilter(f);
 }
 
 /**

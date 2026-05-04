@@ -21,7 +21,6 @@ const PAGE_SIZE = 20;
 interface SearchParams {
   filter?: string;
   search?: string;
-  quick?: string;
   cuisine?: string;
   type?: string;
   season?: string;
@@ -76,9 +75,6 @@ export default async function LibraryPage({
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
-  if (tagFilters.quick) {
-    recipesQuery = recipesQuery.lte("prep_time", 30);
-  }
   if (matchingRecipeIds !== null) {
     if (matchingRecipeIds.length === 0) {
       recipesQuery = recipesQuery.eq("id", "00000000-0000-0000-0000-000000000000");

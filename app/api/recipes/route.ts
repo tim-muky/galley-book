@@ -149,7 +149,6 @@ export async function GET(request: Request) {
 
   const tagFilters = parseTagFilters({
     filter: searchParams.get("filter") ?? undefined,
-    quick: searchParams.get("quick") ?? undefined,
     cuisine: searchParams.get("cuisine") ?? undefined,
     type: searchParams.get("type") ?? undefined,
     season: searchParams.get("season") ?? undefined,
@@ -166,7 +165,6 @@ export async function GET(request: Request) {
     .limit(limit + 1);
 
   if (cursor) query = query.lt("updated_at", cursor);
-  if (tagFilters.quick) query = query.lte("prep_time", 30);
   if (matchingRecipeIds !== null) {
     if (matchingRecipeIds.length === 0) {
       return NextResponse.json({ recipes: [], hasMore: false, cookNextIds: [] });

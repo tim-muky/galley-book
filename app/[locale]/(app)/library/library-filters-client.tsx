@@ -32,7 +32,6 @@ export function LibraryFilters({ filters, available, search }: Props) {
   function buildHref(next: TagFilters): string {
     const sp = new URLSearchParams();
     if (search) sp.set("search", search);
-    if (next.quick) sp.set("quick", "1");
     for (const kind of TAG_KINDS) {
       if (next[kind].length > 0) sp.set(kind, next[kind].join(","));
     }
@@ -42,10 +41,6 @@ export function LibraryFilters({ filters, available, search }: Props) {
 
   function navigate(next: TagFilters) {
     router.push(buildHref(next));
-  }
-
-  function toggleQuick() {
-    navigate({ ...filters, quick: !filters.quick });
   }
 
   function toggleTag(kind: TagKind, value: string) {
@@ -59,31 +54,14 @@ export function LibraryFilters({ filters, available, search }: Props) {
   }
 
   const hasFilters =
-    filters.quick ||
-    filters.cuisine.length +
-      filters.type.length +
-      filters.season.length +
-      filters.ingredient.length >
-      0;
+    filters.cuisine.length + filters.type.length + filters.season.length + filters.ingredient.length > 0;
 
   const totalAvailable = TAG_KINDS.reduce((n, k) => n + available[k].length, 0);
 
   return (
     <div className="mb-6">
-      {/* Active row + Quick toggle */}
+      {/* Active filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-5 px-5 scrollbar-hide">
-        <button
-          type="button"
-          onClick={toggleQuick}
-          style={
-            filters.quick
-              ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }
-              : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }
-          }
-          className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-light border transition-colors"
-        >
-          {t("filter.quick")}
-        </button>
         {TAG_KINDS.flatMap((kind) =>
           filters[kind].map((value) => (
             <button

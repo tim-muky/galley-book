@@ -41,7 +41,6 @@ export function LibraryRecipes({
     const cursor = recipes[recipes.length - 1]?.updated_at;
     const params = new URLSearchParams({ galleyId, limit: "20" });
     if (cursor) params.set("cursor", cursor);
-    if (tagFilters.quick) params.set("quick", "1");
     for (const kind of TAG_KINDS) {
       if (tagFilters[kind].length > 0) params.set(kind, tagFilters[kind].join(","));
     }
