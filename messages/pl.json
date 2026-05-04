@@ -142,7 +142,7 @@
     "cookThis": "Ugotuj to",
     "notNow": "Nie teraz",
     "cookNextAction": "Do gotowania",
-    "discoverTitle": "Odkryj",
+    "discoverTitle": "Discovery",
     "newRecipes": "Nowe przepisy",
     "discoverSubtitle": "AI przeszukuje Twoje zapisane źródła w poszukiwaniu nieprzetestowanych przepisów.",
     "discoverButton": "Odkryj na podstawie Galerii",
@@ -155,7 +155,8 @@
     "tryAgain": "Spróbuj ponownie",
     "searchAgain": "Nowe wyszukiwanie",
     "parsing": "Analizowanie…",
-    "addToGalley": "Dodaj do Galerii"
+    "addToGalley": "Dodaj do Galerii",
+    "searchForNewRecipes": "Szukaj nowych przepisów"
   },
   "settings": {
     "profile": "Profil",

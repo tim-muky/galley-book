@@ -401,6 +401,8 @@ export default function RecommendationsPage() {
               {t("searchSpecifically")}
             </p>
 
+            <h3 className="text-2xl font-thin text-anthracite pt-1">{t("searchForNewRecipes")}</h3>
+
             <input
               value={cuisine}
               onChange={(e) => setCuisine(e.target.value)}

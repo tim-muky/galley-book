@@ -142,7 +142,7 @@
     "cookThis": "Cook this",
     "notNow": "Not now",
     "cookNextAction": "Cook Next",
-    "discoverTitle": "Discover",
+    "discoverTitle": "Discovery",
     "newRecipes": "New recipes",
     "discoverSubtitle": "AI searches your saved sources for recipes you haven't tried yet.",
     "discoverButton": "Discover based on Galley",
@@ -155,7 +155,8 @@
     "tryAgain": "Try Again",
     "searchAgain": "Search Again",
     "parsing": "Parsing…",
-    "addToGalley": "Add to Galley"
+    "addToGalley": "Add to Galley",
+    "searchForNewRecipes": "Search for new recipes"
   },
   "settings": {
     "profile": "Profile",

@@ -142,7 +142,7 @@
     "cookThis": "Das kochen",
     "notNow": "Nicht jetzt",
     "cookNextAction": "Als Nächstes",
-    "discoverTitle": "Entdecken",
+    "discoverTitle": "Discovery",
     "newRecipes": "Neue Rezepte",
     "discoverSubtitle": "KI durchsucht deine gespeicherten Quellen nach noch nicht ausprobierten Rezepten.",
     "discoverButton": "Auf Basis der Galley entdecken",
@@ -155,7 +155,8 @@
     "tryAgain": "Erneut versuchen",
     "searchAgain": "Erneut suchen",
     "parsing": "Wird analysiert…",
-    "addToGalley": "Zur Galley hinzufügen"
+    "addToGalley": "Zur Galley hinzufügen",
+    "searchForNewRecipes": "Neue Rezepte suchen"
   },
   "settings": {
     "profile": "Profil",

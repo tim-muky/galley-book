@@ -142,7 +142,7 @@
     "cookThis": "Cocinar esto",
     "notNow": "Ahora no",
     "cookNextAction": "A cocinar",
-    "discoverTitle": "Descubrir",
+    "discoverTitle": "Discovery",
     "newRecipes": "Nuevas recetas",
     "discoverSubtitle": "La IA busca en tus fuentes guardadas recetas que aún no has probado.",
     "discoverButton": "Descubrir según la Galley",
@@ -155,7 +155,8 @@
     "tryAgain": "Intentar de nuevo",
     "searchAgain": "Nueva búsqueda",
     "parsing": "Analizando…",
-    "addToGalley": "Añadir a la Galley"
+    "addToGalley": "Añadir a la Galley",
+    "searchForNewRecipes": "Buscar nuevas recetas"
   },
   "settings": {
     "profile": "Perfil",
