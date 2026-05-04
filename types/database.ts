@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      parse_quality_logs: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string | null
+          source_url: string
+          platform: string
+          parsed_via: string | null
+          success: boolean
+          missing_fields: string[]
+          error_message: string | null
+          recipe_name: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id?: string | null
+          source_url: string
+          platform: string
+          parsed_via?: string | null
+          success?: boolean
+          missing_fields?: string[]
+          error_message?: string | null
+          recipe_name?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string | null
+          source_url?: string
+          platform?: string
+          parsed_via?: string | null
+          success?: boolean
+          missing_fields?: string[]
+          error_message?: string | null
+          recipe_name?: string | null
+        }
+        Relationships: []
+      }
       ai_usage_logs: {
         Row: {
           cost_usd: number | null

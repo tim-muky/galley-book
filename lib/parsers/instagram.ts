@@ -12,52 +12,49 @@ export function isInstagramUrl(url: string): boolean {
  *  emitting <meta og:image>. The SSR'd photo lives in <img class="EmbeddedMediaImage" src="..."> instead.
  *  These CDN URLs need the Instagram Referer to load — the client proxies them via /api/proxy-image. */
 function extractInstagramEmbedImage(html: string): string | null {
-  const m = html.match(/<img[^>]*class=["']EmbeddedMediaImage["'][^>]*src=["']([^"']+)["']/i);
+  // Try src before class order (standard) and src after class order (alt layout)
+  const m =
+    html.match(/<img[^>]*class=["'][^"']*EmbeddedMediaImage[^"']*["'][^>]*src=["']([^"']+)["']/i) ??
+    html.match(/<img[^>]*src=["']([^"']+)["'][^>]*class=["'][^"']*EmbeddedMediaImage[^"']*["']/i);
   if (!m?.[1]) return null;
   return m[1].replace(/&amp;/g, "&");
 }
 
-async function fetchInstagramImages(url: string): Promise<string[]> {
-  const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return [];
-  const shortcode = match[1];
+const RECIPE_SIGNAL_RE = /\b(ingredient|tbsp|tsp|cup|gram|g\b|ml\b|oz\b|lb\b|serves|servings?|prep|cook|bake|fry|boil|simmer|chop|slice|dice|mix|stir|add|heat|pour|season|pinch|handful|tablespoon|teaspoon)\b/i;
 
-  for (const embedUrl of [
-    `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
-    `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
-    `https://www.instagram.com/reel/${shortcode}/embed/`,
-    `https://www.instagram.com/p/${shortcode}/embed/`,
-  ]) {
-    try {
-      const res = await fetch(embedUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-          Accept: "text/html,application/xhtml+xml",
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      if (!res.ok) continue;
-      const html = await res.text();
-      const img = extractInstagramEmbedImage(html) ?? extractImageUrl(html);
-      if (img) return [img];
-    } catch {
-      continue;
-    }
-  }
-  return [];
+/** Returns true if the stripped embed text looks like it contains recipe content. */
+function hasRecipeSignal(text: string): boolean {
+  return RECIPE_SIGNAL_RE.test(text);
 }
 
-/** Try fetching Instagram embed URL (public endpoint that includes post caption) */
-async function fetchInstagramEmbed(url: string): Promise<string> {
-  const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return "";
-  const shortcode = match[1];
+interface EmbedResult {
+  text: string;
+  imageUrl: string | null;
+}
 
-  for (const embedUrl of [
-    `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
-    `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
-  ]) {
+/** Fetch the Instagram embed page once, extract both caption text and cover image. */
+async function fetchInstagramEmbedPage(url: string): Promise<EmbedResult> {
+  const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  if (!match) return { text: "", imageUrl: null };
+  const shortcode = match[1];
+  const isReel = /instagram\.com\/reel\//i.test(url);
+
+  // Try the post type that matches the URL first to avoid unnecessary redirects
+  const embedUrls = isReel
+    ? [
+        `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
+        `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
+        `https://www.instagram.com/reel/${shortcode}/embed/`,
+        `https://www.instagram.com/p/${shortcode}/embed/`,
+      ]
+    : [
+        `https://www.instagram.com/p/${shortcode}/embed/captioned/`,
+        `https://www.instagram.com/reel/${shortcode}/embed/captioned/`,
+        `https://www.instagram.com/p/${shortcode}/embed/`,
+        `https://www.instagram.com/reel/${shortcode}/embed/`,
+      ];
+
+  for (const embedUrl of embedUrls) {
     try {
       const res = await fetch(embedUrl, {
         headers: {
@@ -70,18 +67,34 @@ async function fetchInstagramEmbed(url: string): Promise<string> {
       });
       if (!res.ok) continue;
       const html = await res.text();
+
+      const imageUrl =
+        extractInstagramEmbedImage(html) ?? extractImageUrl(html) ?? null;
+
       const text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-      if (text.length > 100) return text.slice(0, 6000);
+
+      // Require both minimum length and at least one recipe signal word to
+      // guard against login-wall pages or rate-limit stubs that pass the
+      // length check but contain no actual recipe content.
+      if (text.length > 200 && hasRecipeSignal(text)) {
+        return { text: text.slice(0, 6000), imageUrl };
+      }
+
+      // If content lacks recipe signal but we got an image, keep trying other
+      // embed URLs for better text — but preserve the image if nothing else works.
+      if (imageUrl && !text) {
+        return { text: "", imageUrl };
+      }
     } catch {
       continue;
     }
   }
-  return "";
+  return { text: "", imageUrl: null };
 }
 
 /** Download an Instagram CDN image and re-host it in Supabase Storage.
@@ -123,19 +136,16 @@ export async function cacheInstagramImage(
 }
 
 export async function parseInstagram(url: string): Promise<FetchResult> {
-  const [embedContent, instagramImages] = await Promise.all([
-    fetchInstagramEmbed(url),
-    fetchInstagramImages(url),
-  ]);
+  const { text: embedContent, imageUrl } = await fetchInstagramEmbedPage(url);
 
-  const imageUrl = instagramImages[0] ?? null;
   const imageSource: ImageSource = imageUrl ? "instagram_embed" : "none";
+  const imageCandidates = imageUrl ? [imageUrl] : [];
 
   if (embedContent.length > 200) {
     return {
       content: embedContent,
       imageUrl,
-      imageCandidates: instagramImages,
+      imageCandidates,
       parsedVia: "instagram_caption",
       imageSource,
     };
@@ -144,7 +154,7 @@ export async function parseInstagram(url: string): Promise<FetchResult> {
   // Embed failed — fall back to Perplexity with strict prompt
   if (process.env.PERPLEXITY_API_KEY) {
     const content = await fetchViaPerplexity(url, { kind: "instagram" });
-    if (content.includes("Unable to access")) {
+    if (/unable to access|cannot access|requires? login|not publicly|private post/i.test(content)) {
       return {
         content: "",
         imageUrl: null,
@@ -158,7 +168,7 @@ export async function parseInstagram(url: string): Promise<FetchResult> {
     return {
       content,
       imageUrl,
-      imageCandidates: instagramImages,
+      imageCandidates,
       parsedVia: "instagram_perplexity",
       imageSource,
     };

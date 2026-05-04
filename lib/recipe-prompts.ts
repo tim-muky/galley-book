@@ -24,8 +24,8 @@ const RECIPE_SCHEMA = `{
   "description": "string (brief, max 2 sentences)",
   "servings": number,
   "prep_time": number (in minutes),
-  "season": "all_year" | "spring" | "summer" | "autumn" | "winter",
-  "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side",
+  "season": "all_year" | "spring" | "summer" | "autumn" | "winter"  ← REQUIRED, never null, default "all_year",
+  "type": "starter" | "main" | "dessert" | "breakfast" | "snack" | "drink" | "side"  ← REQUIRED, never null, default "main",
   "cuisine": "string | null (single cuisine label, lowercase, e.g. 'italian', 'thai', 'levantine'; null if not clearly inferable)",
   "main_ingredients": ["string", ... 1–3 dominant ingredients, lowercase, singular, e.g. 'chicken', 'fennel', 'chickpea'],
   "image_url": "string | null (direct image URL if found)",
@@ -37,12 +37,12 @@ const COMMON_RULES = `Common rules:
 - Convert all ingredient amounts to numbers (e.g. "½" → 0.5, "1/3" → 0.33)
 - Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null
 - prep_time: total active + passive cooking time in minutes
-- season: infer from dish characteristics if not stated
-- type: infer from dish if not stated (default "main")
+- season: ALWAYS return one of the five allowed values — infer from dish name, ingredients, or context (e.g. asparagus/peas → "spring", tomatoes/basil → "summer", pumpkin/squash → "autumn", roasts/stews → "winter"). Default to "all_year" only when no seasonal signal is present. NEVER return null.
+- type: ALWAYS return one of the seven allowed values — infer from dish name and context. Default to "main" when uncertain. NEVER return null.
 - cuisine: a single short lowercase label naming the regional/national cuisine (e.g. "italian", "japanese", "moroccan", "tex-mex"); null if the dish is not clearly tied to a cuisine
 - main_ingredients: 1–3 dominant ingredients only — what the dish is "about" (e.g. for "chicken tikka masala" → ["chicken"]; for "fennel & orange salad" → ["fennel", "orange"]). Lowercase, singular, no quantities, no descriptors
 - ingredients.group: if ingredients are divided into sections (e.g. "Marinade", "Sauce", "Dressing"), set group to the section name; otherwise null
-- Return null for fields you cannot determine
+- Return null for fields you cannot determine (season and type excepted — they always have a value)
 - Return ONLY JSON, no markdown, no explanation`;
 
 function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
@@ -79,7 +79,7 @@ function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
       return [
         "The content below is a web-search summary. It MAY not be a recipe at all.",
         "First decide: does this describe a cookable dish? If it is a news article, restaurant review, profile page, or product listing, return name=null and empty arrays.",
-        "If it is a recipe, extract conservatively — prefer null over guessing when the summary is vague.",
+        "If it is a recipe, extract conservatively — prefer null over guessing when the summary is vague for ingredient amounts, servings, and prep_time. However, season and type MUST always have a value — infer them from the dish name alone if nothing else is available.",
         "Steps: split the procedure into discrete cooking actions. Use numbered markers ('1.', '2.'), bullet points, and transitions ('first', 'then', 'next', 'meanwhile', 'finally') as split points when present. If the procedure is written as continuous prose without explicit markers, split on sentence boundaries — each sentence describing a cooking action becomes one step. NEVER return an empty steps array when ingredients are present and any cooking method is described. Over-splitting (one sentence per step) is always preferred over under-splitting (whole method as one step).",
         "prep_time: if the source states a total/cook/prep time, use it. Otherwise infer a reasonable estimate from the recipe complexity (rough guide: 15min for a one-pan / no-cook dish, 30–45min for a typical weeknight main, 60+min for braises, doughs that proof, or anything baked >30min). Only return null if you genuinely cannot tell what the dish is.",
       ].join(" ");

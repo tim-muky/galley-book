@@ -14,6 +14,7 @@ import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt } from "@/lib/recipe-prompts";
 import { fetchPageContent, fetchInlineImage, cacheInstagramImage } from "@/lib/parsers";
+import { logParseQuality, detectMissingFields } from "@/lib/parse-quality-logger";
 import { z } from "zod";
 
 const ParseSchema = z.object({
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
   } = await fetchPageContent(url);
 
   if (fetchError) {
+    void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: fetchError });
     return NextResponse.json(
       diagnostics ? { error: fetchError, _diagnostics: diagnostics } : { error: fetchError },
       { status: 422 }
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
   }
 
   if (!pageContent?.trim()) {
+    void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: "empty_content" });
     return NextResponse.json(
       { error: "Could not retrieve content from this URL. Try pasting the recipe manually." },
       { status: 422 }
@@ -157,6 +160,7 @@ export async function POST(request: Request) {
     const stepsEmpty = !Array.isArray(parsed.steps) || parsed.steps.length === 0;
     const hasNoRecipeContent = !parsed.name || (ingredientsEmpty && stepsEmpty);
     if (isPerplexityRoute && hasNoRecipeContent) {
+      void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: "perplexity_no_recipe_content" });
       await logAIUsage({
         userId: user.id,
         operation: operationLabel,
@@ -186,6 +190,14 @@ export async function POST(request: Request) {
     parsed.parsed_via = parsedVia;
     parsed.image_source = imageSource;
     if (diagnostics) parsed._diagnostics = diagnostics;
+    void logParseQuality({
+      userId: user.id,
+      sourceUrl: url,
+      parsedVia,
+      success: true,
+      missingFields: detectMissingFields(parsed),
+      recipeName: typeof parsed.name === "string" ? parsed.name : null,
+    });
     await logAIUsage({
       userId: user.id,
       operation: operationLabel,
@@ -200,6 +212,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(parsed);
   } catch {
+    void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: "json_parse_failed" });
     await logAIUsage({
       userId: user.id,
       operation: operationLabel,
