@@ -14,45 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      parse_quality_logs: {
-        Row: {
-          id: string
-          created_at: string
-          user_id: string | null
-          source_url: string
-          platform: string
-          parsed_via: string | null
-          success: boolean
-          missing_fields: string[]
-          error_message: string | null
-          recipe_name: string | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          user_id?: string | null
-          source_url: string
-          platform: string
-          parsed_via?: string | null
-          success?: boolean
-          missing_fields?: string[]
-          error_message?: string | null
-          recipe_name?: string | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          user_id?: string | null
-          source_url?: string
-          platform?: string
-          parsed_via?: string | null
-          success?: boolean
-          missing_fields?: string[]
-          error_message?: string | null
-          recipe_name?: string | null
-        }
-        Relationships: []
-      }
       ai_usage_logs: {
         Row: {
           cost_usd: number | null
@@ -318,6 +279,98 @@ export type Database = {
           },
         ]
       }
+      iap_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          galley_id: string
+          grant_reason: string | null
+          granted_by: string | null
+          id: string
+          offer_identifier: string | null
+          original_transaction_id: string | null
+          product_id: string
+          raw_payload: Json | null
+          revoked_at: string | null
+          revoked_by: string | null
+          source: Database["public"]["Enums"]["iap_source"]
+          starts_at: string
+          status: Database["public"]["Enums"]["iap_status"]
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          galley_id: string
+          grant_reason?: string | null
+          granted_by?: string | null
+          id?: string
+          offer_identifier?: string | null
+          original_transaction_id?: string | null
+          product_id: string
+          raw_payload?: Json | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source: Database["public"]["Enums"]["iap_source"]
+          starts_at?: string
+          status?: Database["public"]["Enums"]["iap_status"]
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          galley_id?: string
+          grant_reason?: string | null
+          granted_by?: string | null
+          id?: string
+          offer_identifier?: string | null
+          original_transaction_id?: string | null
+          product_id?: string
+          raw_payload?: Json | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source?: Database["public"]["Enums"]["iap_source"]
+          starts_at?: string
+          status?: Database["public"]["Enums"]["iap_status"]
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iap_subscriptions_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iap_subscriptions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iap_subscriptions_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iap_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           amount: number | null
@@ -355,6 +408,84 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parse_quality_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          missing_fields: string[]
+          parsed_via: string | null
+          platform: string
+          recipe_name: string | null
+          source_url: string
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          missing_fields?: string[]
+          parsed_via?: string | null
+          platform: string
+          recipe_name?: string | null
+          source_url: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          missing_fields?: string[]
+          parsed_via?: string | null
+          platform?: string
+          recipe_name?: string | null
+          source_url?: string
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      pending_galley_invites: {
+        Row: {
+          created_at: string
+          email: string
+          galley_id: string
+          id: string
+          inviter_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          galley_id: string
+          id?: string
+          inviter_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          galley_id?: string
+          id?: string
+          inviter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_galley_invites_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_galley_invites_inviter_id_fkey"
+            columns: ["inviter_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -780,14 +911,27 @@ export type Database = {
         Returns: string
       }
       create_recipe_with_children: {
-        Args: { p_ingredients: Json; p_recipe: Json; p_steps: Json; p_tags?: Json }
+        Args: {
+          p_ingredients: Json
+          p_recipe: Json
+          p_steps: Json
+          p_tags?: Json
+        }
         Returns: string
       }
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_owner: { Args: { galley_uuid: string }; Returns: boolean }
+      is_galley_premium: { Args: { p_galley_id: string }; Returns: boolean }
     }
     Enums: {
       galley_role: "owner" | "member"
+      iap_source: "apple_iap" | "apple_offer_code" | "comp"
+      iap_status:
+        | "active"
+        | "expired"
+        | "in_billing_retry"
+        | "cancelled"
+        | "revoked"
       recipe_season: "spring" | "summer" | "autumn" | "winter" | "all_year"
       recipe_type:
         | "starter"
@@ -927,6 +1071,14 @@ export const Constants = {
   public: {
     Enums: {
       galley_role: ["owner", "member"],
+      iap_source: ["apple_iap", "apple_offer_code", "comp"],
+      iap_status: [
+        "active",
+        "expired",
+        "in_billing_retry",
+        "cancelled",
+        "revoked",
+      ],
       recipe_season: ["spring", "summer", "autumn", "winter", "all_year"],
       recipe_type: [
         "starter",
@@ -950,9 +1102,6 @@ export type RecipeType = Database["public"]["Enums"]["recipe_type"];
 export type GalleyRole = Database["public"]["Enums"]["galley_role"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
-
-export type TagKind = Database["public"]["Enums"]["tag_kind"];
-export type RecipeTag = Database["public"]["Tables"]["recipe_tags"]["Row"];
 
 export type Recipe = Database["public"]["Tables"]["recipes"]["Row"];
 export type Ingredient = Database["public"]["Tables"]["ingredients"]["Row"];

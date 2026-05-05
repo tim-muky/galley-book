@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/import-test", label: "Import Test" },
   { href: "/admin/parse-logs", label: "Parse Logs" },
+  { href: "/admin/comp", label: "Comp" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
