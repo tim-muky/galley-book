@@ -216,6 +216,7 @@
   "auth": {
     "tagline": "La collection de recettes de votre famille",
     "continueWithGoogle": "Continuer avec Google",
+    "continueWithApple": "Continuer avec Apple",
     "termsNotice": "En continuant, vous acceptez les {terms} et la {privacy} de galleybook.",
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité"
@@ -239,6 +240,23 @@
       "skip": "Plus tard",
       "done": "Terminé",
       "error": "Impossible de créer le lien"
+    },
+    "intro": {
+      "card1": {
+        "title": "Importez n'importe quelle recette.",
+        "body": "Collez un lien d'Instagram, YouTube ou de tout site de recettes — galleybook le transforme en une recette claire, prête à cuisiner."
+      },
+      "card2": {
+        "title": "Votre galley, partagée.",
+        "body": "Cuisinez ensemble. Invitez votre foyer à partager des recettes, planifier les repas et construire une bibliothèque culinaire."
+      },
+      "card3": {
+        "title": "Une bibliothèque qui se trouve seule.",
+        "body": "Cherchez par ingrédient, saison ou humeur. L'IA vous aide à choisir quoi cuisiner ensuite."
+      },
+      "skip": "Passer",
+      "next": "Suivant",
+      "done": "Compris"
     },
     "step3": {
       "title": "Ajoutez votre première recette.",

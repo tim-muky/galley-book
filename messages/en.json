@@ -216,6 +216,7 @@
   "auth": {
     "tagline": "Your family's recipe collection",
     "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
     "termsNotice": "By continuing, you agree to galleybook's {terms} and {privacy}.",
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy"
@@ -239,6 +240,23 @@
       "skip": "Skip for now",
       "done": "Done",
       "error": "Couldn't create link"
+    },
+    "intro": {
+      "card1": {
+        "title": "Import any recipe.",
+        "body": "Paste a link from Instagram, YouTube, or any recipe site — galleybook turns it into a clean, cookable recipe."
+      },
+      "card2": {
+        "title": "Your galley, shared.",
+        "body": "Cook together. Invite your household to share recipes, plan meals, and build a kitchen library."
+      },
+      "card3": {
+        "title": "A library that finds itself.",
+        "body": "Search by ingredient, season, or mood. AI helps you discover what to cook next."
+      },
+      "skip": "Skip",
+      "next": "Next",
+      "done": "Got it"
     },
     "step3": {
       "title": "Add your first recipe.",

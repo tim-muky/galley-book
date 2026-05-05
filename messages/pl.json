@@ -216,6 +216,7 @@
   "auth": {
     "tagline": "Rodzinna kolekcja przepisów",
     "continueWithGoogle": "Kontynuuj przez Google",
+    "continueWithApple": "Kontynuuj przez Apple",
     "termsNotice": "Kontynuując, akceptujesz {terms} i {privacy} galleybook.",
     "termsOfService": "Warunki korzystania",
     "privacyPolicy": "Politykę prywatności"
@@ -239,6 +240,23 @@
       "skip": "Później",
       "done": "Gotowe",
       "error": "Nie udało się utworzyć linku"
+    },
+    "intro": {
+      "card1": {
+        "title": "Importuj dowolny przepis.",
+        "body": "Wklej link z Instagrama, YouTube lub dowolnej strony z przepisami — galleybook zamieni go w czysty, gotowy do gotowania przepis."
+      },
+      "card2": {
+        "title": "Twoja galley, dzielona.",
+        "body": "Gotujcie razem. Zaproś domowników, by dzielić przepisy, planować posiłki i budować bibliotekę kuchenną."
+      },
+      "card3": {
+        "title": "Biblioteka, która sama się odnajduje.",
+        "body": "Szukaj po składniku, sezonie lub nastroju. AI pomoże ci odkryć, co ugotować."
+      },
+      "skip": "Pomiń",
+      "next": "Dalej",
+      "done": "Rozumiem"
     },
     "step3": {
       "title": "Dodaj pierwszy przepis.",
