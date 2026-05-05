@@ -1130,3 +1130,5 @@ export type RecipeTranslation = Omit<
   ingredients: { id: string; name: string }[] | null;
   steps: { id: string; instruction: string }[] | null;
 };
+
+export type TagKind = Database["public"]["Enums"]["tag_kind"];

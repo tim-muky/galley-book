@@ -4,6 +4,7 @@
 export type RecipeSeason = Database["public"]["Enums"]["recipe_season"];
 export type RecipeType = Database["public"]["Enums"]["recipe_type"];
 export type GalleyRole = Database["public"]["Enums"]["galley_role"];
+export type TagKind = Database["public"]["Enums"]["tag_kind"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
 
