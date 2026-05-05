@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter, Link } from "@/i18n/routing";
 import Image from "next/image";
 import { TagEditor, type TagInput } from "@/components/tag-editor";
+import { PhotoCropper } from "@/components/photo-cropper";
 
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
@@ -51,6 +52,8 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string>(existingPhotoUrl ?? "");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState("");
+  const [cropperFilename, setCropperFilename] = useState("recipe.jpg");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -102,13 +105,18 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
     }));
   }
 
-  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCropperFilename(file.name || "recipe.jpg");
+    setCropperSrc(URL.createObjectURL(file));
+  }
+
+  async function handleCropConfirm(file: File, previewUrl: string) {
+    setCropperSrc("");
+    if (photoInputRef.current) photoInputRef.current.value = "";
     setUploadingPhoto(true);
-    // Show preview immediately
-    const preview = URL.createObjectURL(file);
-    setPhotoPreview(preview);
+    setPhotoPreview(previewUrl);
     try {
       const fd = new FormData();
       fd.append("photo", file);
@@ -425,6 +433,15 @@ export function EditRecipeClient({ id, existingPhotoUrl, initial }: Props) {
           {deleting ? "Deleting…" : "Delete Recipe"}
         </button>
       </div>
+
+      {cropperSrc && (
+        <PhotoCropper
+          src={cropperSrc}
+          filename={cropperFilename}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropperSrc("")}
+        />
+      )}
     </div>
   );
 }

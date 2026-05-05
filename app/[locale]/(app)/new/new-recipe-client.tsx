@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { clsx } from "clsx";
 import { TagEditor, type TagInput } from "@/components/tag-editor";
+import { PhotoCropper } from "@/components/photo-cropper";
 import type { TagKind } from "@/types/database";
 
 type Mode = "link" | "photo" | "manual";
@@ -121,6 +122,8 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   const [selectedGalleyId, setSelectedGalleyId] = useState(defaultGalleyId);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const savingRef = useRef(false);
+  const [cropperSrc, setCropperSrc] = useState<string>("");
+  const [cropperFilename, setCropperFilename] = useState<string>("recipe.jpg");
   const [cameraFiles, setCameraFiles] = useState<File[]>([]);
   const [cameraPreviews, setCameraPreviews] = useState<string[]>([]);
   const [cameraError, setCameraError] = useState("");
@@ -230,10 +233,23 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCropperFilename(file.name || "recipe.jpg");
+    setCropperSrc(URL.createObjectURL(file));
+  }
+
+  function openCropperForCurrent() {
+    if (!photoPreview || photoPreview.startsWith("http")) return;
+    setCropperFilename(photoFile?.name ?? "recipe.jpg");
+    setCropperSrc(photoPreview);
+  }
+
+  function handleCropConfirm(file: File, previewUrl: string) {
     setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoPreview(previewUrl);
     setImageCandidates([]);
     setForm((prev) => ({ ...prev, image_url: "" }));
+    setCropperSrc("");
+    if (photoInputRef.current) photoInputRef.current.value = "";
   }
 
   function clearPhoto() {
@@ -632,7 +648,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
                 <Image src={photoPreview} alt="Recipe photo" fill className="object-cover" unoptimized />
                 <div className="absolute inset-0 flex items-end justify-between p-3">
-                  <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
+                    <button type="button" onClick={openCropperForCurrent} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Crop</button>
+                  </div>
                   <button type="button" onClick={clearPhoto} className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
                   </button>
@@ -815,6 +834,15 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             </button>
           )}
         </div>
+      )}
+
+      {cropperSrc && (
+        <PhotoCropper
+          src={cropperSrc}
+          filename={cropperFilename}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropperSrc("")}
+        />
       )}
     </div>
   );
