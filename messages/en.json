@@ -105,7 +105,8 @@
       "preparationSteps": "Preparation Steps",
       "stepPlaceholder": "Describe this step…",
       "saveTo": "Save to {galley}",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "All year",

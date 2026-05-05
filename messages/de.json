@@ -105,7 +105,8 @@
       "preparationSteps": "Zubereitungsschritte",
       "stepPlaceholder": "Diesen Schritt beschreiben…",
       "saveTo": "In {galley} speichern",
-      "saving": "Wird gespeichert…"
+      "saving": "Wird gespeichert…",
+      "discard": "Verwerfen"
     },
     "seasons": {
       "all_year": "Ganzjährig",

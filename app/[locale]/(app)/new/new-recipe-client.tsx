@@ -300,6 +300,27 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     setForm((prev) => ({ ...prev, steps: prev.steps.filter((_, i) => i !== idx) }));
   }
 
+  function handleDiscard() {
+    if (saving) return;
+    const sourceUrl = form.source_url || linkUrl || null;
+    const recipeName = form.name || null;
+    void fetch("/api/recipes/parse/discard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceUrl, recipeName }),
+    }).catch(() => null);
+    setShowForm(false);
+    setForm(emptyForm);
+    setLinkUrl("");
+    setParseError("");
+    setParseWarning("");
+    setSaveError("");
+    setPhotoFile(null);
+    setPhotoPreview("");
+    setImageCandidates([]);
+    clearCamera();
+  }
+
   async function handleSave() {
     if (!form.name.trim() || savingRef.current) return;
     savingRef.current = true;
@@ -783,6 +804,16 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               ? t("form.saving")
               : t("form.saveTo", { galley: galleys.find((g) => g.id === selectedGalleyId)?.name ?? "Galley" })}
           </button>
+          {(mode === "link" || mode === "photo") && (
+            <button
+              onClick={handleDiscard}
+              disabled={saving}
+              style={{ backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+              className="w-full border text-sm font-light py-3 rounded-full transition-opacity disabled:opacity-40"
+            >
+              {t("form.discard")}
+            </button>
+          )}
         </div>
       )}
     </div>

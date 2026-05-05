@@ -415,37 +415,40 @@ export type Database = {
       parse_quality_logs: {
         Row: {
           created_at: string
+          discarded: boolean
           error_message: string | null
           id: string
           missing_fields: string[]
           parsed_via: string | null
           platform: string
           recipe_name: string | null
-          source_url: string
+          source_url: string | null
           success: boolean
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          discarded?: boolean
           error_message?: string | null
           id?: string
           missing_fields?: string[]
           parsed_via?: string | null
           platform: string
           recipe_name?: string | null
-          source_url: string
+          source_url?: string | null
           success?: boolean
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          discarded?: boolean
           error_message?: string | null
           id?: string
           missing_fields?: string[]
           parsed_via?: string | null
           platform?: string
           recipe_name?: string | null
-          source_url?: string
+          source_url?: string | null
           success?: boolean
           user_id?: string | null
         }

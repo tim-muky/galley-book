@@ -25,30 +25,34 @@ export function detectMissingFields(parsed: Record<string, unknown>): string[] {
 
 interface ParseQualityParams {
   userId: string | null;
-  sourceUrl: string;
+  sourceUrl: string | null;
   parsedVia: ParsedVia | null;
   success: boolean;
   /** Populated from detectMissingFields on successful parses. */
   missingFields?: string[];
   errorMessage?: string;
   recipeName?: string | null;
+  /** True when the user reviewed the AI-parsed draft and chose to discard it. */
+  discarded?: boolean;
 }
 
-/** Fire-and-forget: logs only failures and partial parses (missing fields).
- *  Rows where success=true and missingFields is empty are not written — they're not interesting. */
+/** Fire-and-forget: logs failures, partial parses (missing fields), and user-discarded drafts.
+ *  Rows where success=true, missingFields is empty, and discarded=false are not written — they're not interesting. */
 export async function logParseQuality(params: ParseQualityParams): Promise<void> {
   const missing = params.missingFields ?? [];
-  if (params.success && missing.length === 0) return;
+  const discarded = params.discarded ?? false;
+  if (params.success && missing.length === 0 && !discarded) return;
 
   const supabase = createServiceClient();
   await supabase.from("parse_quality_logs").insert({
     user_id: params.userId,
     source_url: params.sourceUrl,
-    platform: platformFromUrl(params.sourceUrl),
+    platform: params.sourceUrl ? platformFromUrl(params.sourceUrl) : "website",
     parsed_via: params.parsedVia,
     success: params.success,
     missing_fields: missing,
     error_message: params.errorMessage ?? null,
     recipe_name: params.recipeName ?? null,
+    discarded,
   });
 }

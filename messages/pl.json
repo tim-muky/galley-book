@@ -105,7 +105,8 @@
       "preparationSteps": "Kroki przygotowania",
       "stepPlaceholder": "Opisz ten krok…",
       "saveTo": "Zapisz do {galley}",
-      "saving": "Zapisywanie…"
+      "saving": "Zapisywanie…",
+      "discard": "Odrzuć"
     },
     "seasons": {
       "all_year": "Cały rok",
