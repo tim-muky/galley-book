@@ -51,7 +51,7 @@ export function InviteStep({
   }
 
   function next() {
-    router.push("/onboarding/add-recipe");
+    router.push("/onboarding/intro");
   }
 
   return (
