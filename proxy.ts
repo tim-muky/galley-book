@@ -11,10 +11,9 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const { pathname } = request.nextUrl;
 
-  // Landing domain — rewrite to /landing, pass API + admin routes through
+  // Landing domain — rewrite to /landing, pass API routes through
   if (LANDING_HOSTS.has(host)) {
     if (pathname.startsWith("/api/")) return NextResponse.next();
-    if (pathname.startsWith("/admin")) return updateSession(request);
     const url = request.nextUrl.clone();
     url.pathname = pathname === "/" ? "/landing" : `/landing${pathname}`;
     return NextResponse.rewrite(url);
