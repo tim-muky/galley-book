@@ -15,6 +15,8 @@ import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt } from "@/lib/recipe-prompts";
 import { fetchPageContent, fetchInlineImage, cacheInstagramImage } from "@/lib/parsers";
 import { logParseQuality, detectMissingFields } from "@/lib/parse-quality-logger";
+import { getGalleyPlan } from "@/lib/subscription";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { z } from "zod";
 
 const ParseSchema = z.object({
@@ -35,6 +37,17 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
+  if (galleyId) {
+    const plan = await getGalleyPlan(supabase, galleyId);
+    if (plan !== "premium") {
+      return NextResponse.json(
+        { error: "AI recipe import is a premium feature.", upgrade: true },
+        { status: 403 },
+      );
+    }
+  }
 
   const rl = await checkParseLimit(user.id);
   if (!rl.allowed) {

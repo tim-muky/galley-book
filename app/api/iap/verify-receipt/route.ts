@@ -25,6 +25,9 @@ interface JwsTransactionPayload {
   originalTransactionId?: string;
   expiresDate?: number; // ms since epoch
   purchaseDate?: number;
+  offerIdentifier?: string;
+  // Apple's offerType: 1 = introductory, 2 = promotional, 3 = subscription offer code
+  offerType?: number;
 }
 
 function decodeJwsPayload(jws: string): JwsTransactionPayload | null {
@@ -65,15 +68,18 @@ export async function POST(request: Request) {
   const originalTransactionId = payload?.originalTransactionId ?? transactionId;
   const effectiveTransactionId = payload?.transactionId ?? transactionId;
 
+  const isOfferCode = payload?.offerType === 3 && Boolean(payload.offerIdentifier);
+
   const service = createServiceClient();
   const { error: insertErr } = await service.from("iap_subscriptions").insert({
     user_id: user.id,
     galley_id: galleyId,
     product_id: productId,
-    source: "apple_iap",
+    source: isOfferCode ? "apple_offer_code" : "apple_iap",
     status: "active",
     transaction_id: effectiveTransactionId,
     original_transaction_id: originalTransactionId,
+    offer_identifier: payload?.offerIdentifier ?? null,
     starts_at: new Date().toISOString(),
     expires_at: expiresAt,
     raw_payload: payload ?? { jws_unparsed: true },

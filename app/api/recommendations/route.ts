@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkRecsLimit } from "@/lib/rate-limit";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
+import { getGalleyPlan } from "@/lib/subscription";
 
 interface RecommendationResult {
   title: string;
@@ -88,6 +89,14 @@ export async function GET(request: Request) {
 
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ recommendations: [] });
+
+  const plan = await getGalleyPlan(supabase, galleyId);
+  if (plan !== "premium") {
+    return NextResponse.json(
+      { error: "AI recommendations are a premium feature.", upgrade: true },
+      { status: 403 },
+    );
+  }
 
   // Load data in parallel — skip saved_sources for custom searches
   const [{ data: recipes }, { data: savedSources }, { data: memory }] = await Promise.all([
