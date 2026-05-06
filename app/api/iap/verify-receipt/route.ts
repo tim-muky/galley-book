@@ -1,16 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
+import { verifySignedTransaction } from "@/lib/iap/verifier";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 // GAL-188 — server-side verification of an Apple StoreKit 2 transaction.
-//
-// CURRENT STATE: stub. We do NOT verify the JWS signature against Apple yet.
-// Once the App Store Connect In-App Purchase API key (.p8 + Key ID + Issuer
-// ID) is configured we'll add proper verification via App Store Server API.
-// Until then this trusts the client-supplied JWS for its expiry claim. Safe
-// for TestFlight only — must be replaced before production submission.
+// JWS signature + cert chain + bundle id + environment are validated by
+// Apple's official @apple/app-store-server-library SignedDataVerifier
+// before we trust any claim from the payload.
 
 const InputSchema = z.object({
   receipt: z.string().min(1).max(10_000),
@@ -18,28 +16,6 @@ const InputSchema = z.object({
   transactionId: z.string().min(1).max(200).nullable(),
   galleyId: z.string().uuid(),
 });
-
-interface JwsTransactionPayload {
-  productId?: string;
-  transactionId?: string;
-  originalTransactionId?: string;
-  expiresDate?: number; // ms since epoch
-  purchaseDate?: number;
-  offerIdentifier?: string;
-  // Apple's offerType: 1 = introductory, 2 = promotional, 3 = subscription offer code
-  offerType?: number;
-}
-
-function decodeJwsPayload(jws: string): JwsTransactionPayload | null {
-  const parts = jws.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const json = Buffer.from(parts[1], "base64url").toString("utf8");
-    return JSON.parse(json) as JwsTransactionPayload;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -62,13 +38,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not a member of that galley" }, { status: 403 });
   }
 
-  const payload = decodeJwsPayload(receipt);
-  const expiresAtMs = payload?.expiresDate;
-  const expiresAt = expiresAtMs ? new Date(expiresAtMs).toISOString() : null;
-  const originalTransactionId = payload?.originalTransactionId ?? transactionId;
-  const effectiveTransactionId = payload?.transactionId ?? transactionId;
+  // Verify the JWS signature against Apple's root CAs and decode. The
+  // verifier also enforces bundle id + environment match — anything from
+  // a different app or a mismatched environment claim throws here.
+  let payload;
+  try {
+    payload = await verifySignedTransaction(receipt);
+  } catch (err) {
+    logger.warn("iap.verify_receipt.signature_invalid", {
+      userId: user.id,
+      galleyId,
+      productId,
+      transactionId,
+      message: err instanceof Error ? err.message : "unknown",
+    });
+    return NextResponse.json(
+      { error: "Receipt could not be verified." },
+      { status: 400 },
+    );
+  }
 
-  const isOfferCode = payload?.offerType === 3 && Boolean(payload.offerIdentifier);
+  // The client-supplied productId must match what Apple signed — defence
+  // against tampering by a malicious client passing the legit JWS but
+  // claiming a different product.
+  if (payload.productId !== productId) {
+    logger.warn("iap.verify_receipt.product_mismatch", {
+      claimed: productId,
+      signed: payload.productId,
+      userId: user.id,
+    });
+    return NextResponse.json(
+      { error: "Receipt product does not match request." },
+      { status: 400 },
+    );
+  }
+
+  const expiresAt = payload.expiresDate ? new Date(payload.expiresDate).toISOString() : null;
+  const originalTransactionId = payload.originalTransactionId ?? transactionId;
+  const effectiveTransactionId = payload.transactionId ?? transactionId;
+  const isOfferCode = payload.offerType === 3 && Boolean(payload.offerIdentifier);
 
   const service = createServiceClient();
   const { error: insertErr } = await service.from("iap_subscriptions").insert({
@@ -79,10 +87,10 @@ export async function POST(request: Request) {
     status: "active",
     transaction_id: effectiveTransactionId,
     original_transaction_id: originalTransactionId,
-    offer_identifier: payload?.offerIdentifier ?? null,
+    offer_identifier: payload.offerIdentifier ?? null,
     starts_at: new Date().toISOString(),
     expires_at: expiresAt,
-    raw_payload: payload ?? { jws_unparsed: true },
+    raw_payload: payload as unknown as Record<string, unknown>,
   });
   if (insertErr) {
     if (insertErr.code === "23505") {
@@ -105,7 +113,7 @@ export async function POST(request: Request) {
     productId,
     transactionId: effectiveTransactionId,
     expiresAt,
-    stub: true,
+    environment: payload.environment,
   });
   return NextResponse.json({ ok: true });
 }

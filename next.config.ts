@@ -4,6 +4,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // GAL-188 + GAL-189 — Next.js's tracer doesn't follow `fs.readFileSync`
+  // string args, so the Apple root .cer files used by lib/iap/verifier.ts
+  // wouldn't otherwise be bundled into the serverless function.
+  outputFileTracingIncludes: {
+    "/api/iap/**/*": ["./lib/iap/apple-root-certs/*.cer"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
