@@ -8,6 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { logAIUsage } from "@/lib/ai-logger";
+import { logger } from "@/lib/logger";
 import { checkRecsLimit } from "@/lib/rate-limit";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { getGalleyPlan } from "@/lib/subscription";
@@ -57,15 +58,39 @@ Return exactly 6 results. No markdown, no explanation — only the JSON array.`,
   if (!res.ok) return { ...empty, durationMs };
 
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content ?? "";
+  const text: string = data.choices?.[0]?.message?.content ?? "";
   const inputTokens: number | null = data.usage?.prompt_tokens ?? null;
   const outputTokens: number | null = data.usage?.completion_tokens ?? null;
 
+  // Perplexity often wraps JSON in markdown code fences (```json ... ``` or
+  // ``` ... ```). Strip them before regex-extracting the array so the parser
+  // doesn't accidentally include the closing fence backticks.
+  const stripped = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+
   try {
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return { results: [], inputTokens, outputTokens, durationMs };
-    return { results: JSON.parse(jsonMatch[0]), inputTokens, outputTokens, durationMs };
-  } catch {
+    const jsonMatch = stripped.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      logger.warn("recommendations.perplexity.no_array", {
+        sample: text.slice(0, 300),
+      });
+      return { results: [], inputTokens, outputTokens, durationMs };
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      logger.warn("recommendations.perplexity.empty_array", {
+        sample: text.slice(0, 300),
+      });
+      return { results: [], inputTokens, outputTokens, durationMs };
+    }
+    return { results: parsed, inputTokens, outputTokens, durationMs };
+  } catch (err) {
+    logger.warn("recommendations.perplexity.parse_failed", {
+      error: err instanceof Error ? err.message : "unknown",
+      sample: text.slice(0, 300),
+    });
     return { results: [], inputTokens, outputTokens, durationMs };
   }
 }
@@ -147,6 +172,18 @@ export async function GET(request: Request) {
   const recommendations = memoryUrls.length > 0
     ? results.filter((r) => !memoryUrls.includes(r.source_url))
     : results;
+
+  logger.info("recommendations.search_completed", {
+    userId: user.id,
+    galleyId,
+    cuisine,
+    ingredient,
+    perplexityResults: results.length,
+    afterMemoryFilter: recommendations.length,
+    memoryUrlCount: memoryUrls.length,
+    durationMs,
+    hasApiKey: Boolean(process.env.PERPLEXITY_API_KEY),
+  });
 
   return NextResponse.json({ recommendations });
 }
