@@ -28,6 +28,12 @@ export function LibraryFilters({ filters, available, search }: Props) {
   const router = useRouter();
   const t = useTranslations("library");
   const [expanded, setExpanded] = useState<TagKind | null>(null);
+  // GAL-284: collapse the per-kind picker block by default. Auto-open when
+  // the page loads with active filters in the URL so users can see what's
+  // selected and adjust without an extra tap.
+  const hasInitialFilters =
+    filters.cuisine.length + filters.type.length + filters.season.length + filters.ingredient.length > 0;
+  const [filtersOpen, setFiltersOpen] = useState(hasInitialFilters);
 
   function buildHref(next: TagFilters): string {
     const sp = new URLSearchParams();
@@ -89,8 +95,28 @@ export function LibraryFilters({ filters, available, search }: Props) {
         )}
       </div>
 
-      {/* Per-kind disclosure rows — only shown when there are tags to pick */}
+      {/* Single "Filters" toggle that reveals/hides the per-kind picker */}
       {totalAvailable > 0 && (
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="mt-1 inline-flex items-center gap-1.5 py-1.5 text-xs font-semibold text-anthracite uppercase tracking-widest"
+        >
+          <span>Filters</span>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="none"
+            style={{ transform: filtersOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            <path d="M2 3.5L5 6.5l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+
+      {/* Per-kind disclosure rows — only shown when there are tags to pick */}
+      {totalAvailable > 0 && filtersOpen && (
         <div className="mt-2 space-y-1">
           {TAG_KINDS.map((kind) => {
             const options = available[kind];
