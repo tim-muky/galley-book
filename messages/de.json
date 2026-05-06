@@ -265,5 +265,11 @@
       "start": "Importieren starten",
       "skip": "Zu meiner Bibliothek"
     }
+  },
+  "upgrade": {
+    "eyebrow": "galleybook premium",
+    "title": "KI-Importe sind Teil von Premium",
+    "body": "Importe und Empfehlungen laufen über KI. Abonniere in der iOS-App — die ersten 3 Tage sind kostenlos.",
+    "appStoreCta": "Im App Store öffnen"
   }
 }

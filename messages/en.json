@@ -265,5 +265,11 @@
       "start": "Start importing",
       "skip": "Go to my library"
     }
+  },
+  "upgrade": {
+    "eyebrow": "galleybook premium",
+    "title": "AI imports are part of premium",
+    "body": "Imports and recommendations are powered by AI. Subscribe in the iOS app — the first 3 days are free.",
+    "appStoreCta": "Open in the App Store"
   }
 }

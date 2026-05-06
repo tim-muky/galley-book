@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { clsx } from "clsx";
+import { UpgradeCard } from "@/components/upgrade-card";
 import { TagEditor, type TagInput } from "@/components/tag-editor";
 import { PhotoCropper } from "@/components/photo-cropper";
 import type { TagKind } from "@/types/database";
@@ -112,6 +113,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState("");
   const [parseWarning, setParseWarning] = useState("");
+  // GAL-277 — show the iOS-app upsell card instead of a raw error string
+  // when the API returns 403 with `upgrade: true`.
+  const [parseUpgradeNeeded, setParseUpgradeNeeded] = useState(false);
+  const [cameraUpgradeNeeded, setCameraUpgradeNeeded] = useState(false);
   const [form, setForm] = useState<RecipeForm>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -135,6 +140,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     if (!linkUrl.trim()) return;
     setParsing(true);
     setParseError("");
+    setParseUpgradeNeeded(false);
     setParseWarning("");
     try {
       const res = await fetch("/api/recipes/parse", {
@@ -144,6 +150,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
       });
       if (!res.ok) {
         const err = await res.json();
+        if (err?.upgrade) {
+          setParseUpgradeNeeded(true);
+          return;
+        }
         throw new Error(err.error ?? "Failed to parse recipe");
       }
       const parsed: RecipeForm & {
@@ -193,12 +203,17 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     if (cameraFiles.length === 0) return;
     setParsing(true);
     setCameraError("");
+    setCameraUpgradeNeeded(false);
     try {
       const fd = new FormData();
       for (const file of cameraFiles) fd.append("photo", file);
       const res = await fetch("/api/recipes/parse-image", { method: "POST", body: fd });
       if (!res.ok) {
         const err = await res.json();
+        if (err?.upgrade) {
+          setCameraUpgradeNeeded(true);
+          return;
+        }
         throw new Error(err.error ?? "Could not read recipe from photo");
       }
       const parsed: RecipeForm & {
@@ -433,7 +448,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             placeholder={t("link.placeholder")}
             className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 placeholder:font-thin outline-none"
           />
-          {parseError && <p className="text-xs font-light text-red-500">{parseError}</p>}
+          {parseUpgradeNeeded ? <UpgradeCard /> : null}
+          {parseError && !parseUpgradeNeeded && (
+            <p className="text-xs font-light text-red-500">{parseError}</p>
+          )}
           <p className="text-[11px] font-light text-on-surface-variant">{t("link.privacyNote")}</p>
           <button
             onClick={handleParseLink}
@@ -524,7 +542,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
                   {t("photo.addFromLibrary")}
                 </button>
               </div>
-              {cameraError && <p className="text-xs font-light text-red-500">{cameraError}</p>}
+              {cameraUpgradeNeeded ? <UpgradeCard /> : null}
+              {cameraError && !cameraUpgradeNeeded && (
+                <p className="text-xs font-light text-red-500">{cameraError}</p>
+              )}
               <p className="text-[11px] font-light text-on-surface-variant">{t("photo.privacyNote")}</p>
               <button
                 onClick={handleParsePhoto}
@@ -587,7 +608,10 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
                   {t("photo.addFromLibrary")}
                 </button>
               </div>
-              {cameraError && <p className="text-xs font-light text-red-500">{cameraError}</p>}
+              {cameraUpgradeNeeded ? <UpgradeCard /> : null}
+              {cameraError && !cameraUpgradeNeeded && (
+                <p className="text-xs font-light text-red-500">{cameraError}</p>
+              )}
               <p className="text-[11px] font-light text-on-surface-variant">
                 {t("photo.parseMultiple", { n: cameraPreviews.length })}
               </p>

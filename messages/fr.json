@@ -265,5 +265,11 @@
       "start": "Commencer l'import",
       "skip": "Aller à ma bibliothèque"
     }
+  },
+  "upgrade": {
+    "eyebrow": "galleybook premium",
+    "title": "Les imports IA font partie de premium",
+    "body": "Les imports et recommandations passent par l’IA. Abonne-toi dans l’app iOS — les 3 premiers jours sont gratuits.",
+    "appStoreCta": "Ouvrir dans l’App Store"
   }
 }

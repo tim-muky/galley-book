@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
+import { UpgradeCard } from "@/components/upgrade-card";
 
 const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
@@ -210,6 +211,9 @@ export default function RecommendationsPage() {
   const [discoverResults, setDiscoverResults] = useState<DiscoverResult[]>([]);
   const [discovering, setDiscovering] = useState(false);
   const [discoverStarted, setDiscoverStarted] = useState(false);
+  // GAL-277 — surfaced when /api/recommendations 403s with upgrade:true
+  // (i.e. the user hasn't subscribed via the iOS app).
+  const [discoverUpgradeNeeded, setDiscoverUpgradeNeeded] = useState(false);
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [rejectedUrls, setRejectedUrls] = useState<Set<string>>(new Set());
   const [cuisine, setCuisine] = useState("");
@@ -278,6 +282,7 @@ export default function RecommendationsPage() {
     setDiscovering(true);
     setDiscoverStarted(true);
     setDiscoverResults([]);
+    setDiscoverUpgradeNeeded(false);
     try {
       const params = new URLSearchParams();
       if (opts?.cuisine) params.set("cuisine", opts.cuisine);
@@ -287,6 +292,9 @@ export default function RecommendationsPage() {
       if (res.ok) {
         const data = await res.json();
         setDiscoverResults(data.recommendations ?? []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (err?.upgrade) setDiscoverUpgradeNeeded(true);
       }
     } finally {
       setDiscovering(false);
@@ -442,6 +450,10 @@ export default function RecommendationsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : discoverUpgradeNeeded ? (
+          <div className="py-6">
+            <UpgradeCard />
           </div>
         ) : visibleResults.length === 0 ? (
           <div className="py-10 text-center space-y-4">
