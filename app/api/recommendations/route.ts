@@ -27,6 +27,13 @@ interface PerplexityResponse {
   inputTokens: number | null;
   outputTokens: number | null;
   durationMs: number;
+  /**
+   * Set when the upstream call failed in a way the client should know
+   * about (HTTP non-2xx, network error). Lets the route return a 503 + a
+   * "service unavailable" message instead of a misleading empty 200 that
+   * the iOS UI renders as "Nothing matched".
+   */
+  serviceError?: boolean;
 }
 
 async function searchWithPerplexity(query: string): Promise<PerplexityResponse> {
@@ -67,7 +74,7 @@ Return exactly 6 results. No markdown, no explanation — only the JSON array.`,
       body: body.slice(0, 300),
       durationMs,
     });
-    return { ...empty, durationMs };
+    return { ...empty, durationMs, serviceError: true };
   }
 
   const data = await res.json();
@@ -170,7 +177,23 @@ export async function GET(request: Request) {
     searchQuery = `${recipeContext} ${sourceContext} ${memoryContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
   }
 
-  const { results, inputTokens, outputTokens, durationMs } = await searchWithPerplexity(searchQuery);
+  const { results, inputTokens, outputTokens, durationMs, serviceError } =
+    await searchWithPerplexity(searchQuery);
+
+  // Distinguish "upstream temporarily unavailable" (Perplexity 4xx/5xx —
+  // billing exhausted, key revoked, outage) from "search returned nothing"
+  // so the iOS empty state can show a useful message instead of the
+  // misleading "Nothing matched". 503 is what the native client throws on,
+  // which routes to a different toast.
+  if (serviceError) {
+    return NextResponse.json(
+      {
+        error: "Search service is temporarily unavailable. Please try again shortly.",
+        retryable: true,
+      },
+      { status: 503 },
+    );
+  }
 
   await logAIUsage({
     userId: user.id,
