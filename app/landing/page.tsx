@@ -2,7 +2,19 @@
 
 import { useState, ReactElement } from "react";
 import Image from "next/image";
-import { ConsentBanner, hasConsent } from "./consent-banner";
+import { ConsentBanner } from "./consent-banner";
+
+const APP_URL = "https://app.galleybook.com/auth/login";
+const IOS_URL = "#"; // TODO: replace with App Store link when live
+
+const TAGLINE = "… for the love of cooking";
+
+const SOCIALS = {
+  instagram: "#", // TODO
+  facebook: "#",  // TODO
+  tiktok: "#",    // TODO
+  x: "#",         // TODO
+};
 
 const copy = {
   en: {
@@ -14,72 +26,50 @@ const copy = {
       headline3: "Take them wherever",
       headline4: "you go.",
       sub: "galleybook imports any recipe from Instagram, YouTube, TikTok, or any website in seconds — and keeps your whole collection beautifully organised, always with you.",
-      inputPlaceholder: "your@email.com",
-      cta: "Join the waitlist",
-      ctaPending: "Joining…",
-      ctaDone: "You're on the list ✓",
-      ctaError: "Something went wrong — please try again.",
-      ctaNote: "Free to join. No spam.",
+      ctaWeb: "Use on the web",
+      ctaApp: "Get the iOS app",
+      ctaNote: "Sign in with Google. 3-day free trial.",
     },
     features: {
       label: "What you get",
       heading: "Every recipe,\never source, one place.",
       items: [
-        {
-          icon: "link",
-          title: "Save from anywhere",
-          body: "Paste any URL — Instagram post, YouTube video, TikTok, or recipe website. Our AI parses the full recipe in seconds: ingredients, steps, photos and all.",
-        },
-        {
-          icon: "phone",
-          title: "Always with you",
-          body: "Your recipes live in your pocket. Browse, search, and cook from your phone — even offline. No more lost bookmarks or screenshot folders.",
-        },
-        {
-          icon: "users",
-          title: "Cook together",
-          body: "Share a Galley with your family or friends. One library, everyone's contributions — perfectly organised so no recipe ever gets lost.",
-        },
-        {
-          icon: "sparkles",
-          title: "AI-powered discovery",
-          body: "Get personalised recipe suggestions curated from the sources you love. Tap to add directly to your Galley — no copy-pasting.",
-        },
+        { icon: "link", title: "Save from anywhere", body: "Paste any URL — Instagram post, YouTube video, TikTok, or recipe website. Our AI parses the full recipe in seconds: ingredients, steps, photos and all." },
+        { icon: "phone", title: "Always with you", body: "Your recipes live in your pocket. Browse, search, and cook from your phone — even offline. No more lost bookmarks or screenshot folders." },
+        { icon: "users", title: "Cook together", body: "Share a Galley with your family or friends. One library, everyone's contributions — perfectly organised so no recipe ever gets lost." },
+        { icon: "sparkles", title: "AI-powered discovery", body: "Get personalised recipe suggestions curated from the sources you love. Tap to add directly to your Galley — no copy-pasting." },
       ],
     },
     how: {
       label: "How it works",
       heading: "Three steps to your\nperfect recipe collection.",
       steps: [
-        {
-          num: "01",
-          title: "Share a link",
-          body: "Copy any recipe URL — from Instagram, YouTube, TikTok, or your favourite food blog. Paste it into galleybook.",
-        },
-        {
-          num: "02",
-          title: "AI does the rest",
-          body: "Our AI extracts every detail: ingredients with quantities, step-by-step instructions, cook time, and photos.",
-        },
-        {
-          num: "03",
-          title: "Cook & share",
-          body: "Your recipe is saved and ready. Cook from it, share it with your Galley, and build your personal collection.",
-        },
+        { num: "01", title: "Share a link", body: "Copy any recipe URL — from Instagram, YouTube, TikTok, or your favourite food blog. Paste it into galleybook." },
+        { num: "02", title: "AI does the rest", body: "Our AI extracts every detail: ingredients with quantities, step-by-step instructions, cook time, and photos." },
+        { num: "03", title: "Cook & share", body: "Your recipe is saved and ready. Cook from it, share it with your Galley, and build your personal collection." },
       ],
     },
-    sources: {
-      label: "Works with",
+    sources: { label: "Works with" },
+    pricing: {
+      label: "Pricing",
+      heading: "Simple, honest pricing.",
+      price: "€1.99",
+      period: "/ month",
+      trial: "3-day free trial",
+      features: [
+        "All features, no limits",
+        "Family Sharing for up to 6 people",
+        "Cancel anytime",
+      ],
+      note: "Available via the iOS App Store. Family Sharing supported.",
     },
     cta2: {
       heading: "Your recipes deserve\na better home.",
-      sub: "Join the waitlist and be the first to know when galleybook opens.",
-      inputPlaceholder: "your@email.com",
-      cta: "Get early access",
-      ctaPending: "Joining…",
-      ctaDone: "You're on the list ✓",
-      ctaNote: "Free to join. No credit card required.",
+      sub: "Start cooking with galleybook today.",
+      ctaWeb: "Use on the web",
+      ctaApp: "Get the iOS app",
     },
+    socials: { label: "Follow us" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -98,72 +88,50 @@ const copy = {
       headline3: "Überall dabei",
       headline4: "haben.",
       sub: "galleybook importiert jedes Rezept von Instagram, YouTube, TikTok oder jeder Website in Sekunden — und hält deine gesamte Sammlung wunderschön organisiert, immer mit dir.",
-      inputPlaceholder: "deine@email.de",
-      cta: "Auf die Warteliste",
-      ctaPending: "Eintragen…",
-      ctaDone: "Du bist dabei ✓",
-      ctaError: "Etwas ist schiefgelaufen — bitte erneut versuchen.",
-      ctaNote: "Kostenlos. Kein Spam.",
+      ctaWeb: "Im Web nutzen",
+      ctaApp: "iOS-App holen",
+      ctaNote: "Mit Google anmelden. 3 Tage kostenlos testen.",
     },
     features: {
       label: "Was du bekommst",
       heading: "Jedes Rezept,\njede Quelle, ein Ort.",
       items: [
-        {
-          icon: "link",
-          title: "Von überall speichern",
-          body: "Füge eine beliebige URL ein — Instagram, YouTube, TikTok oder eine Rezeptwebsite. Unsere KI parst das vollständige Rezept in Sekunden.",
-        },
-        {
-          icon: "phone",
-          title: "Immer dabei",
-          body: "Deine Rezepte sind immer in deiner Tasche. Stöbere, suche und koche von deinem Handy — auch offline. Keine verlorenen Lesezeichen mehr.",
-        },
-        {
-          icon: "users",
-          title: "Gemeinsam kochen",
-          body: "Teile eine Galley mit deiner Familie oder Freunden. Eine Bibliothek, aller Beiträge — perfekt organisiert.",
-        },
-        {
-          icon: "sparkles",
-          title: "KI-gestützte Entdeckung",
-          body: "Erhalte personalisierte Rezeptvorschläge aus den Quellen, die du liebst. Tippe, um sie direkt zu deiner Galley hinzuzufügen.",
-        },
+        { icon: "link", title: "Von überall speichern", body: "Füge eine beliebige URL ein — Instagram, YouTube, TikTok oder eine Rezeptwebsite. Unsere KI parst das vollständige Rezept in Sekunden." },
+        { icon: "phone", title: "Immer dabei", body: "Deine Rezepte sind immer in deiner Tasche. Stöbere, suche und koche von deinem Handy — auch offline. Keine verlorenen Lesezeichen mehr." },
+        { icon: "users", title: "Gemeinsam kochen", body: "Teile eine Galley mit deiner Familie oder Freunden. Eine Bibliothek, aller Beiträge — perfekt organisiert." },
+        { icon: "sparkles", title: "KI-gestützte Entdeckung", body: "Erhalte personalisierte Rezeptvorschläge aus den Quellen, die du liebst. Tippe, um sie direkt zu deiner Galley hinzuzufügen." },
       ],
     },
     how: {
       label: "So funktioniert es",
       heading: "Drei Schritte zur\nperfekten Rezeptsammlung.",
       steps: [
-        {
-          num: "01",
-          title: "Link teilen",
-          body: "Kopiere eine beliebige Rezept-URL — von Instagram, YouTube, TikTok oder deinem Lieblings-Foodblog. Füge sie in galleybook ein.",
-        },
-        {
-          num: "02",
-          title: "KI erledigt den Rest",
-          body: "Unsere KI extrahiert jedes Detail: Zutaten mit Mengen, Schritt-für-Schritt-Anweisungen, Kochzeit und Fotos.",
-        },
-        {
-          num: "03",
-          title: "Kochen & teilen",
-          body: "Dein Rezept ist gespeichert und bereit. Koche danach, teile es mit deiner Galley und baue deine persönliche Sammlung auf.",
-        },
+        { num: "01", title: "Link teilen", body: "Kopiere eine beliebige Rezept-URL — von Instagram, YouTube, TikTok oder deinem Lieblings-Foodblog. Füge sie in galleybook ein." },
+        { num: "02", title: "KI erledigt den Rest", body: "Unsere KI extrahiert jedes Detail: Zutaten mit Mengen, Schritt-für-Schritt-Anweisungen, Kochzeit und Fotos." },
+        { num: "03", title: "Kochen & teilen", body: "Dein Rezept ist gespeichert und bereit. Koche danach, teile es mit deiner Galley und baue deine persönliche Sammlung auf." },
       ],
     },
-    sources: {
-      label: "Funktioniert mit",
+    sources: { label: "Funktioniert mit" },
+    pricing: {
+      label: "Preise",
+      heading: "Einfache, ehrliche Preise.",
+      price: "1,99 €",
+      period: "/ Monat",
+      trial: "3 Tage kostenlos testen",
+      features: [
+        "Alle Funktionen, ohne Limits",
+        "Familienfreigabe für bis zu 6 Personen",
+        "Jederzeit kündbar",
+      ],
+      note: "Verfügbar im iOS App Store. Mit Familienfreigabe.",
     },
     cta2: {
       heading: "Deine Rezepte verdienen\nein besseres Zuhause.",
-      sub: "Trage dich auf die Warteliste ein und erfahre als Erste, wenn galleybook öffnet.",
-      inputPlaceholder: "deine@email.de",
-      cta: "Frühen Zugang sichern",
-      ctaPending: "Eintragen…",
-      ctaDone: "Du bist dabei ✓",
-      ctaNote: "Kostenlos. Keine Kreditkarte erforderlich.",
+      sub: "Starte heute mit galleybook.",
+      ctaWeb: "Im Web nutzen",
+      ctaApp: "iOS-App holen",
     },
+    socials: { label: "Folge uns" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -181,12 +149,9 @@ const copy = {
       headline3: "Emportez-les",
       headline4: "où vous voulez.",
       sub: "galleybook importe n'importe quelle recette depuis Instagram, YouTube, TikTok ou n'importe quel site en quelques secondes — et garde toute votre collection magnifiquement organisée, toujours avec vous.",
-      inputPlaceholder: "votre@email.fr",
-      cta: "Rejoindre la liste d'attente",
-      ctaPending: "Inscription…",
-      ctaDone: "Vous êtes sur la liste ✓",
-      ctaError: "Une erreur est survenue — veuillez réessayer.",
-      ctaNote: "Gratuit. Pas de spam.",
+      ctaWeb: "Utiliser sur le web",
+      ctaApp: "Télécharger sur iOS",
+      ctaNote: "Connectez-vous avec Google. Essai gratuit de 3 jours.",
     },
     features: {
       label: "Ce que vous obtenez",
@@ -208,15 +173,26 @@ const copy = {
       ],
     },
     sources: { label: "Compatible avec" },
+    pricing: {
+      label: "Tarifs",
+      heading: "Tarification simple et honnête.",
+      price: "1,99 €",
+      period: "/ mois",
+      trial: "Essai gratuit de 3 jours",
+      features: [
+        "Toutes les fonctionnalités, sans limite",
+        "Partage familial jusqu'à 6 personnes",
+        "Annulez à tout moment",
+      ],
+      note: "Disponible sur l'App Store iOS. Partage familial pris en charge.",
+    },
     cta2: {
       heading: "Vos recettes méritent\nune meilleure maison.",
-      sub: "Rejoignez la liste d'attente et soyez les premiers informés à l'ouverture de galleybook.",
-      inputPlaceholder: "votre@email.fr",
-      cta: "Accès anticipé",
-      ctaPending: "Inscription…",
-      ctaDone: "Vous êtes sur la liste ✓",
-      ctaNote: "Gratuit. Aucune carte de crédit requise.",
+      sub: "Commencez avec galleybook dès aujourd'hui.",
+      ctaWeb: "Utiliser sur le web",
+      ctaApp: "Télécharger sur iOS",
     },
+    socials: { label: "Suivez-nous" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -235,12 +211,9 @@ const copy = {
       headline3: "Llévelas contigo",
       headline4: "a donde vayas.",
       sub: "galleybook importa cualquier receta de Instagram, YouTube, TikTok o cualquier sitio web en segundos — y mantiene toda tu colección hermosamente organizada, siempre contigo.",
-      inputPlaceholder: "tu@email.es",
-      cta: "Unirse a la lista de espera",
-      ctaPending: "Uniéndose…",
-      ctaDone: "Estás en la lista ✓",
-      ctaError: "Algo salió mal — por favor intenta de nuevo.",
-      ctaNote: "Gratis. Sin spam.",
+      ctaWeb: "Usar en la web",
+      ctaApp: "Descargar para iOS",
+      ctaNote: "Inicia sesión con Google. 3 días gratis.",
     },
     features: {
       label: "Qué obtienes",
@@ -262,15 +235,26 @@ const copy = {
       ],
     },
     sources: { label: "Compatible con" },
+    pricing: {
+      label: "Precios",
+      heading: "Precios simples y honestos.",
+      price: "1,99 €",
+      period: "/ mes",
+      trial: "Prueba gratuita de 3 días",
+      features: [
+        "Todas las funciones, sin límites",
+        "En Familia para hasta 6 personas",
+        "Cancela cuando quieras",
+      ],
+      note: "Disponible en la App Store de iOS. Compatible con En Familia.",
+    },
     cta2: {
       heading: "Tus recetas merecen\nun mejor hogar.",
-      sub: "Únete a la lista de espera y sé el primero en saber cuando galleybook abra.",
-      inputPlaceholder: "tu@email.es",
-      cta: "Acceso anticipado",
-      ctaPending: "Uniéndose…",
-      ctaDone: "Estás en la lista ✓",
-      ctaNote: "Gratis. No se requiere tarjeta de crédito.",
+      sub: "Empieza hoy con galleybook.",
+      ctaWeb: "Usar en la web",
+      ctaApp: "Descargar para iOS",
     },
+    socials: { label: "Síguenos" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -289,12 +273,9 @@ const copy = {
       headline3: "Portale con te",
       headline4: "ovunque tu vada.",
       sub: "galleybook importa qualsiasi ricetta da Instagram, YouTube, TikTok o qualsiasi sito web in pochi secondi — e mantiene tutta la tua collezione magnificamente organizzata, sempre con te.",
-      inputPlaceholder: "tua@email.it",
-      cta: "Unisciti alla lista d'attesa",
-      ctaPending: "Iscrizione…",
-      ctaDone: "Sei nella lista ✓",
-      ctaError: "Qualcosa è andato storto — riprova.",
-      ctaNote: "Gratis. Niente spam.",
+      ctaWeb: "Usa sul web",
+      ctaApp: "Scarica per iOS",
+      ctaNote: "Accedi con Google. 3 giorni di prova gratuita.",
     },
     features: {
       label: "Cosa ottieni",
@@ -316,15 +297,26 @@ const copy = {
       ],
     },
     sources: { label: "Compatibile con" },
+    pricing: {
+      label: "Prezzi",
+      heading: "Prezzi semplici e onesti.",
+      price: "1,99 €",
+      period: "/ mese",
+      trial: "3 giorni di prova gratuita",
+      features: [
+        "Tutte le funzioni, senza limiti",
+        "In famiglia per un massimo di 6 persone",
+        "Disdici quando vuoi",
+      ],
+      note: "Disponibile sull'App Store iOS. Supporta In famiglia.",
+    },
     cta2: {
       heading: "Le tue ricette meritano\nuna casa migliore.",
-      sub: "Unisciti alla lista d'attesa e sii tra i primi a sapere quando galleybook apre.",
-      inputPlaceholder: "tua@email.it",
-      cta: "Accesso anticipato",
-      ctaPending: "Iscrizione…",
-      ctaDone: "Sei nella lista ✓",
-      ctaNote: "Gratis. Nessuna carta di credito richiesta.",
+      sub: "Inizia oggi con galleybook.",
+      ctaWeb: "Usa sul web",
+      ctaApp: "Scarica per iOS",
     },
+    socials: { label: "Seguici" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -343,12 +335,9 @@ const copy = {
       headline3: "Miej je zawsze",
       headline4: "przy sobie.",
       sub: "galleybook importuje każdy przepis z Instagrama, YouTube, TikToka lub dowolnej strony w ciągu sekund — i przechowuje całą kolekcję pięknie zorganizowaną, zawsze z tobą.",
-      inputPlaceholder: "twoj@email.pl",
-      cta: "Dołącz do listy oczekujących",
-      ctaPending: "Dołączanie…",
-      ctaDone: "Jesteś na liście ✓",
-      ctaError: "Coś poszło nie tak — spróbuj ponownie.",
-      ctaNote: "Bezpłatnie. Bez spamu.",
+      ctaWeb: "Użyj w przeglądarce",
+      ctaApp: "Pobierz na iOS",
+      ctaNote: "Zaloguj się przez Google. 3 dni za darmo.",
     },
     features: {
       label: "Co otrzymujesz",
@@ -370,15 +359,26 @@ const copy = {
       ],
     },
     sources: { label: "Działa z" },
+    pricing: {
+      label: "Cennik",
+      heading: "Proste, uczciwe ceny.",
+      price: "1,99 €",
+      period: "/ mies.",
+      trial: "3 dni za darmo",
+      features: [
+        "Wszystkie funkcje, bez limitów",
+        "Chmura rodzinna do 6 osób",
+        "Anuluj w każdej chwili",
+      ],
+      note: "Dostępne w iOS App Store. Z Chmurą rodzinną.",
+    },
     cta2: {
       heading: "Twoje przepisy zasługują\nna lepszy dom.",
-      sub: "Dołącz do listy oczekujących i jako pierwszy dowiedz się, gdy galleybook otworzy się.",
-      inputPlaceholder: "twoj@email.pl",
-      cta: "Wczesny dostęp",
-      ctaPending: "Dołączanie…",
-      ctaDone: "Jesteś na liście ✓",
-      ctaNote: "Bezpłatnie. Karta kredytowa nie jest wymagana.",
+      sub: "Zacznij gotować z galleybook już dziś.",
+      ctaWeb: "Użyj w przeglądarce",
+      ctaApp: "Pobierz na iOS",
     },
+    socials: { label: "Obserwuj nas" },
     footer: {
       copy: `© ${new Date().getFullYear()} galleybook`,
       links: [
@@ -448,6 +448,22 @@ function IconTikTok() {
   );
 }
 
+function IconFacebook() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.89h-2.33v6.99A10 10 0 0 0 22 12z" />
+    </svg>
+  );
+}
+
+function IconX() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
 function IconGlobe() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -456,6 +472,21 @@ function IconGlobe() {
     </svg>
   );
 }
+
+function IconApple() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+    </svg>
+  );
+}
+
+const iconMap: Record<string, () => ReactElement> = {
+  link: IconLink,
+  phone: IconPhone,
+  users: IconUsers,
+  sparkles: IconSparkles,
+};
 
 function IconSparkles() {
   return (
@@ -469,89 +500,48 @@ function IconSparkles() {
   );
 }
 
-const iconMap: Record<string, () => ReactElement> = {
-  link: IconLink,
-  phone: IconPhone,
-  users: IconUsers,
-  sparkles: IconSparkles,
-};
+function IconCheck() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
-function WaitlistForm({
-  placeholder,
-  ctaLabel,
-  ctaPending,
-  ctaDone,
-  errorMsg,
-  note,
+function SignInButtons({
+  ctaWeb,
+  ctaApp,
   dark = false,
 }: {
-  placeholder: string;
-  ctaLabel: string;
-  ctaPending: string;
-  ctaDone: string;
-  errorMsg: string;
-  note: string;
+  ctaWeb: string;
+  ctaApp: string;
   dark?: boolean;
 }) {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (status !== "idle") return;
-    setStatus("pending");
-    const res = await fetch("/api/waitlist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    if (res.ok) {
-      setStatus("done");
-      if (hasConsent()) (window as any).fbq?.("track", "Lead");
-    } else {
-      setStatus("error");
-    }
-  }
-
-  const inputBg = dark ? "bg-white/10 placeholder:text-white/40 text-white border border-white/20 focus:border-white/60" : "bg-[#F3F3F4] text-anthracite placeholder:text-anthracite/40";
+  const primary = dark
+    ? { backgroundColor: "#fff", color: "#252729", borderColor: "#fff" }
+    : { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" };
+  const secondary = dark
+    ? { backgroundColor: "transparent", color: "#fff", borderColor: "#fff" }
+    : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" };
 
   return (
-    <div>
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder={placeholder}
-          disabled={status !== "idle"}
-          className={`flex-1 px-5 py-3.5 rounded-full text-sm font-light outline-none disabled:opacity-40 transition-colors ${inputBg}`}
-        />
-        <button
-          type="submit"
-          disabled={status !== "idle"}
-          className="px-6 py-3.5 rounded-full text-sm font-light border transition-all disabled:opacity-40 whitespace-nowrap"
-          style={
-            dark
-              ? {
-                  backgroundColor: status === "done" ? "transparent" : "#fff",
-                  color: status === "done" ? "#fff" : "#252729",
-                  borderColor: "#fff",
-                }
-              : {
-                  backgroundColor: status === "done" ? "#fff" : "#252729",
-                  color: status === "done" ? "#252729" : "#fff",
-                  borderColor: "#252729",
-                }
-          }
-        >
-          {status === "pending" ? ctaPending : status === "done" ? ctaDone : ctaLabel}
-        </button>
-      </form>
-      {status === "error" && (
-        <p className={`mt-2 text-xs font-light ${dark ? "text-white/60" : "text-anthracite/60"}`}>{errorMsg}</p>
-      )}
-      <p className={`mt-3 text-xs font-light ${dark ? "text-white/40" : "text-anthracite/40"}`}>{note}</p>
+    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+      <a
+        href={APP_URL}
+        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap"
+        style={primary}
+      >
+        <IconGlobe />
+        {ctaWeb}
+      </a>
+      <a
+        href={IOS_URL}
+        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap"
+        style={secondary}
+      >
+        <IconApple />
+        {ctaApp}
+      </a>
     </div>
   );
 }
@@ -578,13 +568,16 @@ export default function LandingPage() {
       />
 
       {/* ── Nav ── */}
-      <header className="flex items-center justify-between px-6 py-5 md:px-16 sticky top-0 bg-transparent z-50">
-        <a href="/" className="select-none flex-shrink-0">
-          <Image src="/logo.png" alt="galleybook" width={40} height={32} className="object-contain" />
+      <header className="flex items-center justify-between gap-4 px-6 py-5 md:px-16 sticky top-0 bg-transparent z-50">
+        <a href="/" className="select-none flex items-center gap-3 flex-shrink min-w-0">
+          <Image src="/logo.png" alt="galleybook" width={40} height={32} className="object-contain flex-shrink-0" />
+          <span className="hidden sm:inline text-sm md:text-base font-light text-anthracite/70 truncate">
+            {TAGLINE}
+          </span>
         </a>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <a
-            href="https://app.galleybook.com/auth/login"
+            href={APP_URL}
             className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70 border-anthracite text-anthracite whitespace-nowrap"
           >
             {t.nav.signIn}
@@ -610,7 +603,6 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative px-6 md:px-16 pt-16 pb-24 md:pt-24 md:pb-32 overflow-hidden">
-        {/* Decorative background blobs */}
         <div
           aria-hidden
           className="pointer-events-none absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-[0.06]"
@@ -623,7 +615,6 @@ export default function LandingPage() {
         />
 
         <div className="relative max-w-5xl mx-auto">
-          {/* Tag */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-anthracite/20 bg-surface-low mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-anthracite/60" />
             <span className="text-xs font-semibold uppercase tracking-widest text-anthracite/60">
@@ -631,7 +622,6 @@ export default function LandingPage() {
             </span>
           </div>
 
-          {/* Headline */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-thin text-anthracite leading-[1.05] mb-8">
             <span className="block">{t.hero.headline1}</span>
             <span className="block italic">{t.hero.headline2}</span>
@@ -639,23 +629,14 @@ export default function LandingPage() {
             <span className="block italic">{t.hero.headline4}</span>
           </h1>
 
-          {/* Sub */}
           <p className="text-base md:text-lg font-light text-on-surface-variant max-w-xl mb-10 leading-relaxed">
             {t.hero.sub}
           </p>
 
-          {/* CTA */}
-          <WaitlistForm
-            placeholder={t.hero.inputPlaceholder}
-            ctaLabel={t.hero.cta}
-            ctaPending={t.hero.ctaPending}
-            ctaDone={t.hero.ctaDone}
-            errorMsg={t.hero.ctaError}
-            note={t.hero.ctaNote}
-          />
+          <SignInButtons ctaWeb={t.hero.ctaWeb} ctaApp={t.hero.ctaApp} />
+          <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
         </div>
 
-        {/* Decorative source-pill row */}
         <div className="relative max-w-5xl mx-auto mt-20 md:mt-28">
           <p className="text-xs font-semibold uppercase tracking-widest text-anthracite/40 mb-4">
             {t.sources.label}
@@ -674,9 +655,7 @@ export default function LandingPage() {
                 {label}
               </span>
             ))}
-            {/* Separator dot */}
             <span className="w-1 h-1 rounded-full bg-anthracite/20 mx-1" />
-            {/* Any website — single globe icon */}
             <span className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-light text-anthracite border border-anthracite/20">
               <IconGlobe />
               Any website
@@ -730,7 +709,6 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {t.how.steps.map((step, i) => (
               <div key={step.num} className="relative">
-                {/* Connector line (desktop) */}
                 {i < t.how.steps.length - 1 && (
                   <div
                     aria-hidden
@@ -749,13 +727,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section className="px-6 md:px-16 py-24 md:py-32 bg-[#F9F9F9]">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-widest text-anthracite/40 mb-4">
+            {t.pricing.label}
+          </p>
+          <h2 className="text-4xl md:text-5xl font-thin text-anthracite leading-tight mb-16">
+            {t.pricing.heading}
+          </h2>
+
+          <div className="bg-white rounded-md p-8 md:p-12 shadow-ambient max-w-xl">
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-5xl md:text-6xl font-thin text-anthracite">{t.pricing.price}</span>
+              <span className="text-base font-light text-on-surface-variant">{t.pricing.period}</span>
+            </div>
+            <p className="text-sm font-light text-anthracite/60 mb-8">{t.pricing.trial}</p>
+
+            <ul className="flex flex-col gap-3 mb-8">
+              {t.pricing.features.map((f) => (
+                <li key={f} className="flex items-center gap-3 text-sm font-light text-anthracite">
+                  <span className="text-anthracite/60"><IconCheck /></span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <p className="text-xs font-light text-anthracite/40">{t.pricing.note}</p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Second CTA ── */}
       <section className="mx-4 md:mx-16 mb-16 rounded-md overflow-hidden">
         <div
           className="px-8 md:px-16 py-16 md:py-20 relative"
           style={{ backgroundColor: "#252729" }}
         >
-          {/* Decorative blob */}
           <div
             aria-hidden
             className="pointer-events-none absolute top-0 right-0 w-96 h-96 opacity-10"
@@ -769,32 +777,45 @@ export default function LandingPage() {
             <p className="text-base font-light text-white/60 mb-8 leading-relaxed">
               {t.cta2.sub}
             </p>
-            <WaitlistForm
-              placeholder={t.cta2.inputPlaceholder}
-              ctaLabel={t.cta2.cta}
-              ctaPending={t.cta2.ctaPending}
-              ctaDone={t.cta2.ctaDone}
-              errorMsg=""
-              note={t.cta2.ctaNote}
-              dark
-            />
+            <SignInButtons ctaWeb={t.cta2.ctaWeb} ctaApp={t.cta2.ctaApp} dark />
           </div>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="px-6 md:px-16 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="px-6 md:px-16 py-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs font-light text-anthracite/40">{t.footer.copy}</span>
-        <div className="flex gap-6">
-          {t.footer.links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-xs font-light text-anthracite/40 hover:text-anthracite transition-colors"
-            >
-              {l.label}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-widest text-anthracite/40">
+              {t.socials.label}
+            </span>
+            <a href={SOCIALS.instagram} aria-label="Instagram" className="text-anthracite/60 hover:text-anthracite transition-colors">
+              <IconInstagram />
             </a>
-          ))}
+            <a href={SOCIALS.facebook} aria-label="Facebook" className="text-anthracite/60 hover:text-anthracite transition-colors">
+              <IconFacebook />
+            </a>
+            <a href={SOCIALS.tiktok} aria-label="TikTok" className="text-anthracite/60 hover:text-anthracite transition-colors">
+              <IconTikTok />
+            </a>
+            <a href={SOCIALS.x} aria-label="X" className="text-anthracite/60 hover:text-anthracite transition-colors">
+              <IconX />
+            </a>
+          </div>
+
+          <div className="flex gap-6">
+            {t.footer.links.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-xs font-light text-anthracite/40 hover:text-anthracite transition-colors"
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
 

@@ -5,37 +5,6 @@ const FROM = "galleybook <waiter@galleybook.com>";
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
-const NOTIFY_EMAIL = "tim@muky-kids.com";
-
-export async function sendWaitlistConfirmation(email: string) {
-  await getResend().emails.send({
-    from: FROM,
-    to: email,
-    subject: "You're on the list — galleybook",
-    html: `
-      <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; color: #252729;">
-        <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">You're on the list.</p>
-        <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #474747;">
-          Thanks for signing up for galleybook — a private recipe library for the people you cook for.
-          We'll reach out as soon as your spot is ready.
-        </p>
-        <p style="font-size: 0.875rem; font-weight: 300; color: #474747; margin-top: 2rem;">
-          — The galleybook team
-        </p>
-      </div>
-    `,
-  });
-}
-
-export async function notifyWaitlistSignup(email: string) {
-  await getResend().emails.send({
-    from: FROM,
-    to: NOTIFY_EMAIL,
-    subject: `New waitlist signup: ${email}`,
-    html: `<p style="font-family: Inter, sans-serif;">${email} joined the waitlist.</p>`,
-  });
-}
-
 export async function sendGalleyInvite({
   inviterName,
   galleyName,
