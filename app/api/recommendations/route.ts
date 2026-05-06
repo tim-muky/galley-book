@@ -55,7 +55,20 @@ Return exactly 6 results. No markdown, no explanation — only the JSON array.`,
   });
 
   const durationMs = Date.now() - t0;
-  if (!res.ok) return { ...empty, durationMs };
+  if (!res.ok) {
+    let body = "";
+    try {
+      body = await res.text();
+    } catch {
+      // ignore
+    }
+    logger.warn("recommendations.perplexity.http_error", {
+      status: res.status,
+      body: body.slice(0, 300),
+      durationMs,
+    });
+    return { ...empty, durationMs };
+  }
 
   const data = await res.json();
   const text: string = data.choices?.[0]?.message?.content ?? "";
