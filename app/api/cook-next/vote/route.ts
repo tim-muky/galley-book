@@ -28,12 +28,20 @@ export async function POST(request: Request) {
     .eq("recipe_id", recipeId)
     .eq("galley_id", galleyId);
 
-  // If thumbs down, fetch a replacement
+  // If thumbs down, fetch a replacement. Forward both cookie (web) and
+  // Authorization (native) so the internal call authenticates regardless
+  // of the caller's transport — without the Authorization forward, native
+  // callers always got `replacement: null` and the rail shrank.
   if (vote === -1) {
     const exclude = [...(currentIds ?? []), recipeId].join(",");
+    const forwarded: Record<string, string> = {};
+    const cookie = request.headers.get("cookie");
+    const auth = request.headers.get("authorization") ?? request.headers.get("Authorization");
+    if (cookie) forwarded.cookie = cookie;
+    if (auth) forwarded.Authorization = auth;
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/cook-next?exclude=${exclude}`,
-      { headers: { cookie: request.headers.get("cookie") ?? "" } }
+      { headers: forwarded }
     );
     if (res.ok) {
       const data = await res.json();

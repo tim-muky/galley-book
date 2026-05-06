@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { NextResponse } from "next/server";
 
 function getCurrentSeason(): string {
@@ -26,16 +27,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const excludeIds = searchParams.get("exclude")?.split(",").filter(Boolean) ?? [];
 
-  const { data: membership } = await supabase
-    .from("galley_members")
-    .select("galley_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (!membership) return NextResponse.json({ recipes: [] });
-
-  const galleyId = membership.galley_id;
+  // GAL-285 — use the same active-galley resolution as recipes / parse /
+  // recommendations routes so Discovery surfaces recipes from the galley
+  // the user is currently viewing, not an arbitrary `.limit(1)` pick.
+  const galleyId = await resolveActiveGalleyId(supabase, user.id);
+  if (!galleyId) return NextResponse.json({ recipes: [] });
   const season = getCurrentSeason();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
