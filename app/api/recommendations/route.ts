@@ -1,8 +1,8 @@
 /**
  * GET /api/recommendations
  * Manual trigger only — called when user taps "Start Discover".
- * Uses Perplexity to find new recipes from saved sources,
- * filtered against the discover_memory table.
+ * Uses Perplexity to find new recipes from a curated list of cooking
+ * sources known to parse well (lib/recommendation-sources.ts).
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 import { checkRecsLimit } from "@/lib/rate-limit";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { getGalleyPlan } from "@/lib/subscription";
+import { RECOMMENDED_SOURCES } from "@/lib/recommendation-sources";
 
 interface RecommendationResult {
   title: string;
@@ -143,25 +144,13 @@ export async function GET(request: Request) {
     );
   }
 
-  // Load data in parallel — skip saved_sources for custom searches
-  const [{ data: recipes }, { data: savedSources }, { data: memory }] = await Promise.all([
-    supabase.from("recipes").select("name, type, season").eq("galley_id", galleyId).limit(30),
-    cuisine || ingredient
-      ? Promise.resolve({ data: null })
-      : supabase.from("saved_sources").select("*").eq("galley_id", galleyId),
-    supabase.from("discover_memory").select("url, title").eq("galley_id", galleyId),
-  ]);
-
-  const memoryUrls = (memory ?? []).map((m) => m.url);
-  const memoryTitles = (memory ?? []).map((m) => m.title).filter(Boolean);
-
-  const recipeContext = recipes && recipes.length > 0
-    ? `This family's existing recipe collection includes: ${recipes.map((r) => r.name).slice(0, 15).join(", ")}. Find recipes that complement this collection — avoid duplicates.`
-    : "Find popular family-friendly recipes.";
-
-  const memoryContext = memoryUrls.length > 0
-    ? `IMPORTANT: Do NOT include any of these previously rejected recipes: ${memoryTitles.slice(0, 10).join(", ")}. Also avoid these URLs: ${memoryUrls.slice(0, 10).join(", ")}.`
-    : "";
+  // For custom search (cuisine/ingredient) we skip the existing-collection
+  // context — the user's filter is the signal, not the library. For generic
+  // discover we anchor on the collection so suggestions complement it.
+  const needsRecipeContext = !cuisine && !ingredient;
+  const { data: recipes } = needsRecipeContext
+    ? await supabase.from("recipes").select("name").eq("galley_id", galleyId).limit(30)
+    : { data: null };
 
   let searchQuery: string;
   if (cuisine || ingredient) {
@@ -169,12 +158,13 @@ export async function GET(request: Request) {
       cuisine ? `from ${cuisine} cuisine` : null,
       ingredient ? `featuring "${ingredient}" as a key ingredient` : null,
     ].filter(Boolean).join(" and ");
-    searchQuery = `Find 6 new recipe recommendations ${filters}. ${recipeContext} ${memoryContext} Include direct URLs to specific recipe pages.`;
+    searchQuery = `Find 6 new recipe recommendations ${filters}. Include direct URLs to specific recipe pages.`;
   } else {
-    const sourceContext = savedSources && savedSources.length > 0
-      ? `Search specifically on these sources: ${savedSources.map((s) => s.handle_or_name ?? s.url).join(", ")}.`
-      : "Search popular cooking websites, Instagram food accounts, and YouTube cooking channels.";
-    searchQuery = `${recipeContext} ${sourceContext} ${memoryContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
+    const recipeContext = recipes && recipes.length > 0
+      ? `This family's existing recipe collection includes: ${recipes.map((r) => r.name).slice(0, 15).join(", ")}. Find recipes that complement this collection — avoid duplicates.`
+      : "Find popular family-friendly recipes.";
+    const sourceContext = `Search these popular cooking sites: ${RECOMMENDED_SOURCES.join(", ")}.`;
+    searchQuery = `${recipeContext} ${sourceContext} Find 6 new recipe recommendations with direct URLs to the specific recipe pages.`;
   }
 
   const { results, inputTokens, outputTokens, durationMs, serviceError } =
@@ -205,21 +195,15 @@ export async function GET(request: Request) {
     success: results.length > 0,
   });
 
-  const recommendations = memoryUrls.length > 0
-    ? results.filter((r) => !memoryUrls.includes(r.source_url))
-    : results;
-
   logger.info("recommendations.search_completed", {
     userId: user.id,
     galleyId,
     cuisine,
     ingredient,
     perplexityResults: results.length,
-    afterMemoryFilter: recommendations.length,
-    memoryUrlCount: memoryUrls.length,
     durationMs,
     hasApiKey: Boolean(process.env.PERPLEXITY_API_KEY),
   });
 
-  return NextResponse.json({ recommendations });
+  return NextResponse.json({ recommendations: results });
 }
