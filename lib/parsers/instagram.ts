@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { FetchResult, ImageSource } from "./types";
 import { extractImageUrl } from "./utils";
 import { fetchViaPerplexity } from "./perplexity";
+import { logger } from "@/lib/logger";
 
 export function isInstagramUrl(url: string): boolean {
   return /instagram\.com\/(p|reel|tv)\//i.test(url);
@@ -118,23 +119,39 @@ export async function cacheInstagramImage(
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logger.warn("instagram_image_fetch_failed", { status: res.status, cdnUrl });
+      return null;
+    }
     const buffer = await res.arrayBuffer();
-    if (buffer.byteLength > 5 * 1024 * 1024) return null;
+    if (buffer.byteLength > 5 * 1024 * 1024) {
+      logger.warn("instagram_image_too_large", { bytes: buffer.byteLength });
+      return null;
+    }
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
     const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("recipe-temp")
       .upload(path, buffer, { contentType, upsert: false });
-    if (error) return null;
+    if (uploadError) {
+      logger.warn("recipe_temp_upload_failed", { path, error: uploadError.message });
+      return null;
+    }
     // Private bucket — return a signed URL. 4h gives the user time to review
     // and save before the server-side fetch on /api/recipes re-downloads it.
-    const { data: signed } = await supabase.storage
+    const { data: signed, error: signError } = await supabase.storage
       .from("recipe-temp")
       .createSignedUrl(path, 60 * 60 * 4);
-    return signed?.signedUrl ?? null;
-  } catch {
+    if (signError || !signed?.signedUrl) {
+      logger.warn("recipe_temp_sign_failed", { path, error: signError?.message });
+      return null;
+    }
+    return signed.signedUrl;
+  } catch (err) {
+    logger.warn("cache_instagram_image_threw", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
