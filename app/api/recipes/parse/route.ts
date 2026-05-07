@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkUrlSafety } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
-import { buildRecipePrompt } from "@/lib/recipe-prompts";
+import { buildRecipePrompt, normalizeRecipeTags } from "@/lib/recipe-prompts";
 import { fetchPageContent, fetchInlineImage, cacheInstagramImage } from "@/lib/parsers";
 import { logParseQuality, detectMissingFields } from "@/lib/parse-quality-logger";
 import { getGalleyPlan } from "@/lib/subscription";
@@ -203,6 +203,7 @@ export async function POST(request: Request) {
     parsed.parsed_via = parsedVia;
     parsed.image_source = imageSource;
     if (diagnostics) parsed._diagnostics = diagnostics;
+    normalizeRecipeTags(parsed);
     void logParseQuality({
       userId: user.id,
       sourceUrl: url,

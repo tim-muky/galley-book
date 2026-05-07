@@ -19,6 +19,59 @@ export type ImageSource =
   | "og_image"
   | "none";
 
+const RECIPE_TYPES = [
+  "starter",
+  "main",
+  "dessert",
+  "breakfast",
+  "snack",
+  "drink",
+  "side",
+] as const;
+
+const RECIPE_SEASONS = ["all_year", "spring", "summer", "autumn", "winter"] as const;
+
+/**
+ * GAL-291 — Gemini occasionally ignores the "NEVER null" rules in the prompt
+ * and returns missing/invalid values for `type`, `season`, `cuisine`, or
+ * `main_ingredients`. The Review screen then shows blank tag chips, even
+ * though the recipe has clear signals. Coerce here so every parsed recipe
+ * lands in Review with valid enum values; the user can still override.
+ */
+export function normalizeRecipeTags<T extends Record<string, unknown>>(parsed: T): T {
+  const obj = parsed as Record<string, unknown>;
+
+  const rawType = typeof obj.type === "string" ? obj.type.trim().toLowerCase() : "";
+  obj.type = (RECIPE_TYPES as readonly string[]).includes(rawType) ? rawType : "main";
+
+  const rawSeason = typeof obj.season === "string" ? obj.season.trim().toLowerCase() : "";
+  obj.season = (RECIPE_SEASONS as readonly string[]).includes(rawSeason) ? rawSeason : "all_year";
+
+  if (typeof obj.cuisine === "string") {
+    const c = obj.cuisine.trim().toLowerCase();
+    obj.cuisine = c.length > 0 ? c : null;
+  } else if (obj.cuisine !== null && obj.cuisine !== undefined) {
+    obj.cuisine = null;
+  }
+
+  if (Array.isArray(obj.main_ingredients)) {
+    const seen = new Set<string>();
+    obj.main_ingredients = obj.main_ingredients
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.trim().toLowerCase())
+      .filter((v) => {
+        if (!v || seen.has(v)) return false;
+        seen.add(v);
+        return true;
+      })
+      .slice(0, 3);
+  } else {
+    obj.main_ingredients = [];
+  }
+
+  return obj as T;
+}
+
 const RECIPE_SCHEMA = `{
   "name": "string",
   "description": "string (brief, max 2 sentences)",

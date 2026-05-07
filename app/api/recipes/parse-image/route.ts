@@ -5,6 +5,7 @@ import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseImageLimit } from "@/lib/rate-limit";
 import { getGalleyPlan } from "@/lib/subscription";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
+import { normalizeRecipeTags } from "@/lib/recipe-prompts";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
       durationMs: duration,
       success: true,
     });
+    normalizeRecipeTags(parsed);
     return NextResponse.json(parsed);
   } catch {
     await logAIUsage({
