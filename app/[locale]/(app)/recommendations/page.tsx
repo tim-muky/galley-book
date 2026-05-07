@@ -6,8 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { UpgradeCard } from "@/components/upgrade-card";
-
-const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
+import { recipePhotoUrl } from "@/lib/storage";
 
 interface CookNextRecipe {
   id: string;
@@ -70,7 +69,7 @@ function CookNextCard({
 }) {
   const t = useTranslations("recommendations");
   const primaryPhoto = recipe.recipe_photos?.find((p) => p.is_primary) ?? recipe.recipe_photos?.[0];
-  const imgSrc = primaryPhoto ? `${STORAGE_URL}/${primaryPhoto.storage_path}` : null;
+  const imgSrc = primaryPhoto ? recipePhotoUrl(primaryPhoto.storage_path) : null;
 
   return (
     <div className="bg-white rounded-md shadow-ambient overflow-hidden">

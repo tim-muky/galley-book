@@ -60,8 +60,7 @@ export function isFiltering(f: TagFilters): boolean {
  * Returns [] when filters are active but nothing matches — caller can short-
  * circuit. AND across kinds; OR within a kind.
  *
- * Implemented as one query per active kind followed by JS-side intersection.
- * Fine at prototype scale (≤ a few thousand tag rows per galley).
+ * One Postgres call via recipes_matching_tag_filters RPC (GAL-303).
  */
 export async function resolveFilteredRecipeIds(
   supabase: SupabaseClient,
@@ -70,54 +69,29 @@ export async function resolveFilteredRecipeIds(
 ): Promise<string[] | null> {
   if (!hasAnyTagFilter(filters)) return null;
 
-  let intersection: Set<string> | null = null;
-
-  for (const kind of TAG_KINDS) {
-    const values = filters[kind];
-    if (values.length === 0) continue;
-
-    const { data } = await supabase
-      .from("recipe_tags")
-      .select("recipe_id, recipes!inner(galley_id)")
-      .eq("recipes.galley_id", galleyId)
-      .eq("kind", kind)
-      .in("value", values);
-
-    const matchingIds = new Set<string>((data ?? []).map((r) => (r as { recipe_id: string }).recipe_id));
-
-    if (intersection === null) {
-      intersection = matchingIds;
-    } else {
-      const next = new Set<string>();
-      for (const id of intersection) if (matchingIds.has(id)) next.add(id);
-      intersection = next;
-    }
-
-    if (intersection.size === 0) return [];
-  }
-
-  return intersection ? [...intersection] : null;
+  const { data, error } = await supabase.rpc("recipes_matching_tag_filters", {
+    p_galley_id: galleyId,
+    p_filters: filters,
+  });
+  if (error) throw error;
+  return ((data ?? []) as Array<{ recipe_id: string }>).map((r) => r.recipe_id);
 }
 
 /**
  * Distinct (kind, value) pairs for the galley with usage counts. Used to
  * render the filter chip rows. Returned as a per-kind map sorted by count
- * desc, then value asc.
+ * desc, then value asc (sorted server-side; iteration preserves order).
+ *
+ * One Postgres aggregation via available_recipe_tags RPC (GAL-304).
  */
 export async function loadAvailableTags(
   supabase: SupabaseClient,
   galleyId: string
 ): Promise<Record<TagKind, { value: string; count: number }[]>> {
-  const { data } = await supabase
-    .from("recipe_tags")
-    .select("kind, value, recipes!inner(galley_id)")
-    .eq("recipes.galley_id", galleyId);
-
-  const counts: Record<string, number> = {};
-  for (const row of data ?? []) {
-    const r = row as { kind: TagKind; value: string };
-    counts[`${r.kind}::${r.value}`] = (counts[`${r.kind}::${r.value}`] ?? 0) + 1;
-  }
+  const { data, error } = await supabase.rpc("available_recipe_tags", {
+    p_galley_id: galleyId,
+  });
+  if (error) throw error;
 
   const out: Record<TagKind, { value: string; count: number }[]> = {
     cuisine: [],
@@ -125,12 +99,8 @@ export async function loadAvailableTags(
     season: [],
     ingredient: [],
   };
-  for (const [key, count] of Object.entries(counts)) {
-    const [kind, value] = key.split("::") as [TagKind, string];
-    out[kind].push({ value, count });
-  }
-  for (const kind of TAG_KINDS) {
-    out[kind].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  for (const row of (data ?? []) as Array<{ kind: TagKind; value: string; count: number }>) {
+    out[row.kind].push({ value: row.value, count: Number(row.count) });
   }
   return out;
 }

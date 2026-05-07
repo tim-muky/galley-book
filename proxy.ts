@@ -5,23 +5,27 @@ import { routing } from "@/i18n/routing";
 
 const LANDING_HOSTS = new Set(["galleybook.com", "www.galleybook.com"]);
 
+// Anonymous, locale-agnostic legal pages. Served as-is on every host —
+// no rewrites, no locale routing, no Supabase session refresh.
+const LEGAL_PATHS = ["/privacy", "/terms", "/impressum", "/datenschutz"];
+const isLegalPath = (p: string) =>
+  LEGAL_PATHS.some((prefix) => p.startsWith(prefix));
+
 const intlMiddleware = createMiddleware(routing);
 
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const { pathname } = request.nextUrl;
 
-  // Landing domain — rewrite to /landing, pass API and legal pages through
+  // Legal pages: identical handling on every host. No session refresh —
+  // these are public, anonymous pages.
+  if (isLegalPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Landing domain — rewrite everything else to /landing/*. APIs pass through.
   if (LANDING_HOSTS.has(host)) {
-    if (
-      pathname.startsWith("/api/") ||
-      pathname.startsWith("/privacy") ||
-      pathname.startsWith("/terms") ||
-      pathname.startsWith("/impressum") ||
-      pathname.startsWith("/datenschutz")
-    ) {
-      return NextResponse.next();
-    }
+    if (pathname.startsWith("/api/")) return NextResponse.next();
     const url = request.nextUrl.clone();
     url.pathname = pathname === "/" ? "/landing" : `/landing${pathname}`;
     return NextResponse.rewrite(url);
@@ -39,10 +43,6 @@ export async function proxy(request: NextRequest) {
     pathname === "/auth/callback" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/impressum") ||
-    pathname.startsWith("/datenschutz") ||
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms") ||
     pathname.startsWith("/share")
   ) {
     return updateSession(request);
@@ -58,12 +58,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const proxyConfig = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon\\.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
-
-export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|icon\\.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

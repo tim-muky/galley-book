@@ -3,9 +3,8 @@
 import { useState } from "react";
 import type { Ingredient, PreparationStep, RecipeTranslation } from "@/types/database";
 import { BringButton } from "@/components/bring-button";
+import { recipePhotoUrl } from "@/lib/storage";
 import Image from "next/image";
-
-const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
 
 const LANGUAGE_NAMES: Record<string, string> = {
   de: "German",
@@ -206,7 +205,7 @@ export function RecipeContent({
                   {step.photo_storage_path && (
                     <div className="mt-3 rounded-md overflow-hidden">
                       <Image
-                        src={`${STORAGE_URL}/${step.photo_storage_path}`}
+                        src={recipePhotoUrl(step.photo_storage_path)}
                         alt={`Step ${step.step_number}`}
                         width={400}
                         height={250}

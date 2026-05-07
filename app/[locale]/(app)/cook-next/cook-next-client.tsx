@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
-
-const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
+import { recipePhotoUrl } from "@/lib/storage";
 
 interface CookNextEntry {
   id: string;
@@ -81,7 +80,7 @@ export function CookNextClient({ initialItems, galleyName, memberNames }: { init
             const primary =
               recipe.recipe_photos?.find((p) => p.is_primary) ??
               recipe.recipe_photos?.[0];
-            const imgSrc = primary ? `${STORAGE_URL}/${primary.storage_path}` : null;
+            const imgSrc = primary ? recipePhotoUrl(primary.storage_path) : null;
 
             const addedByName = memberNames[entry.added_by];
 

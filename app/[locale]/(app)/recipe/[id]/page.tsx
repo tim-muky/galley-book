@@ -15,8 +15,7 @@ import { RecipeContent } from "@/app/(app)/recipe/[id]/recipe-content";
 import { RecipeComments, type CommentItem } from "@/components/recipe-comments";
 import type { RecipeTranslation } from "@/types/database";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
-
-const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
+import { recipePhotoUrl } from "@/lib/storage";
 
 export default async function RecipeDetailPage({
   params,
@@ -161,7 +160,7 @@ export default async function RecipeDetailPage({
       <div className="relative w-full aspect-[3/2] bg-surface-low">
         {primaryPhoto ? (
           <Image
-            src={`${STORAGE_URL}/${primaryPhoto.storage_path}`}
+            src={recipePhotoUrl(primaryPhoto.storage_path)}
             alt={recipe.name}
             fill
             className="object-cover"
@@ -224,7 +223,7 @@ export default async function RecipeDetailPage({
           {photos.map((p: { id: string; storage_path: string; is_primary: boolean }) => (
             <div key={p.id} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden bg-surface-low">
               <Image
-                src={`${STORAGE_URL}/${p.storage_path}`}
+                src={recipePhotoUrl(p.storage_path)}
                 alt=""
                 width={64}
                 height={64}

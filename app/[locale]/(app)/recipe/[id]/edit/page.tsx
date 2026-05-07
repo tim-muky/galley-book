@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { EditRecipeClient } from "@/app/(app)/recipe/[id]/edit/edit-client";
+import { recipePhotoUrl } from "@/lib/storage";
 
 export default async function EditRecipePage({
   params,
@@ -43,12 +44,9 @@ export default async function EditRecipePage({
     })
   );
 
-  const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
   const photos = (recipe.recipe_photos ?? []) as Array<{ storage_path: string; is_primary: boolean }>;
   const primaryPhoto = photos.find((p) => p.is_primary) ?? photos[0];
-  const existingPhotoUrl = primaryPhoto
-    ? `${STORAGE_URL}/${primaryPhoto.storage_path}`
-    : null;
+  const existingPhotoUrl = primaryPhoto ? recipePhotoUrl(primaryPhoto.storage_path) : null;
 
   return (
     <EditRecipeClient

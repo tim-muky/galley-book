@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { recipePhotoUrl } from "@/lib/storage";
 import type { Recipe, RecipePhoto } from "@/types/database";
 
 interface RecipeCardProps {
@@ -11,9 +12,7 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, className }: RecipeCardProps) {
   const photos = recipe.photos ?? recipe.recipe_photos ?? [];
   const primaryPhoto = photos.find((p) => p.is_primary) ?? photos[0];
-  const photoUrl = primaryPhoto
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos/${primaryPhoto.storage_path}`
-    : null;
+  const photoUrl = primaryPhoto ? recipePhotoUrl(primaryPhoto.storage_path) : null;
 
   return (
     <Link href={`/recipe/${recipe.id}`} className={cn("block", className)}>

@@ -15,8 +15,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-
-const STORAGE_URL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos`;
+import { recipePhotoUrl } from "@/lib/storage";
 
 export async function generateMetadata({
   params,
@@ -91,7 +90,7 @@ export default async function SharePage({
   );
 
   const photoUrl = primaryPhoto
-    ? `${STORAGE_URL}/${primaryPhoto.storage_path}`
+    ? recipePhotoUrl(primaryPhoto.storage_path)
     : null;
 
   // Units recognised by Bring!'s ingredient parser.

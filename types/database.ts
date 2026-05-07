@@ -912,6 +912,14 @@ export type Database = {
       }
     }
     Functions: {
+      available_recipe_tags: {
+        Args: { p_galley_id: string }
+        Returns: {
+          count: number
+          kind: string
+          value: string
+        }[]
+      }
       create_galley: {
         Args: { galley_name: string; owner: string }
         Returns: string
@@ -928,6 +936,16 @@ export type Database = {
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_owner: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_premium: { Args: { p_galley_id: string }; Returns: boolean }
+      recipes_matching_tag_filters: {
+        Args: { p_filters: Json; p_galley_id: string }
+        Returns: {
+          recipe_id: string
+        }[]
+      }
+      seed_default_recipes: {
+        Args: { p_galley_id: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       galley_role: "owner" | "member"
@@ -1106,6 +1124,7 @@ export const Constants = {
 export type RecipeSeason = Database["public"]["Enums"]["recipe_season"];
 export type RecipeType = Database["public"]["Enums"]["recipe_type"];
 export type GalleyRole = Database["public"]["Enums"]["galley_role"];
+export type TagKind = Database["public"]["Enums"]["tag_kind"];
 // "tiktok" extends the DB enum — keep in sync with the source_type migration
 export type SourceType = Database["public"]["Enums"]["source_type"] | "tiktok";
 
@@ -1136,5 +1155,3 @@ export type RecipeTranslation = Omit<
   ingredients: { id: string; name: string }[] | null;
   steps: { id: string; instruction: string }[] | null;
 };
-
-export type TagKind = Database["public"]["Enums"]["tag_kind"];

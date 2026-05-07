@@ -2,17 +2,20 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 
-// Cleans up orphaned files under recipe-photos/temp/{userId}/* that the parse
+// Cleans up orphaned files in the private `recipe-temp` bucket that the parse
 // route uploaded as a stable URL for Instagram CDN images. The save route
-// re-uploads them to {recipeId}/primary.{ext}, leaving the temp copy behind.
+// re-uploads them to recipe-photos/{recipeId}/primary.{ext}, leaving the temp
+// copy behind.
+//
+// Object key convention: `<userId>/<uuid>.<ext>` (no `temp/` prefix — the
+// whole bucket is the temp area).
 //
 // Runs daily at 03:00 UTC via vercel.json. Vercel cron sends an
 // `Authorization: Bearer ${CRON_SECRET}` header — set CRON_SECRET in the
 // project env vars before this route can run.
 
-const TEMP_PREFIX = "temp";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const BUCKET = "recipe-photos";
+const BUCKET = "recipe-temp";
 
 export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
 
   const { data: userFolders, error: listError } = await service.storage
     .from(BUCKET)
-    .list(TEMP_PREFIX, { limit: 1000 });
+    .list("", { limit: 1000 });
 
   if (listError) {
     logger.error("cron_cleanup_temp_list_failed", { error: listError.message });
@@ -36,7 +39,7 @@ export async function GET(request: Request) {
     if (!folder.name) continue;
     const { data: files, error: filesError } = await service.storage
       .from(BUCKET)
-      .list(`${TEMP_PREFIX}/${folder.name}`, { limit: 1000 });
+      .list(folder.name, { limit: 1000 });
 
     if (filesError) {
       logger.warn("cron_cleanup_temp_user_list_failed", {
@@ -49,7 +52,7 @@ export async function GET(request: Request) {
     for (const file of files ?? []) {
       if (!file.created_at) continue;
       if (new Date(file.created_at).getTime() < cutoff) {
-        toDelete.push(`${TEMP_PREFIX}/${folder.name}/${file.name}`);
+        toDelete.push(`${folder.name}/${file.name}`);
       }
     }
   }

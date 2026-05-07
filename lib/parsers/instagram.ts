@@ -123,13 +123,17 @@ export async function cacheInstagramImage(
     if (buffer.byteLength > 5 * 1024 * 1024) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-    const path = `temp/${userId}/${crypto.randomUUID()}.${ext}`;
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage
-      .from("recipe-photos")
+      .from("recipe-temp")
       .upload(path, buffer, { contentType, upsert: false });
     if (error) return null;
-    const { data: { publicUrl } } = supabase.storage.from("recipe-photos").getPublicUrl(path);
-    return publicUrl;
+    // Private bucket — return a signed URL. 4h gives the user time to review
+    // and save before the server-side fetch on /api/recipes re-downloads it.
+    const { data: signed } = await supabase.storage
+      .from("recipe-temp")
+      .createSignedUrl(path, 60 * 60 * 4);
+    return signed?.signedUrl ?? null;
   } catch {
     return null;
   }
