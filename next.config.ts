@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "auth.galleybook.com",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
         hostname: "lgmuazhzipzudtrofxea.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
