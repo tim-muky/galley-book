@@ -804,6 +804,7 @@ export type Database = {
           id: string
           is_admin: boolean
           name: string | null
+          onboarding_completed: boolean
           preferred_language: string | null
           translation_language: string | null
           username: string | null
@@ -815,6 +816,7 @@ export type Database = {
           id: string
           is_admin?: boolean
           name?: string | null
+          onboarding_completed?: boolean
           preferred_language?: string | null
           translation_language?: string | null
           username?: string | null
@@ -826,6 +828,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           name?: string | null
+          onboarding_completed?: boolean
           preferred_language?: string | null
           translation_language?: string | null
           username?: string | null
