@@ -130,24 +130,16 @@ export async function cacheInstagramImage(
     }
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-    const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+    const path = `temp/${userId}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage
-      .from("recipe-temp")
+      .from("recipe-photos")
       .upload(path, buffer, { contentType, upsert: false });
     if (uploadError) {
-      logger.warn("recipe_temp_upload_failed", { path, error: uploadError.message });
+      logger.warn("recipe_photos_temp_upload_failed", { path, error: uploadError.message });
       return null;
     }
-    // Private bucket — return a signed URL. 4h gives the user time to review
-    // and save before the server-side fetch on /api/recipes re-downloads it.
-    const { data: signed, error: signError } = await supabase.storage
-      .from("recipe-temp")
-      .createSignedUrl(path, 60 * 60 * 4);
-    if (signError || !signed?.signedUrl) {
-      logger.warn("recipe_temp_sign_failed", { path, error: signError?.message });
-      return null;
-    }
-    return signed.signedUrl;
+    const { data: { publicUrl } } = supabase.storage.from("recipe-photos").getPublicUrl(path);
+    return publicUrl;
   } catch (err) {
     logger.warn("cache_instagram_image_threw", {
       error: err instanceof Error ? err.message : String(err),
