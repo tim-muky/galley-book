@@ -218,7 +218,7 @@
     "tagline": "La collection de recettes de votre famille",
     "continueWithGoogle": "Continuer avec Google",
     "continueWithApple": "Continuer avec Apple",
-    "termsNotice": "En continuant, vous acceptez les {terms} et la {privacy} de galleybook.",
+    "termsNotice": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy> de galleybook.",
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité"
   },

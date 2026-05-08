@@ -218,7 +218,7 @@
     "tagline": "Die Rezeptsammlung deiner Familie",
     "continueWithGoogle": "Mit Google fortfahren",
     "continueWithApple": "Mit Apple fortfahren",
-    "termsNotice": "Mit der Fortsetzung stimmst du den {terms} und der {privacy} von galleybook zu.",
+    "termsNotice": "Mit der Fortsetzung stimmst du den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> von galleybook zu.",
     "termsOfService": "Nutzungsbedingungen",
     "privacyPolicy": "Datenschutzerklärung"
   },
