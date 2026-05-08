@@ -13,9 +13,32 @@ const isLegalPath = (p: string) =>
 
 const intlMiddleware = createMiddleware(routing);
 
+// Static asset paths that must NEVER be touched by the proxy. The matcher in
+// `proxyConfig` already excludes them, but in Next 16's proxy.ts the matcher
+// has bitten us before — keeping a defensive runtime guard so a regression
+// in the matcher can't 404 the entire build's CSS/JS or /public assets.
+const STATIC_ASSET_PATTERN =
+  /\.(?:css|js|map|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|json|xml|txt|webmanifest)$/i;
+
+function isStaticAsset(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/icon.png" ||
+    pathname === "/manifest.json" ||
+    STATIC_ASSET_PATTERN.test(pathname)
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const { pathname } = request.nextUrl;
+
+  // Defensive: never rewrite or run intl on static assets — they live at the
+  // exact path Vercel serves them from. See note above.
+  if (isStaticAsset(pathname)) {
+    return NextResponse.next();
+  }
 
   // Legal pages: identical handling on every host. No session refresh —
   // these are public, anonymous pages.
