@@ -8,7 +8,7 @@ type ParseQualityLog = {
   platform: string;
   parsed_via: string | null;
   success: boolean;
-  missing_fields: string[];
+  missing_fields: string[] | null;
   error_message: string | null;
   recipe_name: string | null;
 };
@@ -52,7 +52,10 @@ export default async function ParseLogsPage() {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const logs = (raw ?? []) as ParseQualityLog[];
+  const logs = ((raw ?? []) as ParseQualityLog[]).map((l) => ({
+    ...l,
+    missing_fields: l.missing_fields ?? [],
+  }));
 
   const failedCount  = logs.filter((l) => !l.success).length;
   const partialCount = logs.filter((l) => l.success && l.missing_fields.length > 0).length;
