@@ -106,6 +106,28 @@ export async function POST(request: Request) {
       //      model says the latest authenticated user owns it.
       // Either way we update the row in place: refresh expiry/status, and
       // re-point user_id/galley_id at whoever just verified the JWS.
+      //
+      // First, expire any STALE "active" rows for this (user, galley) so
+      // the partial unique index iap_subscriptions_one_active_per_user_galley
+      // is free for the about-to-be-active row. These are typically previous
+      // trials where the sandbox accelerated expiry but no notification
+      // landed to flip status → expired.
+      const { error: stalePurgeErr } = await service
+        .from("iap_subscriptions")
+        .update({ status: "expired" })
+        .eq("user_id", user.id)
+        .eq("galley_id", galleyId)
+        .eq("status", "active")
+        .neq("transaction_id", effectiveTransactionId);
+      if (stalePurgeErr) {
+        logger.error("iap.verify_receipt.dedup_stale_purge_failed", {
+          userId: user.id,
+          galleyId,
+          message: stalePurgeErr.message,
+        });
+        return NextResponse.json({ error: stalePurgeErr.message }, { status: 500 });
+      }
+
       const { error: updateErr } = await service
         .from("iap_subscriptions")
         .update({
