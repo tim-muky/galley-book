@@ -5,7 +5,7 @@ export default async function OnboardingAddRecipePage() {
   const t = await getTranslations("onboarding.step3");
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <h1 className="text-4xl font-thin text-anthracite leading-tight mb-2">{t("title")}</h1>
         <p className="text-sm font-light text-on-surface-variant mb-8">{t("subtitle")}</p>

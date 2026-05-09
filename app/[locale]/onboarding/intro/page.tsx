@@ -14,7 +14,7 @@ export default async function OnboardingIntroPage() {
   if (!user) redirect(`/${locale}/auth/login`);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <IntroCards
           labels={{

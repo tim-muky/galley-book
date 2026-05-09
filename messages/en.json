@@ -206,6 +206,12 @@
       "it": "Italiano",
       "pl": "Polski"
     },
+    "subscription": "Subscription",
+    "subscriptionActive": "galleybook premium is active",
+    "subscriptionFree": "You're on the free plan.",
+    "subscriptionRenews": "Renews on {date}.",
+    "manageSubscription": "Manage subscription",
+    "getPremium": "Get premium",
     "preferencesLegal": "Preferences & Legal",
     "helpCenter": "Help Center",
     "legalPrivacy": "Legal & Privacy",
@@ -225,7 +231,7 @@
   "onboarding": {
     "step1": {
       "title": "Welcome to galleybook.",
-      "subtitle": "Let's set up your kitchen.",
+      "subtitle": "Let's set up your first galley.",
       "nameLabel": "Your name",
       "galleyLabel": "Your kitchen's name",
       "galleyPlaceholder": "e.g. The Smith Kitchen",
@@ -271,5 +277,19 @@
     "title": "AI imports are part of premium",
     "body": "Imports and recommendations are powered by AI. Subscribe in the iOS app — the first 3 days are free.",
     "appStoreCta": "Open in the App Store"
+  },
+  "paywall": {
+    "title": "galleybook premium",
+    "tagline": "Unlock the full galleybook experience.",
+    "featureUnlimited": "Unlimited recipes and members",
+    "featureAi": "AI recipe import and translation",
+    "featureRecommendations": "AI recommendations from your sources",
+    "featureFamily": "Share with your whole household",
+    "trialHeadline": "Start with 3 days free",
+    "trialSub": "Then €1.99/month. Cancel anytime in Settings.",
+    "startTrial": "Open in the App Store",
+    "legal": "After the 3-day free trial, your subscription auto-renews monthly at the price shown unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in Settings → Apple ID → Subscriptions.",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
   }
 }

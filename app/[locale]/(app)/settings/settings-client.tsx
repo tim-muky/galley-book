@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
@@ -139,6 +139,45 @@ export function SettingsClient({
   const [headerImageUploading, setHeaderImageUploading] = useState<Record<string, boolean>>({});
 
   const defaultGalleyId = memberships.find((m) => m.is_default)?.galley_id ?? memberships[0]?.galley_id ?? "";
+
+  // Subscription panel — mirrors the native Settings subscription summary.
+  // Apple compliance: web can show status but cannot sell, so the CTA links
+  // to /paywall (which links onward to the App Store).
+  const [iapStatus, setIapStatus] = useState<{
+    premium: boolean;
+    expiresAt: string | null;
+    source: string | null;
+  } | null>(null);
+  const [iapLoading, setIapLoading] = useState(true);
+
+  useEffect(() => {
+    if (!defaultGalleyId) {
+      setIapStatus(null);
+      setIapLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIapLoading(true);
+    fetch(`/api/iap/status?galleyId=${defaultGalleyId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setIapStatus(
+          data
+            ? { premium: !!data.premium, expiresAt: data.expiresAt ?? null, source: data.source ?? null }
+            : null
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setIapStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIapLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultGalleyId]);
 
   function toggleGalley(galleyId: string) {
     setOpenGalleys((prev) => {
@@ -757,6 +796,59 @@ export function SettingsClient({
             {savingAppLocale ? tc("saving") : tc("save")}
           </button>
         </div>
+      </section>
+
+      {/* Subscription */}
+      <section>
+        <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-4">{t("subscription")}</h2>
+        {iapLoading ? (
+          <p className="text-xs font-light text-on-surface-variant">{tc("loading")}</p>
+        ) : iapStatus?.premium ? (
+          <div className="bg-surface-low rounded-md px-4 py-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full"
+                style={{ backgroundColor: "#A4ED5A" }}
+                aria-hidden="true"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#252729" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+              <span className="text-sm font-light text-anthracite">{t("subscriptionActive")}</span>
+            </div>
+            {iapStatus.expiresAt ? (
+              <p className="text-xs font-light text-on-surface-variant">
+                {t("subscriptionRenews", {
+                  date: new Date(iapStatus.expiresAt).toLocaleDateString(currentLocale, {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  }),
+                })}
+              </p>
+            ) : null}
+            <a
+              href="https://apps.apple.com/account/subscriptions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm font-light text-anthracite underline"
+            >
+              {t("manageSubscription")}
+            </a>
+          </div>
+        ) : (
+          <div className="bg-surface-low rounded-md px-4 py-4 space-y-3">
+            <p className="text-sm font-light text-anthracite">{t("subscriptionFree")}</p>
+            <Link
+              href="/paywall"
+              style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+              className="block border text-sm font-light py-3 rounded-full text-center"
+            >
+              {t("getPremium")}
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Preferences & Legal */}
