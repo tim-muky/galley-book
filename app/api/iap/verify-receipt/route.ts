@@ -94,14 +94,23 @@ export async function POST(request: Request) {
   });
   if (insertErr) {
     if (insertErr.code === "23505") {
-      // GAL-321 — Restore re-sends the same JWS that's already on file, but
-      // Apple may have a fresher `expiresDate` than the row we recorded
-      // (especially in sandbox where trials get accelerated, or after a
-      // renewal that didn't reach our notifications webhook). Update the
-      // existing row in place so restore actually refreshes the entitlement.
+      // GAL-321 — Restore re-sends a JWS whose transaction_id is already on
+      // file. Two cases hit this branch:
+      //   1. Same user restores their own sub → row exists for this user but
+      //      expires_at / status may be stale (esp. sandbox accelerated
+      //      trials).
+      //   2. Different Supabase user logs in with the same Apple ID
+      //      (account deletion + re-create, or sandbox testers hopping
+      //      between test accounts). The row is currently attached to the
+      //      previous user — Apple's "one Apple ID = one subscription"
+      //      model says the latest authenticated user owns it.
+      // Either way we update the row in place: refresh expiry/status, and
+      // re-point user_id/galley_id at whoever just verified the JWS.
       const { error: updateErr } = await service
         .from("iap_subscriptions")
         .update({
+          user_id: user.id,
+          galley_id: galleyId,
           status: "active",
           expires_at: expiresAt,
           raw_payload: payload as unknown as Record<string, unknown>,
