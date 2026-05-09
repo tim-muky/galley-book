@@ -81,6 +81,19 @@ export async function GET(request: Request) {
   const retryingSub = subs?.find((s) => s.status === "in_billing_retry");
   const sub = activeSub ?? retryingSub ?? null;
 
+  // GAL-321 — temporary debug log so we can see why a user with a known
+  // active sub on one galley still gets premium=false on a sibling galley.
+  // Remove once the loop report stops.
+  logger.info("iap.status.debug", {
+    userId: user.id,
+    queriedGalleyId: galleyId,
+    galleyRowCount: galleyResult.data?.length ?? 0,
+    userRowCount: userResult.data?.length ?? 0,
+    mergedCount: subs.length,
+    statuses: subs.map((s) => `${s.status}:${s.galley_id}`),
+    decision: sub ? `active:${sub.galley_id}:${sub.status}` : "none",
+  });
+
   if (!sub) {
     return NextResponse.json({
       premium: false,
