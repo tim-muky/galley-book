@@ -94,8 +94,37 @@ export async function POST(request: Request) {
   });
   if (insertErr) {
     if (insertErr.code === "23505") {
-      logger.info("iap.verify_receipt.dedup", { userId: user.id, galleyId, transactionId: effectiveTransactionId });
-      return NextResponse.json({ ok: true, deduped: true });
+      // GAL-321 — Restore re-sends the same JWS that's already on file, but
+      // Apple may have a fresher `expiresDate` than the row we recorded
+      // (especially in sandbox where trials get accelerated, or after a
+      // renewal that didn't reach our notifications webhook). Update the
+      // existing row in place so restore actually refreshes the entitlement.
+      const { error: updateErr } = await service
+        .from("iap_subscriptions")
+        .update({
+          status: "active",
+          expires_at: expiresAt,
+          raw_payload: payload as unknown as Record<string, unknown>,
+          original_transaction_id: originalTransactionId,
+          offer_identifier: payload.offerIdentifier ?? null,
+        })
+        .eq("transaction_id", effectiveTransactionId);
+      if (updateErr) {
+        logger.error("iap.verify_receipt.dedup_update_failed", {
+          userId: user.id,
+          galleyId,
+          transactionId: effectiveTransactionId,
+          message: updateErr.message,
+        });
+        return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      }
+      logger.info("iap.verify_receipt.dedup_refreshed", {
+        userId: user.id,
+        galleyId,
+        transactionId: effectiveTransactionId,
+        expiresAt,
+      });
+      return NextResponse.json({ ok: true, deduped: true, refreshed: true });
     }
     logger.error("iap.verify_receipt.insert_failed", {
       userId: user.id,
