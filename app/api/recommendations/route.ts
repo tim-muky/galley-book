@@ -136,7 +136,7 @@ export async function GET(request: Request) {
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ recommendations: [] });
 
-  const plan = await getGalleyPlan(supabase, galleyId);
+  const plan = await getGalleyPlan(supabase, galleyId, user.id);
   if (plan !== "premium") {
     return NextResponse.json(
       { error: "AI recommendations are a premium feature.", upgrade: true },
