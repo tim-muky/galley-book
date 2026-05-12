@@ -10,6 +10,11 @@ import { z } from "zod";
 // Apple's official @apple/app-store-server-library SignedDataVerifier
 // before we trust any claim from the payload.
 
+const KNOWN_PREMIUM_PRODUCT_IDS = new Set([
+  "com.galleybook.premium.monthly",
+  "com.galleybook.premium.annual",
+]);
+
 const InputSchema = z.object({
   receipt: z.string().min(1).max(10_000),
   productId: z.string().min(1).max(200),
@@ -27,6 +32,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: body.error.message }, { status: 400 });
   }
   const { receipt, productId, transactionId, galleyId } = body.data;
+
+  if (!KNOWN_PREMIUM_PRODUCT_IDS.has(productId)) {
+    logger.warn("iap.verify_receipt.unknown_product", { productId, userId: user.id });
+    return NextResponse.json({ error: "Unknown product." }, { status: 400 });
+  }
 
   const { data: membership, error: memberErr } = await supabase
     .from("galley_members")
