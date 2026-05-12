@@ -1,8 +1,57 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+
+const PARSING_BG = "#DE5153";
+
+const PARSING_PHRASES = [
+  "chopping",
+  "rinsing",
+  "cutting",
+  "whisking",
+  "boiling",
+  "shimmering",
+  "blending",
+  "roasting",
+  "marinading",
+  "adding salt",
+  "heating the plates",
+  "tasting",
+  "stirring",
+  "seasoning",
+  "plating",
+  "preheating the oven",
+  "folding in flour",
+  "zesting a lemon",
+];
+
+function shufflePhrases(): string[] {
+  const arr = PARSING_PHRASES.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function ParsingLabel() {
+  const phrases = useRef(shufflePhrases()).current;
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIdx((i) => (i + 1) % phrases.length);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [phrases.length]);
+  return (
+    <span className="inline-flex items-baseline">
+      {phrases[idx]}
+      <span className="parsing-dots ml-0.5">…</span>
+    </span>
+  );
+}
 import Image from "next/image";
 import { clsx } from "clsx";
 import { UpgradeCard } from "@/components/upgrade-card";
@@ -110,7 +159,8 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   const t = useTranslations("newRecipe");
   const [mode, setMode] = useState<Mode>("link");
   const [linkUrl, setLinkUrl] = useState("");
-  const [parsing, setParsing] = useState(false);
+  const [parsingSource, setParsingSource] = useState<"link" | "photo" | null>(null);
+  const parsing = parsingSource !== null;
   const [parseError, setParseError] = useState("");
   const [parseWarning, setParseWarning] = useState("");
   // GAL-277 — show the iOS-app upsell card instead of a raw error string
@@ -138,7 +188,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
 
   async function handleParseLink() {
     if (!linkUrl.trim()) return;
-    setParsing(true);
+    setParsingSource("link");
     setParseError("");
     setParseUpgradeNeeded(false);
     setParseWarning("");
@@ -181,7 +231,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Parse failed");
     } finally {
-      setParsing(false);
+      setParsingSource(null);
     }
   }
 
@@ -201,7 +251,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
 
   async function handleParsePhoto() {
     if (cameraFiles.length === 0) return;
-    setParsing(true);
+    setParsingSource("photo");
     setCameraError("");
     setCameraUpgradeNeeded(false);
     try {
@@ -233,7 +283,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     } catch (err) {
       setCameraError(err instanceof Error ? err.message : "Parse failed");
     } finally {
-      setParsing(false);
+      setParsingSource(null);
     }
   }
 
@@ -455,26 +505,17 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
           <p className="text-[11px] font-light text-on-surface-variant">{t("link.privacyNote")}</p>
           <button
             onClick={handleParseLink}
-            disabled={!linkUrl.trim()}
-            style={{ backgroundColor: "#dc2626", borderColor: "#dc2626", color: "#fff" }}
-            className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
+            disabled={!linkUrl.trim() || parsing}
+            style={
+              parsingSource === "link"
+                ? { backgroundColor: PARSING_BG, borderColor: PARSING_BG, color: "#fff" }
+                : linkUrl.trim()
+                  ? { backgroundColor: "#252729", borderColor: "#252729", color: "#fff" }
+                  : { backgroundColor: "#fff", borderColor: "#252729", color: "#252729" }
+            }
+            className="w-full text-sm font-light py-4 rounded-full border disabled:opacity-40"
           >
-            {parsing && (
-              <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
-                <span
-                  className="veggie-scroll-a absolute inset-0"
-                  style={{
-                    backgroundImage: "url(/landing-bg.webp)",
-                    backgroundSize: "auto 100%",
-                    backgroundRepeat: "repeat-x",
-                    filter: "grayscale(1)",
-                    opacity: 0.9,
-                  }}
-                />
-                <span className="absolute inset-0 bg-red-800/70" />
-              </span>
-            )}
-            <span className="relative z-10">{parsing ? t("link.parsing") : t("link.parse")}</span>
+            {parsingSource === "link" ? <ParsingLabel /> : t("link.parse")}
           </button>
         </div>
       )}
@@ -550,25 +591,14 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                style={{ backgroundColor: "#dc2626", borderColor: "#dc2626", color: "#fff" }}
-                className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
+                style={
+                  parsingSource === "photo"
+                    ? { backgroundColor: PARSING_BG, borderColor: PARSING_BG, color: "#fff" }
+                    : { backgroundColor: "#252729", borderColor: "#252729", color: "#fff" }
+                }
+                className="w-full text-sm font-light py-4 rounded-full border disabled:opacity-40"
               >
-                {parsing && (
-                  <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
-                    <span
-                      className="veggie-scroll-a absolute inset-0"
-                      style={{
-                        backgroundImage: "url(/landing-bg.webp)",
-                        backgroundSize: "auto 100%",
-                        backgroundRepeat: "repeat-x",
-                        filter: "grayscale(1)",
-                        opacity: 0.9,
-                      }}
-                    />
-                    <span className="absolute inset-0 bg-red-800/70" />
-                  </span>
-                )}
-                <span className="relative z-10">{parsing ? t("photo.parsing") : t("photo.parse")}</span>
+                {parsingSource === "photo" ? <ParsingLabel /> : t("photo.parse")}
               </button>
             </div>
           ) : (
@@ -618,25 +648,14 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               <button
                 onClick={handleParsePhoto}
                 disabled={parsing}
-                style={{ backgroundColor: "#dc2626", borderColor: "#dc2626", color: "#fff" }}
-                className="relative w-full text-sm font-light py-4 rounded-full border overflow-hidden disabled:opacity-40"
+                style={
+                  parsingSource === "photo"
+                    ? { backgroundColor: PARSING_BG, borderColor: PARSING_BG, color: "#fff" }
+                    : { backgroundColor: "#252729", borderColor: "#252729", color: "#fff" }
+                }
+                className="w-full text-sm font-light py-4 rounded-full border disabled:opacity-40"
               >
-                {parsing && (
-                  <span className="btn-progress-fill absolute inset-y-0 left-0 rounded-full overflow-hidden" aria-hidden>
-                    <span
-                      className="veggie-scroll-a absolute inset-0"
-                      style={{
-                        backgroundImage: "url(/landing-bg.webp)",
-                        backgroundSize: "auto 100%",
-                        backgroundRepeat: "repeat-x",
-                        filter: "grayscale(1)",
-                        opacity: 0.9,
-                      }}
-                    />
-                    <span className="absolute inset-0 bg-red-800/70" />
-                  </span>
-                )}
-                <span className="relative z-10">{parsing ? t("photo.parsing") : t("photo.parseMultiple", { n: cameraPreviews.length })}</span>
+                {parsingSource === "photo" ? <ParsingLabel /> : t("photo.parseMultiple", { n: cameraPreviews.length })}
               </button>
               <button
                 onClick={clearCamera}
