@@ -158,23 +158,14 @@ export default async function RecipeDetailPage({
   return (
     <div className="min-h-screen bg-white">
       <div className="relative w-full aspect-[3/2] bg-surface-low">
-        {primaryPhoto ? (
-          <Image
-            src={recipePhotoUrl(primaryPhoto.storage_path)}
-            alt={recipe.name}
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 512px) 100vw, 512px"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface-low">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <path d="M6 36l10-10 6 6 8-9 12 13H6z" stroke="#C6C6C6" strokeWidth="2" strokeLinejoin="round"/>
-              <circle cx="15" cy="15" r="4" stroke="#C6C6C6" strokeWidth="2"/>
-            </svg>
-          </div>
-        )}
+        <Image
+          src={primaryPhoto ? recipePhotoUrl(primaryPhoto.storage_path) : "/default_recipe_pic.png"}
+          alt={recipe.name}
+          fill
+          className="object-cover"
+          priority
+          sizes="(max-width: 512px) 100vw, 512px"
+        />
 
         <Link
           href="/library"

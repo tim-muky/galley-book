@@ -19,22 +19,13 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
       <div className="bg-surface-lowest rounded-md overflow-hidden shadow-ambient transition-shadow hover:shadow-float">
         {/* Photo */}
         <div className="relative w-full aspect-[4/3] bg-surface-low">
-          {photoUrl ? (
-            <Image
-              src={photoUrl}
-              alt={recipe.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 512px) 100vw, 512px"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <path d="M4 24l7-7 4 4 5-6 8 9H4z" stroke="#C6C6C6" strokeWidth="1.5" strokeLinejoin="round"/>
-                <circle cx="10" cy="10" r="3" stroke="#C6C6C6" strokeWidth="1.5"/>
-              </svg>
-            </div>
-          )}
+          <Image
+            src={photoUrl ?? "/default_recipe_pic.png"}
+            alt={recipe.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 512px) 100vw, 512px"
+          />
         </div>
 
         {/* Info */}

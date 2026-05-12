@@ -75,16 +75,7 @@ function CookNextCard({
     <div className="bg-white rounded-md shadow-ambient overflow-hidden">
       <Link href={`/recipe/${recipe.id}`}>
         <div className="relative w-full aspect-[4/3] bg-surface-low">
-          {imgSrc ? (
-            <Image src={imgSrc} alt={recipe.name} fill className="object-cover" sizes="512px" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <path d="M4 24l7-7 4 4 5-6 8 9H4z" stroke="#C6C6C6" strokeWidth="1.5" strokeLinejoin="round"/>
-                <circle cx="10" cy="10" r="3" stroke="#C6C6C6" strokeWidth="1.5"/>
-              </svg>
-            </div>
-          )}
+          <Image src={imgSrc ?? "/default_recipe_pic.png"} alt={recipe.name} fill className="object-cover" sizes="512px" />
         </div>
         <div className="px-4 pt-3 pb-1">
           <h3 className="text-sm font-light text-anthracite leading-snug">{recipe.name}</h3>
