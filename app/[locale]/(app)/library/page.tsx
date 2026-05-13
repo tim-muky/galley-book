@@ -15,6 +15,7 @@ import {
   resolveFilteredRecipeIds,
   loadAvailableTags,
 } from "@/lib/recipe-filters";
+import { getGalleyPlan } from "@/lib/subscription";
 
 const PAGE_SIZE = 20;
 
@@ -64,6 +65,12 @@ export default async function LibraryPage({
   }
 
   const galleyId = (await resolveActiveGalleyId(supabase, user.id))!;
+
+  // GAL-327: gate the library behind an active subscription. Mirrors the
+  // native root-level gate where AuthedTabs is replaced by the paywall when
+  // entitlement is "free".
+  const plan = await getGalleyPlan(supabase, galleyId, user.id);
+  if (plan === "free") redirect(`/${locale}/paywall`);
 
   const tagFilters = parseTagFilters(params as Record<string, string | undefined>);
   const matchingRecipeIds = await resolveFilteredRecipeIds(supabase, galleyId, tagFilters);
