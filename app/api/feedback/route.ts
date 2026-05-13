@@ -23,8 +23,9 @@ export async function POST(request: Request) {
   const userEmail = profile?.email ?? user.email ?? "";
 
   const { error } = await resend.emails.send({
-    from: "galleybook <onboarding@resend.dev>",
-    to: "tim@muky-kids.com",
+    from: "galleybook <contact@galleybook.com>",
+    to: "contact@galleybook.com",
+    replyTo: userEmail || undefined,
     subject: `[galleybook] ${category} from ${userName}`,
     text: [
       `Category: ${category}`,

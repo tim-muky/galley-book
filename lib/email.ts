@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "galleybook <waiter@galleybook.com>";
+const FROM = "galleybook <contact@galleybook.com>";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -19,6 +19,7 @@ export async function sendGalleyInvite({
   await getResend().emails.send({
     from: FROM,
     to: toEmail,
+    replyTo: "contact@galleybook.com",
     subject: `${inviterName} invited you to ${galleyName}`,
     html: `
       <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; color: #252729;">
