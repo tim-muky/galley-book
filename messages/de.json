@@ -74,7 +74,7 @@
     "link": {
       "label": "KI-Link-Importer",
       "placeholder": "Instagram-, YouTube- oder Web-URL einfügen…",
-      "privacyNote": "Rezeptinhalte werden zur Verarbeitung an Anthropic Claude und Perplexity AI übermittelt.",
+      "privacyNote": "Rezeptinhalte werden zur Verarbeitung an Google Gemini und Perplexity AI übermittelt.",
       "parse": "Rezept analysieren",
       "parsing": "KI analysiert…"
     },

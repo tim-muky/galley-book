@@ -91,3 +91,11 @@ body {
 .veggie-scroll-a {
   animation: veggie-scroll-lr 12s linear infinite;
 }
+
+@keyframes parsing-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.parsing-dots {
+  animation: parsing-dot-blink 1s ease-in-out infinite;
+}

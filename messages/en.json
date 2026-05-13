@@ -74,8 +74,8 @@
     "link": {
       "label": "AI Link Importer",
       "placeholder": "Paste Instagram, YouTube, or web URL…",
-      "privacyNote": "Recipe content is sent to Anthropic Claude and Perplexity AI for processing.",
-      "parse": "Parse Recipe",
+      "privacyNote": "Recipe content is sent to Google Gemini and Perplexity AI for processing.",
+      "parse": "Import from link",
       "parsing": "Parsing with AI…"
     },
     "photo": {

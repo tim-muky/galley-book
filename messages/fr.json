@@ -74,7 +74,7 @@
     "link": {
       "label": "Importeur de lien IA",
       "placeholder": "Collez une URL Instagram, YouTube ou web…",
-      "privacyNote": "Le contenu de la recette est envoyé à Anthropic Claude et Perplexity AI pour traitement.",
+      "privacyNote": "Le contenu de la recette est envoyé à Google Gemini et Perplexity AI pour traitement.",
       "parse": "Analyser la recette",
       "parsing": "Analyse en cours…"
     },

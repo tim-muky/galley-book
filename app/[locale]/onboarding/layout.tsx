@@ -8,7 +8,7 @@ export default function OnboardingLayout({
   return (
     <div className="relative min-h-screen bg-white">
       <Image
-        src="/onboarding-bg.png"
+        src="/onboarding-bg.jpg"
         alt=""
         fill
         priority
