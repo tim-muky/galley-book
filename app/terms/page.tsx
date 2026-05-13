@@ -22,7 +22,7 @@ export default function TermsPage() {
 
         <h1 className="text-4xl font-thin text-anthracite mb-2">Terms of Service</h1>
         <p className="text-xs font-light text-on-surface-variant mb-10">
-          Last updated: April 7, 2026
+          Last updated: May 13, 2026
         </p>
 
         {/* 1. Acceptance */}
@@ -82,12 +82,12 @@ export default function TermsPage() {
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
             <li>
               When you import a recipe via URL, the content of that page is sent to{" "}
-              <strong className="font-normal text-anthracite">Anthropic Claude</strong> and/or{" "}
+              <strong className="font-normal text-anthracite">Google Gemini</strong> and/or{" "}
               <strong className="font-normal text-anthracite">Perplexity AI</strong> for processing.
             </li>
             <li>
-              When you import a recipe via photo, the image is sent to{" "}
-              <strong className="font-normal text-anthracite">Anthropic Claude</strong>.
+              When you import a recipe via photo or translate a recipe, the image or text is sent
+              to <strong className="font-normal text-anthracite">Google Gemini</strong>.
             </li>
             <li>
               When you use the Discover feature, metadata from your recipe collection and saved
@@ -115,14 +115,74 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 6. Limitation of liability */}
+        {/* 6. Subscriptions */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            6. Limitation of Liability
+            6. Subscriptions, Trial & Auto-Renewal
+          </h2>
+          <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
+            galleybook offers <strong className="font-normal text-anthracite">galleybook premium</strong>,
+            an auto-renewable subscription sold through the Apple App Store. Pricing is shown
+            inside the app before purchase; current tiers include a monthly plan at €1.99/month
+            and an annual plan at €19.99/year. Local taxes and currency conversion are handled by
+            Apple.
+          </p>
+          <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant mb-3">
+            <li>
+              <span className="font-normal text-anthracite">Free trial</span> — new subscribers may
+              receive a 3-day free trial. If you do not cancel before the trial ends, the
+              subscription will start automatically at the price shown.
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Auto-renewal</span> — subscriptions
+              renew automatically at the end of each period unless you cancel at least 24 hours
+              before the current period ends. Your Apple account is charged for the renewal
+              within 24 hours of the end of the current period.
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Managing & cancelling</span> — you can
+              view, manage, or cancel your subscription at any time in{" "}
+              <em>iOS Settings → your Apple ID → Subscriptions</em>, or via Settings → Subscription
+              inside the app. Cancellation takes effect at the end of the current billing period;
+              you retain premium access until then.
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Family Sharing</span> — galleybook
+              premium supports Apple Family Sharing. Members of your Apple family group can use
+              your subscription on their own devices.
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Refunds</span> — App Store refunds are
+              handled by Apple under its own policy. Submit requests at{" "}
+              <a
+                href="https://reportaproblem.apple.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                reportaproblem.apple.com
+              </a>
+              .
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Right of withdrawal (EU)</span> — by
+              starting your subscription (including the free trial) you expressly request that we
+              begin providing the digital service immediately, and you acknowledge that you
+              thereby lose your statutory 14-day right of withdrawal under §356(5) BGB / Art. 16(m)
+              of EU Directive 2011/83/EU once performance has begun.
+            </li>
+          </ul>
+        </section>
+
+        {/* 7. Limitation of liability */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
+            7. Limitation of Liability
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
             galleybook is provided &ldquo;as is&rdquo; without warranty of any kind, express or implied. To the
-            fullest extent permitted by law:
+            fullest extent permitted by law, and subject always to your mandatory consumer rights
+            under applicable law (in particular under German and EU consumer protection law):
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
             <li>We do not guarantee the accuracy of AI-parsed recipe content.</li>
@@ -135,12 +195,17 @@ export default function TermsPage() {
               your use of the app.
             </li>
           </ul>
+          <p className="text-sm font-light text-on-surface-variant leading-relaxed mt-3">
+            Nothing in these terms limits liability for death or personal injury caused by
+            negligence, for fraud, or for any other liability that cannot be excluded under
+            applicable law.
+          </p>
         </section>
 
         {/* 7. Account deletion */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            7. Account Deletion
+            8. Account Deletion
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
             You may delete your account at any time from{" "}
@@ -156,7 +221,7 @@ export default function TermsPage() {
         {/* 8. Service availability */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            8. Service Availability
+            9. Service Availability
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
             We aim to keep galleybook available but cannot guarantee uninterrupted access. We may
@@ -168,7 +233,7 @@ export default function TermsPage() {
         {/* 9. Changes */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            9. Changes to These Terms
+            10. Changes to These Terms
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
             We may update these terms from time to time. We will update the &ldquo;Last updated&rdquo; date at
@@ -180,7 +245,7 @@ export default function TermsPage() {
         {/* 10. Contact */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            10. Contact
+            11. Contact
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
             Questions about these terms? Contact us at{" "}

@@ -854,7 +854,7 @@ export function SettingsClient({
       {/* Preferences & Legal */}
       <section className="space-y-1">
         <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">{t("preferencesLegal")}</h2>
-        <Link href="/help" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
+        <Link href="/support" className="flex items-center gap-3 py-3 text-sm font-light text-anthracite">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2"/><path d="M8 11v-1M8 6.5a1.5 1.5 0 10-1.5 1.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
           {t("helpCenter")}
         </Link>

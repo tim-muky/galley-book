@@ -29,7 +29,7 @@ export default function DatenschutzPage() {
           Datenschutzerklärung
         </h1>
         <p className="text-xs font-light text-on-surface-variant mb-10">
-          Stand: April 2026
+          Stand: 13. Mai 2026
         </p>
 
         {/* 1. Verantwortlicher */}
@@ -38,8 +38,8 @@ export default function DatenschutzPage() {
             1. Verantwortlicher
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            Verantwortlich für die Datenverarbeitung auf dieser Website im Sinne
-            der DSGVO ist:
+            Verantwortlich für die Datenverarbeitung auf dieser Website und in
+            der galleybook-App im Sinne der DSGVO ist:
           </p>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mt-3">
             Tim Meyerdierks
@@ -69,7 +69,11 @@ export default function DatenschutzPage() {
             {[
               {
                 title: "Kontodaten",
-                text: "Name, E-Mail-Adresse und Profilfoto, die Google bei der Anmeldung übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).",
+                text: "Name und E-Mail-Adresse. Bei Anmeldung mit Google erhalten wir zusätzlich dein Profilfoto. Bei Anmeldung mit Apple und Auswahl von „E-Mail verbergen“ erhalten wir nur eine anonymisierte Apple-Relay-Adresse (z. B. xyz@privaterelay.appleid.com), die an deine tatsächliche E-Mail weiterleitet. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).",
+              },
+              {
+                title: "Abodaten",
+                text: "Wenn du ein galleybook-premium-Abo im iOS-App-Store kaufst, wickelt Apple die Zahlung ab und übermittelt uns ausschließlich eine signierte Transaktionsquittung (Produkt-ID, Kaufdatum, Ablaufdatum, Verlängerungsstatus). Zahlungsdaten oder deine Apple-ID erhalten wir zu keiner Zeit. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.",
               },
               {
                 title: "Rezepte und Inhalte",
@@ -112,10 +116,17 @@ export default function DatenschutzPage() {
               },
               {
                 name: "Google LLC",
-                role: "Anmeldung via OAuth",
+                role: "Anmeldung via OAuth und KI-Rezeptextraktion (Gemini)",
                 detail:
-                  "Beim Login via \u201EMit Google anmelden\u201C erhalten wir Name, E-Mail und Profilfoto von Google. Datenübertragung in die USA auf Basis von SCCs.",
+                  "Beim Login via „Mit Google anmelden“ erhalten wir Name, E-Mail und Profilfoto. Beim Rezeptimport via URL oder Foto sowie bei der Übersetzung wird der Seiteninhalt bzw. das Bild an Google Gemini gesendet. Laut Google werden über die Gemini-API übermittelte Daten nicht zum Training der Modelle verwendet. Datenübertragung in die USA / EU auf Basis von SCCs.",
                 link: "https://policies.google.com/privacy",
+              },
+              {
+                name: "Apple Inc. / Apple Distribution International Ltd.",
+                role: "Sign in with Apple und App-Store-Abo-Abrechnung",
+                detail:
+                  "Bei Anmeldung mit Apple übermittelt Apple uns Name und E-Mail (ggf. als Apple-Relay-Adresse). Bei Kauf eines galleybook-premium-Abos wickelt Apple die Zahlung ab; wir erhalten lediglich eine signierte Transaktionsquittung. Kartendaten oder Apple-ID erreichen unsere Server nicht. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.",
+                link: "https://www.apple.com/legal/privacy/",
               },
               {
                 name: "Vercel Inc.",
@@ -125,18 +136,18 @@ export default function DatenschutzPage() {
                 link: "https://vercel.com/legal/privacy-policy",
               },
               {
-                name: "Anthropic PBC",
-                role: "KI-Rezeptextraktion",
-                detail:
-                  "Beim Import eines Rezepts via URL oder Foto wird der Seiteninhalt bzw. das Bild an Anthropic zur Verarbeitung gesendet. Anthropic kann Eingaben bis zu 30 Tage für Sicherheitsmonitoring speichern. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.",
-                link: "https://www.anthropic.com/privacy",
-              },
-              {
                 name: "Perplexity AI Inc.",
                 role: "Web-Suche für Rezeptinhalte und Empfehlungen",
                 detail:
                   "Für bestimmte Importe (z. B. Instagram, YouTube) und die Entdecken-Funktion werden Metadaten deiner gespeicherten Quellen an Perplexity gesendet. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.",
                 link: "https://www.perplexity.ai/privacy",
+              },
+              {
+                name: "Bring! Labs AG",
+                role: "Einkaufslisten-Integration",
+                detail:
+                  "Beim Tippen auf „Zur Einkaufsliste hinzufügen“ wird ein öffentlicher Freigabe-Link zum Rezept an Bring!-Server gesendet, damit deren Dienst die Zutaten parsen kann. Sitz: Schweiz.",
+                link: "https://getbring.com/privacy",
               },
             ].map((svc) => (
               <div key={svc.name} className="bg-surface-low rounded-md px-4 py-3">
@@ -169,7 +180,9 @@ export default function DatenschutzPage() {
           </h2>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
             Auf unserer Landingpage setzen wir den Meta Pixel der Meta Platforms
-            Ireland Ltd., 4 Grand Canal Square, Dublin 2, Irland ein.
+            Ireland Ltd., 4 Grand Canal Square, Dublin 2, Irland ein. In der
+            iOS-App wird kein Meta Pixel und kein anderes Analyse- oder
+            Tracking-SDK eingesetzt.
           </p>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
             Beim Besuch der Seite wird automatisch ein JavaScript-Code geladen,
@@ -223,19 +236,25 @@ export default function DatenschutzPage() {
           </p>
         </section>
 
-        {/* 5. Cookies */}
+        {/* 5. Cookies & Speicher */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            5. Cookies
+            5. Cookies und lokaler Speicher
           </h2>
+          <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
+            Auf der Website setzen wir ein technisch notwendiges Session-Cookie
+            ein, das dich eingeloggt hält (Supabase Auth). Dieses Cookie ist
+            für die Funktionsfähigkeit der App erforderlich. In der iOS-App
+            wird das entsprechende Session-Token sicher im Geräte-Keychain
+            gespeichert.
+          </p>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            Wir setzen ein technisch notwendiges Session-Cookie ein, das dich
-            eingeloggt hält (Supabase Auth). Dieses Cookie ist für die
-            Funktionsfähigkeit der App erforderlich. Der Meta Pixel (siehe
-            Abschnitt 4) wird nur nach deiner ausdrücklichen Einwilligung über
-            das Cookie-Banner auf der Landingpage geladen und setzt dann eigene
-            Cookies von Meta. Ohne Einwilligung werden keine Tracking-Cookies
-            gesetzt.
+            Der Meta Pixel (siehe Abschnitt 4) wird nur nach deiner
+            ausdrücklichen Einwilligung über das Cookie-Banner auf der
+            Landingpage geladen und setzt dann eigene Cookies von Meta. Ohne
+            Einwilligung werden keine Tracking-Cookies gesetzt. In der iOS-App
+            werden keine Tracking-, Werbe- oder Analyse-Cookies bzw.
+            -Identifier verwendet.
           </p>
         </section>
 

@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
         <h1 className="text-4xl font-thin text-anthracite mb-2">Privacy Policy</h1>
         <p className="text-xs font-light text-on-surface-variant mb-10">
-          Last updated: April 7, 2026
+          Last updated: May 13, 2026
         </p>
 
         {/* 1. Who we are */}
@@ -51,8 +51,17 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant">
             <li>
-              <span className="font-normal text-anthracite">Account information</span> — your name,
-              email address, and profile photo, provided by Google when you sign in.
+              <span className="font-normal text-anthracite">Account information</span> — your name
+              and email address. If you sign in with Google we also receive your profile photo. If
+              you sign in with Apple and choose to hide your email, we only receive an
+              Apple-relayed address (e.g. <em>xyz@privaterelay.appleid.com</em>) that forwards to
+              your real inbox.
+            </li>
+            <li>
+              <span className="font-normal text-anthracite">Subscription information</span> — if you
+              purchase a galleybook premium subscription on iOS, Apple processes the payment and
+              shares only a signed transaction receipt with us (product, purchase date, expiry,
+              renewal status). We never see your card or App Store account details.
             </li>
             <li>
               <span className="font-normal text-anthracite">Recipes and content</span> — recipe
@@ -93,17 +102,17 @@ export default function PrivacyPage() {
               },
               {
                 name: "Google",
-                role: "Sign-in (OAuth)",
-                data: "We receive your name, email, and profile photo from Google when you sign in.",
-                region: "US",
+                role: "Sign-in (OAuth) and AI recipe extraction (Gemini)",
+                data: "We receive your name, email, and profile photo when you sign in with Google. When you import a recipe via URL or photo, or translate a recipe, the page content or image is sent to Google Gemini for parsing. Google has stated that data submitted via the Gemini API is not used to train models.",
+                region: "US / EU",
                 link: "https://policies.google.com/privacy",
               },
               {
-                name: "Anthropic (Claude)",
-                role: "AI recipe extraction",
-                data: "When you import a recipe via URL or photo, the page content or image is sent to Anthropic for parsing. Anthropic may retain inputs for up to 30 days for safety monitoring.",
-                region: "US",
-                link: "https://www.anthropic.com/privacy",
+                name: "Apple",
+                role: "Sign in with Apple and App Store subscription billing",
+                data: "If you sign in with Apple, Apple shares your name and email (or an Apple-relayed email) with us. If you purchase a galleybook premium subscription, Apple processes the payment and sends us only a signed transaction receipt. Card details and Apple ID never reach our servers.",
+                region: "US / Ireland",
+                link: "https://www.apple.com/legal/privacy/",
               },
               {
                 name: "Perplexity AI",
@@ -111,6 +120,13 @@ export default function PrivacyPage() {
                 data: "When you import a recipe from certain URLs (e.g. Instagram, YouTube) or use the Discover feature, your recipe collection metadata and saved sources are sent to Perplexity to retrieve content and generate personalised recommendations.",
                 region: "US",
                 link: "https://www.perplexity.ai/privacy",
+              },
+              {
+                name: "Vercel",
+                role: "Hosting",
+                data: "Our web servers and edge functions run on Vercel. Vercel processes standard HTTP request data (IP address, user agent, request path) to deliver the service. We do not use Vercel Analytics or any other behavioural tracking.",
+                region: "Global edge / US",
+                link: "https://vercel.com/legal/privacy-policy",
               },
               {
                 name: "Bring! Labs",
@@ -214,14 +230,19 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        {/* 7. Cookies */}
+        {/* 7. Cookies, local storage & analytics */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold text-anthracite uppercase tracking-widest mb-3">
-            7. Cookies
+            7. Cookies, Local Storage & Analytics
           </h2>
+          <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
+            On the web, we use a single session cookie to keep you signed in. This cookie is
+            essential for the app to function. In the iOS app, the equivalent session token is
+            stored securely in the device Keychain.
+          </p>
           <p className="text-sm font-light text-on-surface-variant leading-relaxed">
-            We use a single session cookie to keep you signed in. This cookie is essential for the
-            app to function. We do not use any advertising, analytics, or tracking cookies.
+            We do not use any advertising, analytics, behavioural-tracking, or third-party
+            crash-reporting SDKs in the web or iOS app.
           </p>
         </section>
 
