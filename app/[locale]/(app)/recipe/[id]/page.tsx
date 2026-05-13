@@ -16,6 +16,7 @@ import { RecipeComments, type CommentItem } from "@/components/recipe-comments";
 import type { RecipeTranslation } from "@/types/database";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { recipePhotoUrl } from "@/lib/storage";
+import { getGalleyPlan } from "@/lib/subscription";
 
 export default async function RecipeDetailPage({
   params,
@@ -41,6 +42,13 @@ export default async function RecipeDetailPage({
   const membership =
     (activeGalleyId ? membershipsRaw?.find((m) => m.galley_id === activeGalleyId) : null) ??
     membershipsRaw?.[0];
+
+  // GAL-326-follow: gate recipe-detail behind an active subscription. Free
+  // users (trial expired, never subscribed) get bounced to the paywall.
+  if (membership) {
+    const plan = await getGalleyPlan(supabase, membership.galley_id, user.id);
+    if (plan === "free") redirect(`/${locale}/paywall`);
+  }
 
   const [{ data: recipe }, { data: cookNextRow }, { data: userRow }, { data: voteSummary }, { data: userVoteRow }] = await Promise.all([
     supabase
