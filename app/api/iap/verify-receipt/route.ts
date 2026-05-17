@@ -148,7 +148,7 @@ export async function POST(request: Request) {
         .eq("user_id", user.id)
         .eq("galley_id", galleyId)
         .eq("status", "active")
-        .neq("original_purchase_token", originalTransactionId);
+        .neq("transaction_id", effectiveTransactionId);
       if (stalePurgeErr) {
         logger.error("iap.verify_receipt.dedup_stale_purge_failed", {
           userId: user.id,
@@ -166,11 +166,11 @@ export async function POST(request: Request) {
           status: "active",
           expires_at: expiresAt,
           raw_payload: payload as unknown as Record<string, unknown>,
-          transaction_id: effectiveTransactionId,
           original_transaction_id: originalTransactionId,
+          original_purchase_token: originalTransactionId,
           offer_identifier: payload.offerIdentifier ?? null,
         })
-        .eq("original_purchase_token", originalTransactionId);
+        .eq("transaction_id", effectiveTransactionId);
       if (updateErr) {
         logger.error("iap.verify_receipt.dedup_update_failed", {
           userId: user.id,
