@@ -15,6 +15,13 @@
 
 alter type public.iap_source add value if not exists 'google_iap';
 
+-- Postgres forbids using a freshly-added enum value in the same
+-- transaction, so commit the enum change before any WHERE source =
+-- 'google_iap' clause is parsed. Supabase migrations apply files
+-- atomically, so the split must be inside the file.
+commit;
+begin;
+
 alter table public.iap_subscriptions
   add column if not exists original_purchase_token text;
 
