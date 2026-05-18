@@ -215,7 +215,7 @@
     "yesDeleteAccount": "Tak, usuń moje konto"
   },
   "auth": {
-    "tagline": "Rodzinna kolekcja przepisów",
+    "tagline": "… for the love of cooking",
     "continueWithGoogle": "Kontynuuj przez Google",
     "continueWithApple": "Kontynuuj przez Apple",
     "termsNotice": "Kontynuując, akceptujesz <terms>Warunki korzystania</terms> i <privacy>Politykę prywatności</privacy> galleybook.",
@@ -271,5 +271,8 @@
     "title": "Importy AI są częścią premium",
     "body": "Importy i rekomendacje działają dzięki AI. Subskrybuj w aplikacji iOS — pierwsze 3 dni są darmowe.",
     "appStoreCta": "Otwórz w App Store"
+  },
+  "paywall": {
+    "tagline": "… for the love of cooking"
   }
 }

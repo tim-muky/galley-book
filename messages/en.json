@@ -221,7 +221,7 @@
     "yesDeleteAccount": "Yes, delete my account"
   },
   "auth": {
-    "tagline": "Your family's recipe collection",
+    "tagline": "… for the love of cooking",
     "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
     "termsNotice": "By continuing, you agree to galleybook's <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
@@ -280,7 +280,7 @@
   },
   "paywall": {
     "title": "galleybook premium",
-    "tagline": "Unlock the full galleybook experience.",
+    "tagline": "… for the love of cooking",
     "featureUnlimited": "Unlimited recipes and members",
     "featureAi": "AI recipe import and translation",
     "featureRecommendations": "AI recommendations from your sources",
