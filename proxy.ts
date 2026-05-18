@@ -7,7 +7,7 @@ const LANDING_HOSTS = new Set(["galleybook.com", "www.galleybook.com"]);
 
 // Anonymous, locale-agnostic legal pages. Served as-is on every host —
 // no rewrites, no locale routing, no Supabase session refresh.
-const LEGAL_PATHS = ["/privacy", "/terms", "/impressum", "/datenschutz", "/support"];
+const LEGAL_PATHS = ["/privacy", "/terms", "/impressum", "/datenschutz", "/support", "/account-deletion"];
 const isLegalPath = (p: string) =>
   LEGAL_PATHS.some((prefix) => p.startsWith(prefix));
 
