@@ -40,7 +40,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const entitlement = await computeEntitlement(supabase, user.id, galleyId);
+    const entitlement = await computeEntitlement(
+      supabase,
+      user.id,
+      galleyId,
+      user.created_at,
+    );
     return NextResponse.json(entitlement);
   } catch (err) {
     logger.error("iap.status.query_failed", {

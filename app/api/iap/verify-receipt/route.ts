@@ -169,7 +169,12 @@ export async function POST(request: Request) {
       // GAL-341: include the authoritative entitlement so the client doesn't
       // need a follow-up /api/iap/status round-trip (which can hit a stale
       // read in the moment after this write).
-      const entitlement = await computeEntitlement(service, user.id, galleyId);
+      const entitlement = await computeEntitlement(
+        service,
+        user.id,
+        galleyId,
+        user.created_at,
+      );
       return NextResponse.json({
         ok: true,
         deduped: true,
@@ -197,6 +202,11 @@ export async function POST(request: Request) {
   });
   // GAL-341: return the authoritative entitlement so the client can skip
   // the immediate /api/iap/status call (read-after-write race window).
-  const entitlement = await computeEntitlement(service, user.id, galleyId);
+  const entitlement = await computeEntitlement(
+    service,
+    user.id,
+    galleyId,
+    user.created_at,
+  );
   return NextResponse.json({ ok: true, entitlement });
 }

@@ -17,13 +17,34 @@ export type EntitlementResult = {
   status: "free" | "active" | "in_billing_retry" | string;
   expiresAt: string | null;
   isShared: boolean;
-  source: "apple_iap" | "apple_offer_code" | "comp" | null;
+  source: "apple_iap" | "apple_offer_code" | "comp" | "trial" | null;
 };
+
+// GAL-335: every user gets 3 days of full premium starting at sign-up so
+// the first cooking sessions feel unfettered. After the window expires the
+// regular subscription gate takes over.
+const TRIAL_LENGTH_MS = 3 * 24 * 60 * 60 * 1000;
+
+function trialEntitlement(userCreatedAt: string | null | undefined): EntitlementResult | null {
+  if (!userCreatedAt) return null;
+  const start = new Date(userCreatedAt).getTime();
+  if (!Number.isFinite(start)) return null;
+  const end = start + TRIAL_LENGTH_MS;
+  if (Date.now() >= end) return null;
+  return {
+    premium: true,
+    status: "active",
+    expiresAt: new Date(end).toISOString(),
+    isShared: false,
+    source: "trial",
+  };
+}
 
 export async function computeEntitlement(
   supabase: SupabaseClient,
   userId: string,
   galleyId: string,
+  userCreatedAt?: string | null,
 ): Promise<EntitlementResult> {
   const [galleyResult, userResult] = await Promise.all([
     supabase
@@ -66,21 +87,37 @@ export async function computeEntitlement(
   const retryingSub = subs.find((s) => s.status === "in_billing_retry");
   const sub = activeSub ?? retryingSub ?? null;
 
-  if (!sub) {
+  // GAL-335: if there's a real active sub it wins (longer window, real
+  // entitlement). Otherwise check the 3-day trial. Free is the last resort.
+  if (sub && sub.status === "active") {
+    return {
+      premium: true,
+      status: sub.status,
+      expiresAt: sub.expires_at,
+      isShared: sub.user_id !== userId,
+      source: sub.source as EntitlementResult["source"],
+    };
+  }
+
+  const trial = trialEntitlement(userCreatedAt);
+  if (trial) return trial;
+
+  if (sub) {
+    // Retrying sub but past trial — still surface the status.
     return {
       premium: false,
-      status: "free",
-      expiresAt: null,
-      isShared: false,
-      source: null,
+      status: sub.status,
+      expiresAt: sub.expires_at,
+      isShared: sub.user_id !== userId,
+      source: sub.source as EntitlementResult["source"],
     };
   }
 
   return {
-    premium: sub.status === "active",
-    status: sub.status,
-    expiresAt: sub.expires_at,
-    isShared: sub.user_id !== userId,
-    source: sub.source as EntitlementResult["source"],
+    premium: false,
+    status: "free",
+    expiresAt: null,
+    isShared: false,
+    source: null,
   };
 }
