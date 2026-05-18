@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import { computeEntitlement } from "@/lib/iap/entitlement";
 import { NextResponse } from "next/server";
 
 // GAL-190 — Subscription state for the Settings → Subscription section.
@@ -38,77 +39,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Not a member of that galley" }, { status: 403 });
   }
 
-  // Two independent queries — RLS already restricts iap_subscriptions to
-  // rows on galleys the user is a member of, so user-scoped lookups don't
-  // leak anyone else's data. Merging in JS lets us honour both
-  // "galley-shared" and "user-owned-anywhere" cases without a brittle
-  // PostgREST .or() string.
-  const [galleyResult, userResult] = await Promise.all([
-    supabase
-      .from("iap_subscriptions")
-      .select("user_id, product_id, source, status, expires_at, starts_at, galley_id")
-      .eq("galley_id", galleyId)
-      .order("starts_at", { ascending: false }),
-    supabase
-      .from("iap_subscriptions")
-      .select("user_id, product_id, source, status, expires_at, starts_at, galley_id")
-      .eq("user_id", user.id)
-      .order("starts_at", { ascending: false }),
-  ]);
-
-  if (galleyResult.error || userResult.error) {
-    const error = galleyResult.error ?? userResult.error;
+  try {
+    const entitlement = await computeEntitlement(supabase, user.id, galleyId);
+    return NextResponse.json(entitlement);
+  } catch (err) {
     logger.error("iap.status.query_failed", {
       userId: user.id,
       galleyId,
-      message: error?.message,
+      message: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json({ error: "Failed to load subscription state" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load subscription state" },
+      { status: 500 },
+    );
   }
-
-  const seen = new Set<string>();
-  const subs = [...(galleyResult.data ?? []), ...(userResult.data ?? [])].filter((row) => {
-    const key = `${row.user_id}:${row.galley_id}:${row.starts_at}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  const now = Date.now();
-  const activeSub = subs?.find(
-    (s) => s.status === "active" && (!s.expires_at || new Date(s.expires_at).getTime() > now),
-  );
-  const retryingSub = subs?.find((s) => s.status === "in_billing_retry");
-  const sub = activeSub ?? retryingSub ?? null;
-
-  // GAL-321 — temporary debug log so we can see why a user with a known
-  // active sub on one galley still gets premium=false on a sibling galley.
-  // Remove once the loop report stops.
-  logger.info("iap.status.debug", {
-    userId: user.id,
-    queriedGalleyId: galleyId,
-    galleyRowCount: galleyResult.data?.length ?? 0,
-    userRowCount: userResult.data?.length ?? 0,
-    mergedCount: subs.length,
-    statuses: subs.map((s) => `${s.status}:${s.galley_id}`),
-    decision: sub ? `active:${sub.galley_id}:${sub.status}` : "none",
-  });
-
-  if (!sub) {
-    return NextResponse.json({
-      premium: false,
-      status: "free" as const,
-      expiresAt: null,
-      isShared: false,
-      source: null,
-    });
-  }
-
-  return NextResponse.json({
-    premium: sub.status === "active",
-    status: sub.status,
-    expiresAt: sub.expires_at,
-    isShared: sub.user_id !== user.id,
-    source: sub.source,
-  });
 }
