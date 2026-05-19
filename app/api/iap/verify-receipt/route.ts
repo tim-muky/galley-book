@@ -8,6 +8,7 @@ import {
   isActive,
   GooglePurchaseNotFoundError,
 } from "@/lib/iap/google-verifier";
+import { computeEntitlement } from "@/lib/iap/entitlement";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -186,7 +187,21 @@ export async function POST(request: Request) {
         transactionId: effectiveTransactionId,
         expiresAt,
       });
-      return NextResponse.json({ ok: true, deduped: true, refreshed: true });
+      // GAL-341: include the authoritative entitlement so the client doesn't
+      // need a follow-up /api/iap/status round-trip (which can hit a stale
+      // read in the moment after this write).
+      const entitlement = await computeEntitlement(
+        service,
+        user.id,
+        galleyId,
+        user.created_at,
+      );
+      return NextResponse.json({
+        ok: true,
+        deduped: true,
+        refreshed: true,
+        entitlement,
+      });
     }
     logger.error("iap.verify_receipt.insert_failed", {
       userId: user.id,
@@ -206,7 +221,15 @@ export async function POST(request: Request) {
     expiresAt,
     environment: payload.environment,
   });
-  return NextResponse.json({ ok: true });
+  // GAL-341: return the authoritative entitlement so the client can skip
+  // the immediate /api/iap/status call (read-after-write race window).
+  const entitlement = await computeEntitlement(
+    service,
+    user.id,
+    galleyId,
+    user.created_at,
+  );
+  return NextResponse.json({ ok: true, entitlement });
 }
 
 async function verifyGoogle(args: {

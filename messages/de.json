@@ -215,7 +215,7 @@
     "yesDeleteAccount": "Ja, Konto löschen"
   },
   "auth": {
-    "tagline": "Die Rezeptsammlung deiner Familie",
+    "tagline": "… for the love of cooking",
     "continueWithGoogle": "Mit Google fortfahren",
     "continueWithApple": "Mit Apple fortfahren",
     "termsNotice": "Mit der Fortsetzung stimmst du den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> von galleybook zu.",
@@ -271,5 +271,8 @@
     "title": "KI-Importe sind Teil von Premium",
     "body": "Importe und Empfehlungen laufen über KI. Abonniere in der iOS-App — die ersten 3 Tage sind kostenlos.",
     "appStoreCta": "Im App Store öffnen"
+  },
+  "paywall": {
+    "tagline": "… for the love of cooking"
   }
 }
