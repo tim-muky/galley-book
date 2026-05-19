@@ -19,7 +19,12 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { recipePhotoUrl } from "@/lib/storage";
 import { verifyShareToken } from "@/lib/share/token";
 
-const SIGN_UP_PATH = "/auth/login";
+// GAL-336: an expired/invalid share link lives on the landing host
+// (galleybook.com), where the proxy rewrites everything except /api/, /r/
+// and /share/ to /landing/*. /auth/login resolves only on app.galleybook.com,
+// so we send the visitor to the landing page itself — which already carries
+// clear Sign-in / Sign-up CTAs and is the right top-of-funnel destination.
+const SIGN_UP_PATH = "/";
 
 export async function generateMetadata({
   params,
