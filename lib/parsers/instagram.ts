@@ -175,7 +175,7 @@ export async function parseInstagram(url: string): Promise<FetchResult> {
         parsedVia: "none",
         imageSource: "none",
         error:
-          "Instagram posts require login and cannot be parsed automatically. Please add the recipe manually.",
+          "Instagram blocks reading this post without an Instagram login. Try sharing it to galleybook from the Instagram app, or paste the recipe in manually.",
       };
     }
     return {
