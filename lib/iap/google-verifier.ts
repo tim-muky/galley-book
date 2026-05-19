@@ -1,12 +1,15 @@
 import { google, androidpublisher_v3 } from "googleapis";
+import { IdentityPoolClient } from "google-auth-library";
 
 // GAL-273 — verify a Play purchaseToken via the Android Publisher API.
 //
-// The service-account JSON is loaded from GOOGLE_PLAY_SA_JSON (raw or
-// base64-encoded — Vercel's multi-line env handling sometimes mangles raw
-// JSON, so base64 is the safe form to paste). The same SA must be linked
-// in Play Console under Users & Permissions with the Android Publisher
-// role.
+// Auth uses Vercel ↔ GCP Workload Identity Federation (WIF):
+//   - Vercel injects VERCEL_OIDC_TOKEN per function invocation.
+//   - IdentityPoolClient exchanges that token at sts.googleapis.com
+//     and impersonates the service account, which is linked in
+//     Play Console with the Android Publisher role.
+//   - No long-lived JSON key on disk or in env — tokens are short-lived
+//     and minted on demand.
 
 const PACKAGE_NAME = "com.galleyworks.galleybook";
 const NOT_FOUND_RETRY_DELAYS_MS = [500, 2000, 5000];
@@ -15,25 +18,37 @@ type Schema$SubscriptionPurchaseV2 = androidpublisher_v3.Schema$SubscriptionPurc
 
 let cachedClient: androidpublisher_v3.Androidpublisher | null = null;
 
-function loadServiceAccountJson(): Record<string, unknown> {
-  const raw = process.env.GOOGLE_PLAY_SA_JSON;
-  if (!raw) {
-    throw new Error("GOOGLE_PLAY_SA_JSON is not set");
-  }
-  const trimmed = raw.trim();
-  const text = trimmed.startsWith("{")
-    ? trimmed
-    : Buffer.from(trimmed, "base64").toString("utf8");
-  return JSON.parse(text);
+function buildAuthClient(): IdentityPoolClient {
+  const provider = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER;
+  const saEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
+  if (!provider) throw new Error("GCP_WORKLOAD_IDENTITY_PROVIDER is not set");
+  if (!saEmail) throw new Error("GCP_SERVICE_ACCOUNT_EMAIL is not set");
+
+  return new IdentityPoolClient({
+    type: "external_account",
+    audience: `//iam.googleapis.com/${provider}`,
+    subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+    token_url: "https://sts.googleapis.com/v1/token",
+    service_account_impersonation_url:
+      `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${saEmail}:generateAccessToken`,
+    subject_token_supplier: {
+      // Called every time the SDK needs a fresh GCP access token.
+      // Vercel injects a new VERCEL_OIDC_TOKEN per function invocation
+      // (~15 min validity), so reading the env at call time is correct.
+      async getSubjectToken() {
+        const token = process.env.VERCEL_OIDC_TOKEN;
+        if (!token) {
+          throw new Error("VERCEL_OIDC_TOKEN not present — enable OIDC on the Vercel project");
+        }
+        return token;
+      },
+    },
+  });
 }
 
 function getClient(): androidpublisher_v3.Androidpublisher {
   if (cachedClient) return cachedClient;
-  const credentials = loadServiceAccountJson();
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/androidpublisher"],
-  });
+  const auth = buildAuthClient();
   cachedClient = google.androidpublisher({ version: "v3", auth });
   return cachedClient;
 }
