@@ -25,7 +25,7 @@ export async function GET() {
         {
           appID,
           appIDs: teamId ? [appID] : undefined,
-          paths: ["/join/*", "/share/*"],
+          paths: ["/join/*", "/share/*", "/r/*"],
         },
       ],
     },

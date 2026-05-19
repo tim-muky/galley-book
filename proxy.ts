@@ -56,7 +56,11 @@ export async function proxy(request: NextRequest) {
     if (
       pathname.startsWith("/api/") ||
       pathname.startsWith("/r/") ||
-      pathname.startsWith("/share/")
+      pathname.startsWith("/share/") ||
+      // GAL-312: AASA + assetlinks need to resolve on the landing host so
+      // Universal Links / Android App Links work for signed share URLs
+      // hosted at galleybook.com/r/{id}.
+      pathname.startsWith("/.well-known/")
     ) {
       return NextResponse.next();
     }
