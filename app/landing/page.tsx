@@ -571,7 +571,7 @@ export default function LandingPage() {
       <header className="flex items-center justify-between gap-4 px-6 py-5 md:px-16 sticky top-0 bg-transparent z-50">
         <a href="/" className="select-none flex items-end gap-3 flex-shrink min-w-0">
           <Image src="/logo.png" alt="galleybook" width={40} height={32} className="object-contain flex-shrink-0" />
-          <span className="hidden sm:inline text-sm md:text-base font-light text-anthracite/70 truncate">
+          <span className="hidden sm:inline text-sm md:text-base font-light leading-none text-anthracite/70 truncate translate-y-[2px]">
             {TAGLINE}
           </span>
         </a>
