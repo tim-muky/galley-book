@@ -5,6 +5,7 @@ import { fetchAuthor } from "@/lib/oembed";
 import { logger } from "@/lib/logger";
 import { escapeLikePattern } from "@/lib/utils";
 import { parseTagFilters, resolveFilteredRecipeIds } from "@/lib/recipe-filters";
+import { sendPushToGalleyMembers } from "@/lib/push/send";
 import { z } from "zod";
 
 const IngredientSchema = z.object({
@@ -363,6 +364,20 @@ export async function POST(request: Request) {
       });
     }
   }
+
+  // GAL-330: notify all OTHER galley members that a new recipe was added.
+  // Fire-and-forget so the recipe-create response doesn't wait on push
+  // delivery. Push errors are logged inside sendPushToGalleyMembers.
+  void sendPushToGalleyMembers(resolvedGalleyId, user.id, {
+    eventType: "recipe_added",
+    title: name.trim(),
+    body: "New recipe added to your galley.",
+    data: {
+      screen: "recipe",
+      recipeId,
+      recipeName: name.trim(),
+    },
+  });
 
   return NextResponse.json({ id: recipeId }, { status: 201 });
 }

@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
+import { sendPushToGalleyMembers } from "@/lib/push/send";
+
+// GAL-330: cook-next clear is noisy if it fires on every removal. The
+// "clear" notification fires once when the list transitions non-empty
+// → empty (DELETE endpoint). Per-item removal does not notify; only
+// the explicit clear-all path does.
 
 // GET /api/cook-next-list — returns all recipes in the galley's list (newest first).
 // Each item includes the adder's name/email/avatar (joined separately because
@@ -72,6 +78,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // GAL-330: notify other galley members that a recipe was added to cook-next.
+  // Only fires when the insert actually happened (not on a duplicate skip),
+  // so we re-check by reading the recipe name lazily.
+  if (!error) {
+    const { data: recipe } = await supabase
+      .from("recipes")
+      .select("name")
+      .eq("id", recipeId)
+      .maybeSingle();
+    void sendPushToGalleyMembers(galleyId, user.id, {
+      eventType: "cook_next_added",
+      title: "Cook next updated",
+      body: recipe?.name
+        ? `${recipe.name} was added to Cook Next.`
+        : "A recipe was added to Cook Next.",
+      data: { screen: "cook_next" },
+    });
+  }
+
   return NextResponse.json({ ok: true }, { status: 201 });
 }
 
@@ -84,7 +109,23 @@ export async function DELETE() {
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (!galleyId) return NextResponse.json({ ok: true });
 
+  // Check whether anything was in the list before clearing — only notify
+  // when we actually transitioned non-empty → empty.
+  const { count: beforeCount } = await supabase
+    .from("cook_next_list")
+    .select("id", { count: "exact", head: true })
+    .eq("galley_id", galleyId);
+
   await supabase.from("cook_next_list").delete().eq("galley_id", galleyId);
+
+  if ((beforeCount ?? 0) > 0) {
+    void sendPushToGalleyMembers(galleyId, user.id, {
+      eventType: "cook_next_cleared",
+      title: "Cook Next cleared",
+      body: "The Cook Next list was cleared.",
+      data: { screen: "cook_next" },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
