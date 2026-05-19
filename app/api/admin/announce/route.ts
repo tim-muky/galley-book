@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { requireAdminApi } from "@/lib/auth/admin";
 import { logger } from "@/lib/logger";
 import { sendPushToUsers } from "@/lib/push/send";
 import { NextResponse } from "next/server";
@@ -9,12 +9,7 @@ import { z } from "zod";
 // a specific recipe. Recipients tap the notification and land on the
 // recipe with an "Add to my galley" CTA.
 //
-// Gated server-side on the authenticated user's email so a client flag
-// can't escalate. Per project_admin_role memory, the sole admin is
-// tim@muky-kids.com. If we onboard more staff later, replace the email
-// match with an `is_staff` column on auth.users / public.users.
-
-const ADMIN_EMAILS = new Set(["tim@muky-kids.com"]);
+// Gated server-side via requireAdminApi (public.users.is_admin flag).
 
 const InputSchema = z.object({
   recipeId: z.string().uuid(),
@@ -23,13 +18,9 @@ const InputSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!user.email || !ADMIN_EMAILS.has(user.email)) {
-    logger.warn("admin.announce.forbidden", { userId: user.id, email: user.email });
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const guard = await requireAdminApi();
+  if ("response" in guard) return guard.response;
+  const user = guard.user;
 
   const body = InputSchema.safeParse(await request.json());
   if (!body.success) {
