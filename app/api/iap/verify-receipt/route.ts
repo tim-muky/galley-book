@@ -2,14 +2,23 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { verifySignedTransaction } from "@/lib/iap/verifier";
+import {
+  fetchSubscriptionPurchase,
+  acknowledgeIfNeeded,
+  isActive,
+  GooglePurchaseNotFoundError,
+} from "@/lib/iap/google-verifier";
 import { computeEntitlement } from "@/lib/iap/entitlement";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-// GAL-188 — server-side verification of an Apple StoreKit 2 transaction.
-// JWS signature + cert chain + bundle id + environment are validated by
-// Apple's official @apple/app-store-server-library SignedDataVerifier
-// before we trust any claim from the payload.
+// GAL-188 + GAL-273 — server-side verification of an in-app purchase.
+// Apple: validates the StoreKit 2 JWS signature, cert chain, bundle id, env.
+// Google: calls androidpublisher.purchases.subscriptionsv2.get with the
+// service account, validates subscriptionState, acknowledges if needed.
+// In both cases the row stores original_purchase_token as the stable
+// per-subscription identifier (Apple originalTransactionId / Play
+// purchaseToken). transaction_id is the per-renewal order id.
 
 const KNOWN_PREMIUM_PRODUCT_IDS = new Set([
   "com.galleybook.premium.monthly",
@@ -21,6 +30,7 @@ const InputSchema = z.object({
   productId: z.string().min(1).max(200),
   transactionId: z.string().min(1).max(200).nullable(),
   galleyId: z.string().uuid(),
+  provider: z.enum(["apple", "google"]).default("apple"),
 });
 
 export async function POST(request: Request) {
@@ -32,7 +42,7 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: body.error.message }, { status: 400 });
   }
-  const { receipt, productId, transactionId, galleyId } = body.data;
+  const { receipt, productId, transactionId, galleyId, provider } = body.data;
 
   if (!KNOWN_PREMIUM_PRODUCT_IDS.has(productId)) {
     logger.warn("iap.verify_receipt.unknown_product", { productId, userId: user.id });
@@ -47,6 +57,15 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (memberErr || !membership) {
     return NextResponse.json({ error: "Not a member of that galley" }, { status: 403 });
+  }
+
+  if (provider === "google") {
+    return verifyGoogle({
+      userId: user.id,
+      galleyId,
+      productId,
+      token: receipt,
+    });
   }
 
   // Verify the JWS signature against Apple's root CAs and decode. The
@@ -98,6 +117,7 @@ export async function POST(request: Request) {
     status: "active",
     transaction_id: effectiveTransactionId,
     original_transaction_id: originalTransactionId,
+    original_purchase_token: originalTransactionId,
     offer_identifier: payload.offerIdentifier ?? null,
     starts_at: new Date().toISOString(),
     expires_at: expiresAt,
@@ -148,6 +168,7 @@ export async function POST(request: Request) {
           expires_at: expiresAt,
           raw_payload: payload as unknown as Record<string, unknown>,
           original_transaction_id: originalTransactionId,
+          original_purchase_token: originalTransactionId,
           offer_identifier: payload.offerIdentifier ?? null,
         })
         .eq("transaction_id", effectiveTransactionId);
@@ -209,4 +230,145 @@ export async function POST(request: Request) {
     user.created_at,
   );
   return NextResponse.json({ ok: true, entitlement });
+}
+
+async function verifyGoogle(args: {
+  userId: string;
+  galleyId: string;
+  productId: string;
+  token: string;
+}): Promise<Response> {
+  const { userId, galleyId, productId, token } = args;
+
+  let purchase;
+  try {
+    purchase = await fetchSubscriptionPurchase(token);
+  } catch (err) {
+    if (err instanceof GooglePurchaseNotFoundError) {
+      logger.warn("iap.verify_receipt.google.not_found", { userId, galleyId, productId });
+      return NextResponse.json(
+        { error: "Purchase not found yet — try again in a moment." },
+        { status: 404 },
+      );
+    }
+    logger.error("iap.verify_receipt.google.fetch_failed", {
+      userId,
+      galleyId,
+      productId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({ error: "Receipt could not be verified." }, { status: 400 });
+  }
+
+  if (purchase.productId !== productId) {
+    logger.warn("iap.verify_receipt.google.product_mismatch", {
+      claimed: productId,
+      signed: purchase.productId,
+      userId,
+    });
+    return NextResponse.json(
+      { error: "Receipt product does not match request." },
+      { status: 400 },
+    );
+  }
+
+  if (!isActive(purchase)) {
+    logger.warn("iap.verify_receipt.google.not_active", {
+      userId,
+      galleyId,
+      productId,
+      state: purchase.subscriptionState,
+    });
+    return NextResponse.json({ error: "Subscription is not active." }, { status: 400 });
+  }
+
+  await acknowledgeIfNeeded(token, purchase).catch((err: unknown) => {
+    logger.warn("iap.verify_receipt.google.ack_failed", {
+      userId,
+      galleyId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  const service = createServiceClient();
+  const { error: insertErr } = await service.from("iap_subscriptions").insert({
+    user_id: userId,
+    galley_id: galleyId,
+    product_id: productId,
+    source: "google_iap",
+    status: "active",
+    transaction_id: purchase.latestOrderId,
+    original_purchase_token: token,
+    starts_at: new Date().toISOString(),
+    expires_at: purchase.expiresAt,
+    raw_payload: purchase as unknown as Record<string, unknown>,
+  });
+
+  if (insertErr) {
+    if (insertErr.code === "23505") {
+      // Same token replayed (restore / RTDN echo). Refresh expiry + order id;
+      // expire any stale active rows for this (user, galley) the same way the
+      // Apple path does so the partial unique stays free.
+      const { error: stalePurgeErr } = await service
+        .from("iap_subscriptions")
+        .update({ status: "expired" })
+        .eq("user_id", userId)
+        .eq("galley_id", galleyId)
+        .eq("status", "active")
+        .neq("original_purchase_token", token);
+      if (stalePurgeErr) {
+        logger.error("iap.verify_receipt.google.dedup_stale_purge_failed", {
+          userId,
+          galleyId,
+          message: stalePurgeErr.message,
+        });
+        return NextResponse.json({ error: stalePurgeErr.message }, { status: 500 });
+      }
+
+      const { error: updateErr } = await service
+        .from("iap_subscriptions")
+        .update({
+          user_id: userId,
+          galley_id: galleyId,
+          status: "active",
+          expires_at: purchase.expiresAt,
+          transaction_id: purchase.latestOrderId,
+          product_id: productId,
+          raw_payload: purchase as unknown as Record<string, unknown>,
+        })
+        .eq("original_purchase_token", token);
+      if (updateErr) {
+        logger.error("iap.verify_receipt.google.dedup_update_failed", {
+          userId,
+          galleyId,
+          message: updateErr.message,
+        });
+        return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      }
+      logger.info("iap.verify_receipt.google.dedup_refreshed", {
+        userId,
+        galleyId,
+        productId,
+        expiresAt: purchase.expiresAt,
+      });
+      return NextResponse.json({ ok: true, deduped: true, refreshed: true });
+    }
+    logger.error("iap.verify_receipt.google.insert_failed", {
+      userId,
+      galleyId,
+      productId,
+      code: insertErr.code,
+      message: insertErr.message,
+    });
+    return NextResponse.json({ error: insertErr.message }, { status: 500 });
+  }
+
+  logger.info("iap.verify_receipt.google.recorded", {
+    userId,
+    galleyId,
+    productId,
+    expiresAt: purchase.expiresAt,
+    state: purchase.subscriptionState,
+  });
+  return NextResponse.json({ ok: true });
 }

@@ -288,6 +288,7 @@ export type Database = {
           granted_by: string | null
           id: string
           offer_identifier: string | null
+          original_purchase_token: string | null
           original_transaction_id: string | null
           product_id: string
           raw_payload: Json | null
@@ -308,6 +309,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           offer_identifier?: string | null
+          original_purchase_token?: string | null
           original_transaction_id?: string | null
           product_id: string
           raw_payload?: Json | null
@@ -328,6 +330,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           offer_identifier?: string | null
+          original_purchase_token?: string | null
           original_transaction_id?: string | null
           product_id?: string
           raw_payload?: Json | null
@@ -949,7 +952,7 @@ export type Database = {
     }
     Enums: {
       galley_role: "owner" | "member"
-      iap_source: "apple_iap" | "apple_offer_code" | "comp"
+      iap_source: "apple_iap" | "apple_offer_code" | "comp" | "google_iap"
       iap_status:
         | "active"
         | "expired"
@@ -1095,7 +1098,7 @@ export const Constants = {
   public: {
     Enums: {
       galley_role: ["owner", "member"],
-      iap_source: ["apple_iap", "apple_offer_code", "comp"],
+      iap_source: ["apple_iap", "apple_offer_code", "comp", "google_iap"],
       iap_status: [
         "active",
         "expired",
