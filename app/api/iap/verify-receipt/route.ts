@@ -143,13 +143,22 @@ export async function POST(request: Request) {
       // is free for the about-to-be-active row. These are typically previous
       // trials where the sandbox accelerated expiry but no notification
       // landed to flip status → expired.
+      //
+      // GAL-343: scope the sweep to Apple-sourced rows. Comp entitlements
+      // (granted by staff for testing, support, etc.) MUST NOT be expired
+      // by an Apple restore — that turned every restore on a comp'd account
+      // into "lose your comp" and trapped the user behind the paywall again.
+      // Google rows live in their own (user, galley) lane in practice
+      // because the constraint is partial on status='active', but be
+      // defensive and only sweep the source we're actively replacing.
       const { error: stalePurgeErr } = await service
         .from("iap_subscriptions")
         .update({ status: "expired" })
         .eq("user_id", user.id)
         .eq("galley_id", galleyId)
         .eq("status", "active")
-        .neq("transaction_id", effectiveTransactionId);
+        .neq("transaction_id", effectiveTransactionId)
+        .in("source", ["apple_iap", "apple_offer_code"]);
       if (stalePurgeErr) {
         logger.error("iap.verify_receipt.dedup_stale_purge_failed", {
           userId: user.id,
