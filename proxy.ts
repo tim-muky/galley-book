@@ -46,9 +46,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Landing domain — rewrite everything else to /landing/*. APIs pass through.
+  // Landing domain — rewrite everything else to /landing/*. APIs and a
+  // small allowlist of canonical-URL routes pass through:
+  //   /api/*   — backend endpoints
+  //   /r/*     — GAL-336 signed share links; the page lives at app/r/[id]
+  //              and must be reachable from galleybook.com/r/{id}?t=...
+  //   /share/* — legacy share page reached by Bring!'s scraper (GAL-172)
   if (LANDING_HOSTS.has(host)) {
-    if (pathname.startsWith("/api/")) return NextResponse.next();
+    if (
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/r/") ||
+      pathname.startsWith("/share/")
+    ) {
+      return NextResponse.next();
+    }
     const url = request.nextUrl.clone();
     url.pathname = pathname === "/" ? "/landing" : `/landing${pathname}`;
     return NextResponse.rewrite(url);
@@ -66,7 +77,8 @@ export async function proxy(request: NextRequest) {
     pathname === "/auth/callback" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/share")
+    pathname.startsWith("/share") ||
+    pathname.startsWith("/r/")
   ) {
     return updateSession(request);
   }
