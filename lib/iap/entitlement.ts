@@ -17,7 +17,7 @@ export type EntitlementResult = {
   status: "free" | "active" | "in_billing_retry" | string;
   expiresAt: string | null;
   isShared: boolean;
-  source: "apple_iap" | "apple_offer_code" | "comp" | "trial" | null;
+  source: "apple_iap" | "apple_offer_code" | "comp" | "trial" | "invite" | null;
 };
 
 // GAL-335: every user gets 3 days of full premium starting at sign-up so
@@ -46,7 +46,10 @@ export async function computeEntitlement(
   galleyId: string,
   userCreatedAt?: string | null,
 ): Promise<EntitlementResult> {
-  const [galleyResult, userResult] = await Promise.all([
+  // GAL-350: third source of premium — an active premium_invites row whose
+  // inviter still has an active sub. Resolved at read time so cascade
+  // revocation is automatic when the inviter cancels/lapses/deletes.
+  const [galleyResult, userResult, inviteResult] = await Promise.all([
     supabase
       .from("iap_subscriptions")
       .select(
@@ -61,6 +64,12 @@ export async function computeEntitlement(
       )
       .eq("user_id", userId)
       .order("starts_at", { ascending: false }),
+    supabase
+      .from("premium_invites")
+      .select("id, inviter_user_id")
+      .eq("invitee_user_id", userId)
+      .eq("status", "active")
+      .maybeSingle(),
   ]);
 
   if (galleyResult.error || userResult.error) {
@@ -97,6 +106,28 @@ export async function computeEntitlement(
       isShared: sub.user_id !== userId,
       source: sub.source as EntitlementResult["source"],
     };
+  }
+
+  // GAL-350: premium-invite from a still-subscribed inviter
+  const inviterId = inviteResult.data?.inviter_user_id;
+  if (inviterId) {
+    const { data: inviterSubs } = await supabase
+      .from("iap_subscriptions")
+      .select("status, expires_at")
+      .eq("user_id", inviterId)
+      .eq("status", "active");
+    const liveInviterSub = inviterSubs?.find(
+      (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
+    );
+    if (liveInviterSub) {
+      return {
+        premium: true,
+        status: "active",
+        expiresAt: liveInviterSub.expires_at,
+        isShared: true,
+        source: "invite",
+      };
+    }
   }
 
   const trial = trialEntitlement(userCreatedAt);
