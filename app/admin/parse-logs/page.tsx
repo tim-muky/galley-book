@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 type ParseQualityLog = {
   id: string;
   created_at: string;
-  source_url: string;
+  source_url: string | null;
   platform: string;
   parsed_via: string | null;
   success: boolean;
@@ -20,7 +20,8 @@ const PLATFORM_STYLE: Record<string, { bg: string; color: string }> = {
   website:   { bg: "#E3EDF9", color: "#2D5FA0" },
 };
 
-function truncateUrl(url: string): string {
+function truncateUrl(url: string | null): string {
+  if (!url) return "—";
   try {
     const u = new URL(url);
     const path = (u.pathname + u.search).slice(0, 36);
@@ -143,15 +144,19 @@ export default async function ParseLogsPage() {
 
                       {/* URL */}
                       <td className="px-4 py-2.5">
-                        <a
-                          href={log.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-anthracite hover:underline whitespace-nowrap block max-w-[200px] overflow-hidden text-ellipsis"
-                          title={log.source_url}
-                        >
-                          {truncateUrl(log.source_url)}
-                        </a>
+                        {log.source_url ? (
+                          <a
+                            href={log.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-anthracite hover:underline whitespace-nowrap block max-w-[200px] overflow-hidden text-ellipsis"
+                            title={log.source_url}
+                          >
+                            {truncateUrl(log.source_url)}
+                          </a>
+                        ) : (
+                          <span className="text-on-surface-variant text-[10px]">photo import</span>
+                        )}
                         {log.recipe_name && (
                           <span className="block text-[10px] text-on-surface-variant mt-0.5 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
                             {log.recipe_name}
