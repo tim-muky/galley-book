@@ -17,7 +17,7 @@ export type EntitlementResult = {
   status: "free" | "active" | "in_billing_retry" | string;
   expiresAt: string | null;
   isShared: boolean;
-  source: "apple_iap" | "apple_offer_code" | "comp" | "trial" | "invite" | null;
+  source: "apple_iap" | "apple_offer_code" | "google_iap" | "comp" | "trial" | "invite" | null;
 };
 
 // GAL-335: every user gets 3 days of full premium starting at sign-up so

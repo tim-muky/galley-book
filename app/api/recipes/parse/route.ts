@@ -106,14 +106,18 @@ export async function POST(request: Request) {
   }
 
   // Instagram CDN URLs expire within seconds — re-fetching at save time silently fails.
-  // Upload now so the parse response contains a stable Supabase URL.
+  // GAL-306: upload to the private recipe-temp bucket now; expose a signed
+  // preview URL to the client and stash the canonical path so save can do
+  // a server-side temp→permanent copy without a device fetch.
   let imageUrl = rawImageUrl;
+  let imageTempPath: string | null = null;
   let imageCandidates = rawImageCandidates;
   if (rawImageUrl && (rawImageUrl.includes("cdninstagram.com") || rawImageUrl.includes("fbcdn.net"))) {
     const cached = await cacheInstagramImage(rawImageUrl, user.id, supabase);
     if (cached) {
-      imageUrl = cached;
-      imageCandidates = [cached, ...rawImageCandidates.slice(1)];
+      imageUrl = cached.previewUrl;
+      imageTempPath = cached.tempPath;
+      imageCandidates = [cached.previewUrl, ...rawImageCandidates.slice(1)];
     }
   }
 
@@ -198,6 +202,9 @@ export async function POST(request: Request) {
 
     if (!parsed.image_url && imageUrl) {
       parsed.image_url = imageUrl;
+    }
+    if (imageTempPath) {
+      parsed.image_temp_path = imageTempPath;
     }
     parsed.image_candidates = imageCandidates;
     parsed.parsed_via = parsedVia;

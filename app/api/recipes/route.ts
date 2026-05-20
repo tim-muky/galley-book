@@ -36,6 +36,9 @@ const RecipeCreateSchema = z.object({
   tags: z.array(TagSchema).max(40).optional().default([]),
   source_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
   image_url: z.preprocess((v) => (v === "" ? null : v), z.string().url().max(4000).optional().nullable()),
+  // GAL-306: path in the private recipe-temp bucket. When present, the server
+  // does a temp→recipe-photos copy without re-fetching image_url externally.
+  image_temp_path: z.preprocess((v) => (v === "" ? null : v), z.string().max(512).optional().nullable()),
   ingredients: z.array(IngredientSchema).max(100).default([]),
   steps: z.array(StepSchema).max(50).default([]),
   galleyId: z.string().uuid().optional().nullable(),
@@ -200,7 +203,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { name, description, servings, prep_time, season, type, cuisine, main_ingredients, tags, source_url, image_url, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
+  const { name, description, servings, prep_time, season, type, cuisine, main_ingredients, tags, source_url, image_url, image_temp_path, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
 
   // Resolve galley: explicit selection → default → oldest
   let resolvedGalleyId: string;
@@ -300,9 +303,83 @@ export async function POST(request: Request) {
     );
   }
 
+  // GAL-306: prefer the temp-bucket path — server-side copy, no external fetch.
+  // Falls through to the legacy image_url fetch path only when no temp_path
+  // is provided (manual web saves, non-Instagram parsers).
+  let photoStored = false;
+  if (image_temp_path) {
+    try {
+      const { data: blob, error: downloadError } = await supabase.storage
+        .from("recipe-temp")
+        .download(image_temp_path);
+      if (downloadError || !blob) {
+        logger.warn("recipe_temp_download_failed", {
+          recipeId,
+          tempPath: image_temp_path,
+          error: downloadError?.message,
+        });
+      } else {
+        const contentType = blob.type || "image/jpeg";
+        const ext = contentType.includes("png")
+          ? "png"
+          : contentType.includes("webp")
+          ? "webp"
+          : "jpg";
+        const storagePath = `${recipeId}/primary.${ext}`;
+        const imgBuffer = await blob.arrayBuffer();
+        const { error: uploadError } = await supabase.storage
+          .from("recipe-photos")
+          .upload(storagePath, imgBuffer, { contentType, upsert: true });
+        if (uploadError) {
+          logger.warn("recipe_image_upload_failed", {
+            recipeId,
+            storagePath,
+            source: "temp",
+            error: uploadError.message,
+          });
+        } else {
+          const { error: photoRowError } = await supabase.from("recipe_photos").insert({
+            recipe_id: recipeId,
+            storage_path: storagePath,
+            is_primary: true,
+            sort_order: 0,
+          });
+          if (photoRowError) {
+            logger.warn("recipe_photo_row_insert_failed", {
+              recipeId,
+              storagePath,
+              source: "temp",
+              error: photoRowError.message,
+            });
+          } else {
+            photoStored = true;
+            // Best-effort cleanup; cron will catch leftovers anyway.
+            await supabase.storage
+              .from("recipe-temp")
+              .remove([image_temp_path])
+              .then(({ error }) => {
+                if (error) {
+                  logger.warn("recipe_temp_cleanup_failed", {
+                    tempPath: image_temp_path,
+                    error: error.message,
+                  });
+                }
+              });
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("recipe_temp_copy_threw", {
+        recipeId,
+        tempPath: image_temp_path,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // Download & store recipe image if provided (SSRF-safe: validated + DNS-checked).
   // Best-effort — recipe row is already committed. Failures are logged so we can monitor.
-  if (image_url && (await isSafeUrlAsync(image_url))) {
+  if (!photoStored && image_url && (await isSafeUrlAsync(image_url))) {
     try {
       const isInstagramCdn =
         image_url.includes("cdninstagram.com") || image_url.includes("fbcdn.net");

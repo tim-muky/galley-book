@@ -105,11 +105,24 @@ async function fetchInstagramEmbedPage(url: string): Promise<EmbedResult> {
  * leaving recipes without photos. Caching at parse time gives us a stable URL that
  * survives the round-trip back to the client and the subsequent save call.
  */
+export interface CachedTempImage {
+  /** Storage path inside the `recipe-temp` bucket. Server-side reference. */
+  tempPath: string;
+  /** Signed URL for in-app preview before save. Valid 24h (matches cleanup TTL). */
+  previewUrl: string;
+}
+
+/**
+ * GAL-306: uploads to the **private** `recipe-temp` bucket. Returns the path
+ * (canonical reference for server-side temp→permanent copy on save) plus a
+ * 24h signed preview URL so the parse response can render the image in-app.
+ * Caller is responsible for handing the path back to the save flow.
+ */
 export async function cacheInstagramImage(
   cdnUrl: string,
   userId: string,
   supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<string | null> {
+): Promise<CachedTempImage | null> {
   try {
     const res = await fetch(cdnUrl, {
       headers: {
@@ -130,16 +143,22 @@ export async function cacheInstagramImage(
     }
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-    const path = `temp/${userId}/${crypto.randomUUID()}.${ext}`;
+    const tempPath = `${userId}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage
-      .from("recipe-photos")
-      .upload(path, buffer, { contentType, upsert: false });
+      .from("recipe-temp")
+      .upload(tempPath, buffer, { contentType, upsert: false });
     if (uploadError) {
-      logger.warn("recipe_photos_temp_upload_failed", { path, error: uploadError.message });
+      logger.warn("recipe_temp_upload_failed", { tempPath, error: uploadError.message });
       return null;
     }
-    const { data: { publicUrl } } = supabase.storage.from("recipe-photos").getPublicUrl(path);
-    return publicUrl;
+    const { data: signed, error: signError } = await supabase.storage
+      .from("recipe-temp")
+      .createSignedUrl(tempPath, 24 * 60 * 60);
+    if (signError || !signed?.signedUrl) {
+      logger.warn("recipe_temp_sign_failed", { tempPath, error: signError?.message });
+      return null;
+    }
+    return { tempPath, previewUrl: signed.signedUrl };
   } catch (err) {
     logger.warn("cache_instagram_image_threw", {
       error: err instanceof Error ? err.message : String(err),

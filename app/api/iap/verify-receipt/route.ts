@@ -317,13 +317,16 @@ async function verifyGoogle(args: {
     if (insertErr.code === "23505") {
       // Same token replayed (restore / RTDN echo). Refresh expiry + order id;
       // expire any stale active rows for this (user, galley) the same way the
-      // Apple path does so the partial unique stays free.
+      // Apple path does so the partial unique stays free. Defensive source
+      // filter mirrors the Apple branch (GAL-343) — never sweep comp/trial
+      // entitlements just because the user happens to have a Google row.
       const { error: stalePurgeErr } = await service
         .from("iap_subscriptions")
         .update({ status: "expired" })
         .eq("user_id", userId)
         .eq("galley_id", galleyId)
         .eq("status", "active")
+        .eq("source", "google_iap")
         .neq("original_purchase_token", token);
       if (stalePurgeErr) {
         logger.error("iap.verify_receipt.google.dedup_stale_purge_failed", {
