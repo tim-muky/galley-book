@@ -57,6 +57,9 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/api/") ||
       pathname.startsWith("/r/") ||
       pathname.startsWith("/share/") ||
+      // GAL-351: premium-invite landing page — shared from native app, must
+      // resolve on the landing host so invitees can open the link directly.
+      pathname.startsWith("/invite/") ||
       // GAL-312: AASA + assetlinks need to resolve on the landing host so
       // Universal Links / Android App Links work for signed share URLs
       // hosted at galleybook.com/r/{id}.

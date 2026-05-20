@@ -20,7 +20,12 @@ export default async function InvitePage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    redirect(`/auth/login?next=${encodeURIComponent(`/invite/${token}`)}`);
+    // Auth lives on app.galleybook.com — bounce there with an absolute return
+    // URL so the invitee comes back to www.galleybook.com/invite/... after sign-in.
+    const next = `https://galleybook.com/invite/${token}`;
+    redirect(
+      `https://app.galleybook.com/auth/login?next=${encodeURIComponent(next)}`,
+    );
   }
 
   const service = createServiceClient();
@@ -84,7 +89,7 @@ export default async function InvitePage({
     "use server";
     const actionSupabase = await createClient();
     const { data: { user: actionUser } } = await actionSupabase.auth.getUser();
-    if (!actionUser) redirect("/auth/login");
+    if (!actionUser) redirect("https://app.galleybook.com/auth/login");
 
     const actionService = createServiceClient();
 
@@ -97,7 +102,7 @@ export default async function InvitePage({
       (s) => !s.expires_at || new Date(s.expires_at).getTime() > Date.now(),
     );
     if (hasOwnSub) {
-      redirect("/library?invite=already_premium");
+      redirect("https://app.galleybook.com/library?invite=already_premium");
     }
 
     const { error } = await actionService
@@ -116,14 +121,14 @@ export default async function InvitePage({
         userId: actionUser.id,
         message: error.message,
       });
-      redirect("/library?invite=error");
+      redirect("https://app.galleybook.com/library?invite=error");
     }
 
     logger.info("premium_invite.claimed_via_page", {
       inviteId,
       inviteeId: actionUser.id,
     });
-    redirect("/library?invite=success");
+    redirect("https://app.galleybook.com/library?invite=success");
   }
 
   return (
@@ -176,7 +181,7 @@ function InviteError({ message }: { message: string }) {
         />
         <p className="text-sm font-light text-on-surface-variant">{message}</p>
         <a
-          href="/library"
+          href="https://app.galleybook.com/library"
           className="mt-6 text-sm font-light text-anthracite underline underline-offset-4"
         >
           Go to Library
@@ -200,7 +205,7 @@ function InviteSuccess({ message }: { message: string }) {
         />
         <p className="text-sm font-light text-on-surface-variant">{message}</p>
         <a
-          href="/library"
+          href="https://app.galleybook.com/library"
           className="mt-6 text-sm font-light text-anthracite underline underline-offset-4"
         >
           Go to Library
