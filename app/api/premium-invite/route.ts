@@ -10,8 +10,12 @@ import { randomBytes } from "crypto";
 
 export const dynamic = "force-dynamic";
 
+// GAL-361: invite landing page lives on the LANDING host (galleybook.com),
+// not the app host. NEXT_PUBLIC_APP_URL points at app.galleybook.com in prod
+// where next-intl rewrites /invite/* and the page 404s. The landing-host
+// route is gated through the proxy.ts allowlist (see GAL-357).
 const PUBLIC_HOST =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://galleybook.com";
+  process.env.NEXT_PUBLIC_LANDING_URL ?? "https://galleybook.com";
 const TOKEN_TTL_DAYS = 7;
 
 export async function POST() {
