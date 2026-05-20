@@ -17,17 +17,8 @@ export default async function InvitePage({
 }) {
   const { token } = await params;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    // Auth lives on app.galleybook.com — bounce there with an absolute return
-    // URL so the invitee comes back to www.galleybook.com/invite/... after sign-in.
-    const next = `https://galleybook.com/invite/${token}`;
-    redirect(
-      `https://app.galleybook.com/auth/login?next=${encodeURIComponent(next)}`,
-    );
-  }
-
+  // Validate the token BEFORE requiring auth so invalid/expired/revoked links
+  // show a clear message instead of forcing strangers through sign-in first.
   const service = createServiceClient();
   const { data: invite } = await service
     .from("premium_invites")
@@ -50,6 +41,17 @@ export default async function InvitePage({
   if (expired) {
     return <InviteError message="This invite has expired." />;
   }
+
+  // Token is valid + claimable. Now require auth.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const next = `https://galleybook.com/invite/${token}`;
+    redirect(
+      `https://app.galleybook.com/auth/login?next=${encodeURIComponent(next)}`,
+    );
+  }
+
   if (invite.status === "active") {
     if (invite.invitee_user_id === user.id) {
       return (
