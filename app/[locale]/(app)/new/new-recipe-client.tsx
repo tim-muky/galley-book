@@ -295,6 +295,19 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
+  // GAL-290: lets the draft-state cover-picker strip swap which of the
+  // multi-photo upload becomes the recipe cover. Mirrors what the native
+  // RecipeReview screen does. Updates both the file (for the upload) and
+  // the preview URL (for the on-screen image).
+  function selectCameraPreview(idx: number) {
+    const file = cameraFiles[idx];
+    const preview = cameraPreviews[idx];
+    if (!file || !preview) return;
+    setPhotoFile(file);
+    setPhotoPreview(preview);
+    setForm((prev) => ({ ...prev, image_url: "" }));
+  }
+
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -688,17 +701,38 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
 
             {photoFile ? (
-              <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
-                <Image src={photoPreview} alt="Recipe photo" fill className="object-cover" unoptimized />
-                <div className="absolute inset-0 flex items-end justify-between p-3">
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
-                    <button type="button" onClick={openCropperForCurrent} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Crop</button>
+              <div>
+                <div className="relative w-full aspect-[3/2] rounded-md overflow-hidden bg-surface-low">
+                  <Image src={photoPreview} alt="Recipe photo" fill className="object-cover" unoptimized />
+                  <div className="absolute inset-0 flex items-end justify-between p-3">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Change</button>
+                      <button type="button" onClick={openCropperForCurrent} className="text-xs font-light text-white bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">Crop</button>
+                    </div>
+                    <button type="button" onClick={clearPhoto} className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    </button>
                   </div>
-                  <button type="button" onClick={clearPhoto} className="w-7 h-7 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-sm">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  </button>
                 </div>
+                {cameraPreviews.length > 1 ? (
+                  <div className="flex gap-2 overflow-x-auto pt-2 -mx-5 px-5 snap-x snap-mandatory">
+                    {cameraPreviews.map((preview, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-label={`Use photo ${i + 1} as cover`}
+                        onClick={() => selectCameraPreview(i)}
+                        className={clsx(
+                          "flex-shrink-0 w-16 aspect-square snap-start rounded-md overflow-hidden transition-all",
+                          photoPreview === preview ? "ring-2 ring-anthracite ring-offset-1" : "opacity-50",
+                        )}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={preview} alt={`Photo option ${i + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : imageCandidates.length > 1 ? (
               <div>
