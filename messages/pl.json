@@ -67,33 +67,33 @@
     "subtitle": "Importuj link, zeskanuj zdjęcie lub dodaj ręcznie.",
     "addTo": "Dodaj do",
     "modes": {
-      "link": "Importuj link",
-      "photo": "Zdjęcie",
-      "manual": "Ręcznie"
+      "link": "Import Link",
+      "photo": "Photo",
+      "manual": "Manual"
     },
     "link": {
       "label": "Importer linków AI",
       "placeholder": "Wklej adres URL z Instagrama, YouTube lub strony internetowej…",
       "privacyNote": "Treść przepisu jest przesyłana do Google Gemini i Perplexity AI w celu przetworzenia.",
-      "parse": "Analizuj przepis",
-      "parsing": "Analiza AI…"
+      "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
-      "take": "Zrób zdjęcie",
-      "chooseFromLibrary": "Wybierz z galerii",
+      "take": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
       "hint": "Skieruj aparat na stronę książki kucharskiej, wydrukowany przepis lub odręczną kartę",
-      "takeAnother": "Kolejne zdjęcie",
-      "addFromLibrary": "Dodaj z galerii",
+      "takeAnother": "Take another",
+      "addFromLibrary": "Add from library",
       "privacyNote": "Twoje zdjęcie jest przesyłane do Google Gemini w celu przetworzenia. Dodaj kolejne strony, jeśli przepis zajmuje wiele zdjęć.",
-      "parse": "Wyodrębnij przepis ze zdjęcia",
-      "parseMultiple": "Wyodrębnij przepis z {n} zdjęć",
-      "parsing": "Odczytywanie przepisu przez AI…",
-      "startOver": "Zacznij od nowa"
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
+      "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "AI wyodrębniło przepis poniżej. Sprawdź i edytuj przed zapisaniem.",
+      "aiParsed": "AI przeanalizowało przepis poniżej. Sprawdź i edytuj przed zapisaniem.",
       "photo": "Zdjęcie",
-      "addPhoto": "Dodaj zdjęcie",
+      "addPhoto": "Add Photo",
       "name": "Nazwa przepisu *",
       "namePlaceholder": "np. Sałatka z pomidorów i burraty",
       "servings": "Porcje",
@@ -104,9 +104,9 @@
       "ingredients": "Składniki",
       "preparationSteps": "Kroki przygotowania",
       "stepPlaceholder": "Opisz ten krok…",
-      "saveTo": "Zapisz do {galley}",
-      "saving": "Zapisywanie…",
-      "discard": "Odrzuć"
+      "saveTo": "Save to {galley}",
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "Cały rok",

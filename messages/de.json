@@ -67,33 +67,33 @@
     "subtitle": "Link importieren, Foto scannen oder manuell eingeben.",
     "addTo": "Hinzufügen zu",
     "modes": {
-      "link": "Link importieren",
-      "photo": "Foto",
-      "manual": "Manuell"
+      "link": "Import Link",
+      "photo": "Photo",
+      "manual": "Manual"
     },
     "link": {
       "label": "KI-Link-Importer",
       "placeholder": "Instagram-, YouTube- oder Web-URL einfügen…",
       "privacyNote": "Rezeptinhalte werden zur Verarbeitung an Google Gemini und Perplexity AI übermittelt.",
-      "parse": "Rezept analysieren",
-      "parsing": "KI analysiert…"
+      "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
-      "take": "Foto aufnehmen",
-      "chooseFromLibrary": "Aus Bibliothek wählen",
+      "take": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
       "hint": "Kamera auf eine Kochbuchseite, ein gedrucktes Rezept oder eine handgeschriebene Karte richten",
-      "takeAnother": "Weiteres Foto",
-      "addFromLibrary": "Aus Bibliothek hinzufügen",
+      "takeAnother": "Take another",
+      "addFromLibrary": "Add from library",
       "privacyNote": "Dein Foto wird zur Verarbeitung an Google Gemini übermittelt. Füge weitere Seiten hinzu, wenn das Rezept mehrere Bilder umfasst.",
-      "parse": "Rezept aus Foto auslesen",
-      "parseMultiple": "Rezept aus {n} Fotos auslesen",
-      "parsing": "KI liest Rezept…",
-      "startOver": "Neu beginnen"
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
+      "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "KI hat das Rezept ausgelesen. Bitte prüfen und vor dem Speichern anpassen.",
+      "aiParsed": "KI hat das Rezept analysiert. Bitte prüfen und vor dem Speichern anpassen.",
       "photo": "Foto",
-      "addPhoto": "Foto hinzufügen",
+      "addPhoto": "Add Photo",
       "name": "Rezeptname *",
       "namePlaceholder": "z.B. Heirloom-Tomaten-Burrata-Salat",
       "servings": "Portionen",
@@ -104,9 +104,9 @@
       "ingredients": "Zutaten",
       "preparationSteps": "Zubereitungsschritte",
       "stepPlaceholder": "Diesen Schritt beschreiben…",
-      "saveTo": "In {galley} speichern",
-      "saving": "Wird gespeichert…",
-      "discard": "Verwerfen"
+      "saveTo": "Save to {galley}",
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "Ganzjährig",

@@ -76,7 +76,7 @@
       "placeholder": "Paste Instagram, YouTube, or web URL…",
       "privacyNote": "Recipe content is sent to Google Gemini and Perplexity AI for processing.",
       "parse": "Import from link",
-      "parsing": "Parsing with AI…"
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
       "take": "Take Photo",
@@ -85,13 +85,13 @@
       "takeAnother": "Take another",
       "addFromLibrary": "Add from library",
       "privacyNote": "Your photo is sent to Google Gemini for processing. Add more pages if the recipe spans multiple images.",
-      "parse": "Parse Recipe from Photo",
-      "parseMultiple": "Parse Recipe from {n} Photos",
-      "parsing": "Reading recipe with AI…",
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
       "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "AI parsed the recipe below. Review and edit before saving.",
+      "aiParsed": "AI analyzed the recipe below. Review and edit before saving.",
       "photo": "Photo",
       "addPhoto": "Add Photo",
       "name": "Recipe Name *",

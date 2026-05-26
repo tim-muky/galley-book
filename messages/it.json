@@ -67,33 +67,33 @@
     "subtitle": "Importa un link, scansiona una foto o aggiungi manualmente.",
     "addTo": "Aggiungi a",
     "modes": {
-      "link": "Importa link",
-      "photo": "Foto",
-      "manual": "Manuale"
+      "link": "Import Link",
+      "photo": "Photo",
+      "manual": "Manual"
     },
     "link": {
       "label": "Importatore link IA",
       "placeholder": "Incolla un URL Instagram, YouTube o web…",
       "privacyNote": "Il contenuto della ricetta viene inviato a Google Gemini e Perplexity AI per l'elaborazione.",
-      "parse": "Analizza ricetta",
-      "parsing": "Analisi in corso…"
+      "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
-      "take": "Scatta foto",
-      "chooseFromLibrary": "Scegli dalla galleria",
+      "take": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
       "hint": "Punta la fotocamera su una pagina di libro di cucina, una ricetta stampata o una scheda scritta a mano",
-      "takeAnother": "Altra foto",
-      "addFromLibrary": "Aggiungi dalla galleria",
+      "takeAnother": "Take another",
+      "addFromLibrary": "Add from library",
       "privacyNote": "La tua foto viene inviata a Google Gemini per l'elaborazione. Aggiungi altre pagine se la ricetta occupa più immagini.",
-      "parse": "Estrai ricetta dalla foto",
-      "parseMultiple": "Estrai ricetta da {n} foto",
-      "parsing": "Lettura ricetta con IA…",
-      "startOver": "Ricomincia"
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
+      "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "L'IA ha estratto la ricetta qui sotto. Controlla e modifica prima di salvare.",
+      "aiParsed": "L'IA ha analizzato la ricetta qui sotto. Controlla e modifica prima di salvare.",
       "photo": "Foto",
-      "addPhoto": "Aggiungi foto",
+      "addPhoto": "Add Photo",
       "name": "Nome ricetta *",
       "namePlaceholder": "es. Insalata di pomodori e burrata",
       "servings": "Porzioni",
@@ -104,9 +104,9 @@
       "ingredients": "Ingredienti",
       "preparationSteps": "Passaggi di preparazione",
       "stepPlaceholder": "Descrivi questo passaggio…",
-      "saveTo": "Salva in {galley}",
-      "saving": "Salvataggio…",
-      "discard": "Scarta"
+      "saveTo": "Save to {galley}",
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "Tutto l'anno",

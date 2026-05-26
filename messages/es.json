@@ -67,33 +67,33 @@
     "subtitle": "Importa un enlace, escanea una foto o añade manualmente.",
     "addTo": "Añadir a",
     "modes": {
-      "link": "Importar enlace",
-      "photo": "Foto",
+      "link": "Import Link",
+      "photo": "Photo",
       "manual": "Manual"
     },
     "link": {
       "label": "Importador de enlaces IA",
       "placeholder": "Pega una URL de Instagram, YouTube o web…",
       "privacyNote": "El contenido de la receta se envía a Google Gemini y Perplexity AI para su procesamiento.",
-      "parse": "Analizar receta",
-      "parsing": "Analizando con IA…"
+      "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
-      "take": "Tomar foto",
-      "chooseFromLibrary": "Elegir de la galería",
+      "take": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
       "hint": "Apunta la cámara a una página de libro de cocina, receta impresa o ficha manuscrita",
-      "takeAnother": "Otra foto",
-      "addFromLibrary": "Añadir de la galería",
+      "takeAnother": "Take another",
+      "addFromLibrary": "Add from library",
       "privacyNote": "Tu foto se envía a Google Gemini para su procesamiento. Añade más páginas si la receta abarca varias imágenes.",
-      "parse": "Extraer receta de la foto",
-      "parseMultiple": "Extraer receta de {n} fotos",
-      "parsing": "Leyendo receta con IA…",
-      "startOver": "Empezar de nuevo"
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
+      "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "La IA ha extraído la receta a continuación. Revisa y edita antes de guardar.",
+      "aiParsed": "La IA ha analizado la receta a continuación. Revisa y edita antes de guardar.",
       "photo": "Foto",
-      "addPhoto": "Añadir foto",
+      "addPhoto": "Add Photo",
       "name": "Nombre de la receta *",
       "namePlaceholder": "ej. Ensalada de tomate y burrata",
       "servings": "Raciones",
@@ -104,9 +104,9 @@
       "ingredients": "Ingredientes",
       "preparationSteps": "Pasos de preparación",
       "stepPlaceholder": "Describe este paso…",
-      "saveTo": "Guardar en {galley}",
-      "saving": "Guardando…",
-      "discard": "Descartar"
+      "saveTo": "Save to {galley}",
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "Todo el año",

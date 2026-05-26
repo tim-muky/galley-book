@@ -67,33 +67,33 @@
     "subtitle": "Importez un lien, scannez une photo ou ajoutez manuellement.",
     "addTo": "Ajouter à",
     "modes": {
-      "link": "Importer un lien",
+      "link": "Import Link",
       "photo": "Photo",
-      "manual": "Manuel"
+      "manual": "Manual"
     },
     "link": {
       "label": "Importeur de lien IA",
       "placeholder": "Collez une URL Instagram, YouTube ou web…",
       "privacyNote": "Le contenu de la recette est envoyé à Google Gemini et Perplexity AI pour traitement.",
-      "parse": "Analyser la recette",
-      "parsing": "Analyse en cours…"
+      "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
     },
     "photo": {
-      "take": "Prendre une photo",
-      "chooseFromLibrary": "Choisir depuis la galerie",
+      "take": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
       "hint": "Pointez votre caméra vers une page de livre de cuisine, une recette imprimée ou une fiche manuscrite",
-      "takeAnother": "Autre photo",
-      "addFromLibrary": "Ajouter depuis la galerie",
+      "takeAnother": "Take another",
+      "addFromLibrary": "Add from library",
       "privacyNote": "Votre photo est envoyée à Google Gemini pour traitement. Ajoutez d'autres pages si la recette s'étend sur plusieurs images.",
-      "parse": "Extraire la recette de la photo",
-      "parseMultiple": "Extraire la recette de {n} photos",
-      "parsing": "Lecture de la recette…",
-      "startOver": "Recommencer"
+      "parse": "Analyze Recipe from Photo",
+      "parseMultiple": "Analyze Recipe from {n} Photos",
+      "parsing": "Analyzing with AI…",
+      "startOver": "Start Over"
     },
     "form": {
-      "aiParsed": "L'IA a extrait la recette ci-dessous. Vérifiez et modifiez avant d'enregistrer.",
+      "aiParsed": "L'IA a analysé la recette ci-dessous. Vérifiez et modifiez avant d'enregistrer.",
       "photo": "Photo",
-      "addPhoto": "Ajouter une photo",
+      "addPhoto": "Add Photo",
       "name": "Nom de la recette *",
       "namePlaceholder": "ex. Salade tomates anciennes & burrata",
       "servings": "Portions",
@@ -104,9 +104,9 @@
       "ingredients": "Ingrédients",
       "preparationSteps": "Étapes de préparation",
       "stepPlaceholder": "Décrivez cette étape…",
-      "saveTo": "Enregistrer dans {galley}",
-      "saving": "Enregistrement…",
-      "discard": "Annuler"
+      "saveTo": "Save to {galley}",
+      "saving": "Saving…",
+      "discard": "Discard"
     },
     "seasons": {
       "all_year": "Toute l'année",
