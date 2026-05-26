@@ -17,7 +17,7 @@ export default async function CookNextPage() {
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
 
   if (!galleyId) {
-    return <CookNextClient initialItems={[]} galleyName="" memberNames={{}} />;
+    return <CookNextClient initialItems={[]} galleyName="" memberNames={{}} galleyId={null} />;
   }
 
   const { data: galleyRow } = await supabase
@@ -46,5 +46,5 @@ export default async function CookNextPage() {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <CookNextClient initialItems={(items ?? []) as any} galleyName={galleyName} memberNames={memberNames} />;
+  return <CookNextClient initialItems={(items ?? []) as any} galleyName={galleyName} memberNames={memberNames} galleyId={galleyId} />;
 }

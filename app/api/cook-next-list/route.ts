@@ -44,15 +44,17 @@ export async function GET() {
     }
   }
 
-  const items = ((data ?? []) as Array<Record<string, unknown> & { added_by: string | null }>).map((row) => {
-    const u = row.added_by ? userMap.get(row.added_by) ?? null : null;
-    return {
-      ...row,
-      addedByName: u?.name ?? null,
-      addedByEmail: u?.email ?? null,
-      addedByAvatar: u?.avatar_url ?? null,
-    };
-  });
+  const items = ((data ?? []) as Array<Record<string, unknown> & { added_by: string | null; recipes: unknown }>)
+    .filter((row) => row.recipes != null)
+    .map((row) => {
+      const u = row.added_by ? userMap.get(row.added_by) ?? null : null;
+      return {
+        ...row,
+        addedByName: u?.name ?? null,
+        addedByEmail: u?.email ?? null,
+        addedByAvatar: u?.avatar_url ?? null,
+      };
+    });
 
   return NextResponse.json({ items });
 }

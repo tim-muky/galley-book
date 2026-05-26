@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ConsentBanner } from "./consent-banner";
 
 const APP_URL = "https://app.galleybook.com/auth/login";
-const IOS_URL = "#"; // TODO: replace with App Store link when live
+const IOS_URL = "https://apps.apple.com/app/id6764606059";
 
 const TAGLINE = "… for the love of cooking";
 

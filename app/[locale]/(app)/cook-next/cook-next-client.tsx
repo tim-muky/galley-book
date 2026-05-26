@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { recipePhotoUrl } from "@/lib/storage";
+import { createClient } from "@/lib/supabase/client";
 
 interface CookNextEntry {
   id: string;
@@ -21,11 +22,41 @@ interface CookNextEntry {
   } | null;
 }
 
-export function CookNextClient({ initialItems, galleyName, memberNames }: { initialItems: CookNextEntry[]; galleyName: string; memberNames: Record<string, string> }) {
+export function CookNextClient({ initialItems, galleyName, memberNames, galleyId }: { initialItems: CookNextEntry[]; galleyName: string; memberNames: Record<string, string>; galleyId: string | null }) {
   const [items, setItems] = useState(initialItems);
   const [clearing, setClearing] = useState(false);
   const t = useTranslations("cookNext");
   const tc = useTranslations("common");
+
+  // Realtime: refetch when another galley member adds, removes, or clears
+  // cook-next items so the page stays in sync without a manual reload.
+  useEffect(() => {
+    if (!galleyId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`cook_next_list:${galleyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "cook_next_list",
+          filter: `galley_id=eq.${galleyId}`,
+        },
+        () => {
+          void fetch("/api/cook-next-list")
+            .then((r) => r.json())
+            .then((data: { items?: CookNextEntry[] }) => {
+              setItems(data.items ?? []);
+            })
+            .catch(() => {});
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [galleyId]);
 
   async function handleRemove(entryId: string, recipeId: string) {
     setItems((prev) => prev.filter((i) => i.id !== entryId));

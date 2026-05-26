@@ -163,6 +163,32 @@ export type Database = {
           },
         ]
       }
+      galley_followers: {
+        Row: {
+          followed_at: string
+          galley_id: string
+          user_id: string
+        }
+        Insert: {
+          followed_at?: string
+          galley_id: string
+          user_id: string
+        }
+        Update: {
+          followed_at?: string
+          galley_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "galley_followers_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       galley_invites: {
         Row: {
           created_at: string
@@ -247,27 +273,87 @@ export type Database = {
           },
         ]
       }
+      galley_runs: {
+        Row: {
+          brief: Json
+          candidates: Json
+          created_at: string
+          created_by: string
+          error: string | null
+          id: string
+          published_galley_id: string | null
+          status: Database["public"]["Enums"]["galley_run_status"]
+          updated_at: string
+        }
+        Insert: {
+          brief: Json
+          candidates?: Json
+          created_at?: string
+          created_by: string
+          error?: string | null
+          id?: string
+          published_galley_id?: string | null
+          status?: Database["public"]["Enums"]["galley_run_status"]
+          updated_at?: string
+        }
+        Update: {
+          brief?: Json
+          candidates?: Json
+          created_at?: string
+          created_by?: string
+          error?: string | null
+          id?: string
+          published_galley_id?: string | null
+          status?: Database["public"]["Enums"]["galley_run_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "galley_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "galley_runs_published_galley_id_fkey"
+            columns: ["published_galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       galleys: {
         Row: {
           created_at: string
           header_image_path: string | null
           id: string
+          is_public: boolean
+          is_system: boolean
           name: string
           owner_id: string
+          public_since: string | null
         }
         Insert: {
           created_at?: string
           header_image_path?: string | null
           id?: string
+          is_public?: boolean
+          is_system?: boolean
           name: string
           owner_id: string
+          public_since?: string | null
         }
         Update: {
           created_at?: string
           header_image_path?: string | null
           id?: string
+          is_public?: boolean
+          is_system?: boolean
           name?: string
           owner_id?: string
+          public_since?: string | null
         }
         Relationships: [
           {
@@ -415,6 +501,24 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          prefs: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          prefs?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          prefs?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       parse_quality_logs: {
         Row: {
           created_at: string
@@ -490,6 +594,60 @@ export type Database = {
           {
             foreignKeyName: "pending_galley_invites_inviter_id_fkey"
             columns: ["inviter_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premium_invites: {
+        Row: {
+          claimed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          invite_token: string
+          invitee_user_id: string | null
+          inviter_user_id: string
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["premium_invite_status"]
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          invite_token: string
+          invitee_user_id?: string | null
+          inviter_user_id: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["premium_invite_status"]
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invite_token?: string
+          invitee_user_id?: string | null
+          inviter_user_id?: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["premium_invite_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premium_invites_invitee_user_id_fkey"
+            columns: ["invitee_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premium_invites_inviter_user_id_fkey"
+            columns: ["inviter_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -799,6 +957,33 @@ export type Database = {
           },
         ]
       }
+      user_devices: {
+        Row: {
+          created_at: string
+          expo_push_token: string
+          id: string
+          last_seen_at: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expo_push_token: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expo_push_token?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -936,9 +1121,14 @@ export type Database = {
         }
         Returns: string
       }
+      has_active_premium_invite: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       is_galley_member: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_owner: { Args: { galley_uuid: string }; Returns: boolean }
       is_galley_premium: { Args: { p_galley_id: string }; Returns: boolean }
+      is_galley_public: { Args: { galley_uuid: string }; Returns: boolean }
       recipes_matching_tag_filters: {
         Args: { p_filters: Json; p_galley_id: string }
         Returns: {
@@ -952,6 +1142,14 @@ export type Database = {
     }
     Enums: {
       galley_role: "owner" | "member"
+      galley_run_status:
+        | "candidates_pending"
+        | "candidates_ready"
+        | "images_pending"
+        | "images_ready"
+        | "expanding"
+        | "published"
+        | "failed"
       iap_source: "apple_iap" | "apple_offer_code" | "comp" | "google_iap"
       iap_status:
         | "active"
@@ -959,6 +1157,7 @@ export type Database = {
         | "in_billing_retry"
         | "cancelled"
         | "revoked"
+      premium_invite_status: "pending" | "active" | "revoked" | "expired"
       recipe_season: "spring" | "summer" | "autumn" | "winter" | "all_year"
       recipe_type:
         | "starter"
@@ -1098,6 +1297,15 @@ export const Constants = {
   public: {
     Enums: {
       galley_role: ["owner", "member"],
+      galley_run_status: [
+        "candidates_pending",
+        "candidates_ready",
+        "images_pending",
+        "images_ready",
+        "expanding",
+        "published",
+        "failed",
+      ],
       iap_source: ["apple_iap", "apple_offer_code", "comp", "google_iap"],
       iap_status: [
         "active",
@@ -1106,6 +1314,7 @@ export const Constants = {
         "cancelled",
         "revoked",
       ],
+      premium_invite_status: ["pending", "active", "revoked", "expired"],
       recipe_season: ["spring", "summer", "autumn", "winter", "all_year"],
       recipe_type: [
         "starter",
