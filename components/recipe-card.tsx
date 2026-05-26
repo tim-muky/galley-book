@@ -23,7 +23,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
             src={photoUrl ?? "/default_recipe_pic.png"}
             alt={recipe.name}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 512px) 100vw, 512px"
           />
         </div>
