@@ -75,7 +75,7 @@ function CookNextCard({
     <div className="bg-white rounded-md shadow-ambient overflow-hidden">
       <Link href={`/recipe/${recipe.id}`}>
         <div className="relative w-full aspect-[4/3] bg-surface-low">
-          <Image src={imgSrc ?? "/default_recipe_pic.png"} alt={recipe.name} fill className="object-cover" sizes="512px" />
+          <Image src={imgSrc ?? "/default_recipe_pic.png"} alt={recipe.name} fill className="object-contain" sizes="512px" />
         </div>
         <div className="px-4 pt-3 pb-1">
           <h3 className="text-sm font-light text-anthracite leading-snug">{recipe.name}</h3>
@@ -150,7 +150,7 @@ function DiscoverCard({
     <div className="bg-white rounded-md shadow-ambient overflow-hidden">
       {rec.image_url && (
         <div className="relative w-full aspect-[4/3] bg-surface-low">
-          <Image src={rec.image_url} alt={rec.title} fill className="object-cover" sizes="512px" unoptimized />
+          <Image src={rec.image_url} alt={rec.title} fill className="object-contain" sizes="512px" unoptimized />
           <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full px-2 py-0.5">
             <span className="text-[9px] font-light text-anthracite capitalize">{rec.source_type}</span>
           </div>
