@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { DeleteRunButton } from "./delete-run-button";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,7 @@ export default async function RunDetailPage({
         </div>
       )}
 
-      <div className="bg-white rounded-md p-4 shadow-ambient">
+      <div className="bg-white rounded-md p-4 shadow-ambient mb-6">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
           Brief
         </p>
@@ -94,6 +95,8 @@ export default async function RunDetailPage({
           {JSON.stringify(run.brief, null, 2)}
         </pre>
       </div>
+
+      {run.status !== "published" && <DeleteRunButton runId={id} />}
     </div>
   );
 }

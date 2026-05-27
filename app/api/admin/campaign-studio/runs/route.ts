@@ -8,10 +8,7 @@ import { z } from "zod";
 export const maxDuration = 60;
 
 const BriefSchema = z.object({
-  country: z.string().max(80).optional(),
-  style: z.string().max(120).optional(),
-  dishType: z.string().max(80).optional(),
-  ingredientSeeds: z.array(z.string().max(40)).max(10).optional(),
+  theme: z.string().min(1).max(200),
   notes: z.string().max(500).optional(),
   locale: z.enum(["en", "de"]).optional(),
 });

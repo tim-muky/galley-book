@@ -24,7 +24,7 @@ function parseAmount(raw: string): { amount: number | null; unit: string | null 
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const guard = await requireAdminApi();
@@ -32,6 +32,11 @@ export async function POST(
   const adminUser = guard.user;
 
   const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const galleyNameOverride: string | undefined =
+    typeof body?.galleyName === "string" && body.galleyName.trim()
+      ? body.galleyName.trim().slice(0, 200)
+      : undefined;
   const service = createServiceClient();
 
   const { data: run, error: fetchErr } = await service
@@ -59,10 +64,16 @@ export async function POST(
 
   await service.from("galley_runs").update({ status: "expanding" }).eq("id", id);
 
-  // Naming: use brief.country + week number for a stable slug-like name.
-  const brief = run.brief as { country?: string; style?: string; locale?: "en" | "de" };
+  const brief = run.brief as {
+    theme?: string;
+    country?: string;
+    style?: string;
+    locale?: "en" | "de";
+  };
   const weekStamp = isoWeekStamp(new Date());
   const galleyName =
+    galleyNameOverride ||
+    brief.theme ||
     [brief.country, brief.style].filter(Boolean).join(" · ") ||
     `Galley of the Week ${weekStamp}`;
 
@@ -71,7 +82,11 @@ export async function POST(
     const { data: galley, error: galleyErr } = await service
       .from("galleys")
       .insert({
-        name: `${galleyName} — KW ${weekStamp}`,
+        // If the admin gave an explicit name we trust it as-is; otherwise
+        // append the ISO week so auto-generated names stay distinct.
+        name: galleyNameOverride
+          ? galleyName
+          : `${galleyName} — KW ${weekStamp}`,
         owner_id: run.created_by,
         is_public: true,
         is_system: false,

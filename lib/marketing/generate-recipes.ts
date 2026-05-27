@@ -62,24 +62,26 @@ export type FullRecipe = z.infer<typeof FullRecipeSchema>;
 // ---- Inputs ----------------------------------------------------------------
 
 export interface GalleyBrief {
-  /** e.g. "Italy", "Germany", "Mexico" — or "global" */
-  country?: string;
-  /** e.g. "comfort food", "weeknight", "seasonal summer", "vegan" */
-  style?: string;
-  /** e.g. "pasta", "soup", "one-pan", "dessert" */
-  dishType?: string;
-  /** Comma-separated must-include or hero ingredients */
-  ingredientSeeds?: string[];
-  /** Free-form additional direction the user types in */
+  /** Free-form theme — the one thing the galley is about */
+  theme?: string;
+  /** Optional extra direction */
   notes?: string;
   /** Output locale for names + one-liners. Defaults to "en" */
   locale?: "en" | "de";
+
+  // Legacy fields — older runs persisted these. Still respected if present,
+  // but new runs use `theme` only.
+  country?: string;
+  style?: string;
+  dishType?: string;
+  ingredientSeeds?: string[];
 }
 
 // ---- Helpers ---------------------------------------------------------------
 
 function buildBriefPrompt(brief: GalleyBrief): string {
   const lines: string[] = [];
+  if (brief.theme) lines.push(`Theme: ${brief.theme}`);
   if (brief.country) lines.push(`Country / cuisine focus: ${brief.country}`);
   if (brief.style) lines.push(`Style: ${brief.style}`);
   if (brief.dishType) lines.push(`Dish type: ${brief.dishType}`);

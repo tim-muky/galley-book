@@ -47,8 +47,13 @@ export default async function CampaignStudioPage() {
         {runs && runs.length > 0 ? (
           <div className="flex flex-col gap-2">
             {runs.map((r) => {
-              const brief = (r.brief ?? {}) as { country?: string; style?: string };
+              const brief = (r.brief ?? {}) as {
+                theme?: string;
+                country?: string;
+                style?: string;
+              };
               const title =
+                brief.theme ||
                 [brief.country, brief.style].filter(Boolean).join(" · ") ||
                 "Untitled brief";
               return (

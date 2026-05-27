@@ -17,10 +17,20 @@ export default async function CurateImagesPage({
   const service = createServiceClient();
   const { data: run } = await service
     .from("galley_runs")
-    .select("id, status, candidates")
+    .select("id, status, brief, candidates")
     .eq("id", id)
     .single();
   if (!run) notFound();
+
+  const brief = (run.brief ?? {}) as {
+    theme?: string;
+    country?: string;
+    style?: string;
+  };
+  const suggestedName =
+    brief.theme ||
+    [brief.country, brief.style].filter(Boolean).join(" · ") ||
+    "Galley of the Week";
 
   if (run.status === "candidates_ready" || run.status === "candidates_pending") {
     redirect(`/admin/campaign-studio/runs/${id}/curate-candidates`);
@@ -46,7 +56,12 @@ export default async function CurateImagesPage({
         Step 2 of 2 · Regenerate any image you don't like, then publish the galley.
       </p>
 
-      <CurateImagesClient runId={id} initialCandidates={candidates} runStatus={run.status as string} />
+      <CurateImagesClient
+        runId={id}
+        initialCandidates={candidates}
+        runStatus={run.status as string}
+        initialGalleyName={suggestedName}
+      />
     </div>
   );
 }

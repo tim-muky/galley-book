@@ -21,16 +21,19 @@ export function CurateImagesClient({
   runId,
   initialCandidates,
   runStatus,
+  initialGalleyName,
 }: {
   runId: string;
   initialCandidates: RunCandidateWithImage[];
   runStatus: string;
+  initialGalleyName: string;
 }) {
   const router = useRouter();
   const [candidates, setCandidates] = useState(initialCandidates);
   const [pending, setPending] = useState(runStatus === "images_pending");
   const [regenerating, setRegenerating] = useState<Set<number>>(new Set());
   const [publishing, setPublishing] = useState(false);
+  const [galleyName, setGalleyName] = useState(initialGalleyName);
   const [error, setError] = useState<string | null>(null);
 
   // Poll for completion while images are still generating.
@@ -87,6 +90,8 @@ export function CurateImagesClient({
     setError(null);
     const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/publish`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ galleyName: galleyName.trim() || undefined }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -116,6 +121,18 @@ export function CurateImagesClient({
             />
           ) : null,
         )}
+      </div>
+
+      <div className="flex flex-col gap-2 mb-4">
+        <label className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          Galley name
+        </label>
+        <input
+          value={galleyName}
+          onChange={(e) => setGalleyName(e.target.value)}
+          placeholder="Galley of the Week — KW XX"
+          className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none"
+        />
       </div>
 
       {error && <p className="text-xs font-light text-red-600 mb-3">{error}</p>}

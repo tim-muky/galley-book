@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 
 export function NewRunForm() {
   const router = useRouter();
-  const [country, setCountry] = useState("");
-  const [style, setStyle] = useState("");
-  const [dishType, setDishType] = useState("");
-  const [ingredients, setIngredients] = useState("");
+  const [theme, setTheme] = useState("");
   const [notes, setNotes] = useState("");
   const [locale, setLocale] = useState<"en" | "de">("de");
   const [submitting, setSubmitting] = useState(false);
@@ -16,6 +13,10 @@ export function NewRunForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!theme.trim()) {
+      setError("Theme is required.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -23,13 +24,7 @@ export function NewRunForm() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        country: country.trim() || undefined,
-        style: style.trim() || undefined,
-        dishType: dishType.trim() || undefined,
-        ingredientSeeds: ingredients
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        theme: theme.trim(),
         notes: notes.trim() || undefined,
         locale,
       }),
@@ -48,48 +43,27 @@ export function NewRunForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <Field label="Country / cuisine" hint="e.g. Italy, Germany, Mexico, global">
+      <Field
+        label="Theme"
+        hint="The one thing this galley is about. Be specific — narrow themes produce better candidates."
+      >
         <input
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          placeholder="Italy"
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+          placeholder="Healthy high-protein kids meals · German spring asparagus · Italian weeknight pasta"
           className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
         />
       </Field>
 
-      <Field label="Style" hint="e.g. comfort food, weeknight, seasonal summer, vegan">
-        <input
-          value={style}
-          onChange={(e) => setStyle(e.target.value)}
-          placeholder="weeknight comfort"
-          className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-        />
-      </Field>
-
-      <Field label="Dish type" hint="optional — pasta, soup, one-pan, dessert">
-        <input
-          value={dishType}
-          onChange={(e) => setDishType(e.target.value)}
-          placeholder="one-pan"
-          className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-        />
-      </Field>
-
-      <Field label="Hero ingredients" hint="comma-separated, optional">
-        <input
-          value={ingredients}
-          onChange={(e) => setIngredients(e.target.value)}
-          placeholder="tomato, basil, garlic"
-          className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none"
-        />
-      </Field>
-
-      <Field label="Notes" hint="free-form direction">
+      <Field
+        label="Direction"
+        hint="Optional · constraints, mood, hero ingredients, what to avoid"
+      >
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="aspirational but achievable, lots of color"
+          placeholder="No dairy, dishes that kids actually love, mix of mains and snacks"
           className="w-full bg-white border border-[#252729] rounded-md px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none resize-none"
         />
       </Field>
