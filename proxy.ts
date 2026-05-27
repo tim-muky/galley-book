@@ -60,6 +60,10 @@ export async function proxy(request: NextRequest) {
       // GAL-351: premium-invite landing page — shared from native app, must
       // resolve on the landing host so invitees can open the link directly.
       pathname.startsWith("/invite/") ||
+      // Public Galley of the Week landing pages — Campaign Studio publishes
+      // here, and paid ads / IG posts deep-link here. Must resolve on the
+      // marketing host without the /landing/ rewrite.
+      pathname.startsWith("/galley/") ||
       // GAL-312: AASA + assetlinks need to resolve on the landing host so
       // Universal Links / Android App Links work for signed share URLs
       // hosted at galleybook.com/r/{id}.
@@ -85,7 +89,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/landing") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/share") ||
-    pathname.startsWith("/r/")
+    pathname.startsWith("/r/") ||
+    // /galley/<id> is anonymous + locale-agnostic — no intl routing,
+    // no session refresh.
+    pathname.startsWith("/galley/")
   ) {
     return updateSession(request);
   }

@@ -63,19 +63,25 @@ export default async function RunDetailPage({
       </p>
 
       {publishedGalley && (
-        <div className="bg-white rounded-md p-4 shadow-ambient mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
-            Published galley
-          </p>
-          <p className="text-sm font-light text-anthracite mb-1">{publishedGalley.name}</p>
-          <p className="text-xs font-light text-on-surface-variant">
-            {publishedGalley.recipeCount} recipes · public · id{" "}
-            <code className="text-[10px]">{run.published_galley_id}</code>
-          </p>
-          <p className="text-[10px] font-light text-on-surface-variant/60 mt-3">
-            Public-facing landing page coming in a follow-up ticket.
-          </p>
-        </div>
+        <>
+          <div className="bg-white rounded-md p-4 shadow-ambient mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+              Published galley
+            </p>
+            <p className="text-sm font-light text-anthracite mb-1">{publishedGalley.name}</p>
+            <p className="text-xs font-light text-on-surface-variant">
+              {publishedGalley.recipeCount} recipes · public · id{" "}
+              <code className="text-[10px]">{run.published_galley_id}</code>
+            </p>
+          </div>
+          <Link
+            href={`/galley/${run.published_galley_id}`}
+            target="_blank"
+            className="block border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full text-center mb-6"
+          >
+            Open public landing page →
+          </Link>
+        </>
       )}
 
       {run.error && (
