@@ -14,7 +14,8 @@ interface Recipe {
   description: string | null;
   prep_time: number | null;
   servings: number | null;
-  primaryImageUrl: string | null;
+  type: string | null;
+  primaryImageUrl: string;
 }
 
 function recipePhotoUrl(path: string) {
@@ -25,14 +26,14 @@ async function loadGalley(id: string) {
   const service = createServiceClient();
   const { data: galley } = await service
     .from("galleys")
-    .select("id, name, is_public, header_image_path")
+    .select("id, name, is_public")
     .eq("id", id)
     .single();
   if (!galley || !galley.is_public) return null;
 
   const { data: recipes } = await service
     .from("recipes")
-    .select("id, name, description, prep_time, servings, created_at")
+    .select("id, name, description, prep_time, servings, type, created_at")
     .eq("galley_id", id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
@@ -43,6 +44,7 @@ async function loadGalley(id: string) {
     description: r.description as string | null,
     prep_time: r.prep_time as number | null,
     servings: r.servings as number | null,
+    type: r.type as string | null,
     primaryImageUrl: recipePhotoUrl(`${r.id}/primary.png`),
   }));
 
@@ -59,7 +61,7 @@ export async function generateMetadata({
   if (!data) return { title: "Galley not found" };
 
   const title = `${data.galley.name} · galleybook`;
-  const description = `${data.recipes.length} recipes curated for galleybook. Save the whole galley to your free account in one tap.`;
+  const description = `${data.recipes.length} recipes curated for galleybook. Save the whole galley to your free account.`;
   const ogImage = data.recipes[0]?.primaryImageUrl;
 
   return {
@@ -92,96 +94,105 @@ export default async function PublicGalleyPage({
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="px-5 pt-safe-top pt-6 pb-3 flex items-center justify-between max-w-3xl mx-auto">
-        <Link href="/" className="text-xs font-semibold uppercase tracking-widest text-anthracite">
+      <header className="px-5 pt-safe-top pt-6 pb-4 flex items-center justify-between max-w-2xl mx-auto">
+        <Link
+          href="/"
+          className="text-xs font-semibold uppercase tracking-widest text-anthracite"
+        >
           galleybook
         </Link>
         <Link
           href={SIGNUP_URL}
-          className="border border-anthracite bg-anthracite text-white text-xs font-light py-2 px-4 rounded-full"
+          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          className="border text-xs font-light py-2 px-4 rounded-full"
         >
           Sign up free
         </Link>
       </header>
 
-      <main className="max-w-3xl mx-auto px-5 py-8">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">
-          Galley of the week
+      <main className="max-w-2xl mx-auto px-5 pt-2 pb-10">
+        <p className="text-xs font-light tracking-widest uppercase text-on-surface-variant mb-2">
+          Public galley
         </p>
-        <h1 className="text-4xl font-thin text-anthracite mb-3 leading-tight">
+        <h1 className="text-4xl font-thin text-anthracite mb-2 leading-tight">
           {galley.name}
         </h1>
-        <p className="text-sm font-light text-on-surface-variant mb-8">
-          {recipes.length} recipes · curated for galleybook
+        <p className="text-sm font-light text-on-surface-variant mb-6">
+          {recipes.length} recipes
         </p>
 
         <Link
           href={SIGNUP_URL}
-          className="block border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full text-center mb-10"
+          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          className="block border text-sm font-light py-3 rounded-full text-center mb-8"
         >
-          Save this galley to galleybook
+          Save this galley
         </Link>
 
-        <div className="grid grid-cols-2 gap-3">
-          {recipes.map((r) => (
-            <RecipeCard key={r.id} recipe={r} />
+        <div className="grid grid-cols-1 gap-4">
+          {recipes.map((recipe) => (
+            <PublicRecipeCard key={recipe.id} recipe={recipe} />
           ))}
         </div>
 
-        <div className="mt-12 bg-surface-low rounded-md p-6 text-center">
-          <p className="text-xs font-light text-anthracite mb-3">
-            Want the full recipes — ingredients, steps, and your own
-            shared galley?
-          </p>
-          <Link
-            href={SIGNUP_URL}
-            className="inline-block border border-anthracite bg-anthracite text-white text-sm font-light py-3 px-6 rounded-full"
-          >
-            Get galleybook free
-          </Link>
-        </div>
+        <Link
+          href={SIGNUP_URL}
+          style={{ backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }}
+          className="block border text-sm font-light py-3 rounded-full text-center mt-10"
+        >
+          Save this galley
+        </Link>
 
-        <footer className="text-center mt-10 mb-6">
-          <p className="text-[10px] font-light text-on-surface-variant/60">
-            galleybook · for the love of cooking
-          </p>
-        </footer>
+        <p className="text-[10px] font-light text-on-surface-variant/60 text-center mt-10">
+          galleybook · for the love of cooking
+        </p>
       </main>
     </div>
   );
 }
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
+/**
+ * Mirrors the in-app RecipeCard look (components/recipe-card.tsx) so the
+ * public page feels native to the rest of galleybook. Click is routed to
+ * the signup CTA — recipe detail is a paid surface.
+ */
+function PublicRecipeCard({ recipe }: { recipe: Recipe }) {
   return (
-    <div className="bg-white rounded-md shadow-ambient overflow-hidden">
-      <div className="aspect-square relative bg-surface-low">
-        {recipe.primaryImageUrl && (
+    <Link href={SIGNUP_URL} className="block">
+      <div className="bg-surface-lowest rounded-md overflow-hidden shadow-ambient">
+        <div className="relative w-full aspect-[4/3] bg-surface-low">
           <Image
             src={recipe.primaryImageUrl}
             alt={recipe.name}
             fill
             unoptimized
-            className="object-cover"
+            className="object-contain"
+            sizes="(max-width: 512px) 100vw, 512px"
           />
-        )}
+        </div>
+        <div className="px-4 py-3">
+          <h3 className="text-sm font-semibold text-anthracite truncate">{recipe.name}</h3>
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center gap-3">
+              {recipe.prep_time && (
+                <span className="text-xs font-light text-on-surface-variant">
+                  {recipe.prep_time} min
+                </span>
+              )}
+              {recipe.servings && (
+                <span className="text-xs font-light text-on-surface-variant">
+                  {recipe.servings} servings
+                </span>
+              )}
+            </div>
+            {recipe.type && (
+              <span className="flex-shrink-0 text-[10px] font-light text-on-surface-variant bg-surface-low px-2 py-1 rounded-full capitalize">
+                {recipe.type}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="p-3">
-        <p className="text-sm font-light text-anthracite leading-snug mb-1 line-clamp-2">
-          {recipe.name}
-        </p>
-        {recipe.description && (
-          <p className="text-xs font-light text-on-surface-variant line-clamp-2">
-            {recipe.description}
-          </p>
-        )}
-        {(recipe.prep_time || recipe.servings) && (
-          <p className="text-[10px] font-light text-on-surface-variant/60 mt-2">
-            {recipe.prep_time && `${recipe.prep_time} min`}
-            {recipe.prep_time && recipe.servings && " · "}
-            {recipe.servings && `serves ${recipe.servings}`}
-          </p>
-        )}
-      </div>
-    </div>
+    </Link>
   );
 }
