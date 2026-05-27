@@ -22,6 +22,21 @@ export default async function RunDetailPage({
 
   if (!run) notFound();
 
+  // If published, pull the galley name + recipe count so the admin sees
+  // confirmation of what landed rather than a dead "view galley" link.
+  let publishedGalley: { name: string; recipeCount: number } | null = null;
+  if (run.published_galley_id) {
+    const [{ data: g }, { count }] = await Promise.all([
+      service.from("galleys").select("name").eq("id", run.published_galley_id).single(),
+      service
+        .from("recipes")
+        .select("*", { count: "exact", head: true })
+        .eq("galley_id", run.published_galley_id)
+        .is("deleted_at", null),
+    ]);
+    if (g) publishedGalley = { name: g.name as string, recipeCount: count ?? 0 };
+  }
+
   // Status-aware: bounce mid-flight runs to their current step.
   if (run.status === "candidates_pending" || run.status === "candidates_ready") {
     redirect(`/admin/campaign-studio/runs/${id}/curate-candidates`);
@@ -46,13 +61,20 @@ export default async function RunDetailPage({
         {new Date(run.created_at as string).toLocaleString()}
       </p>
 
-      {run.status === "published" && run.published_galley_id && (
-        <Link
-          href={`/galley/${run.published_galley_id}`}
-          className="block border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full text-center mb-6"
-        >
-          View public galley →
-        </Link>
+      {publishedGalley && (
+        <div className="bg-white rounded-md p-4 shadow-ambient mb-6">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Published galley
+          </p>
+          <p className="text-sm font-light text-anthracite mb-1">{publishedGalley.name}</p>
+          <p className="text-xs font-light text-on-surface-variant">
+            {publishedGalley.recipeCount} recipes · public · id{" "}
+            <code className="text-[10px]">{run.published_galley_id}</code>
+          </p>
+          <p className="text-[10px] font-light text-on-surface-variant/60 mt-3">
+            Public-facing landing page coming in a follow-up ticket.
+          </p>
+        </div>
       )}
 
       {run.error && (
