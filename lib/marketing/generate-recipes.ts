@@ -10,8 +10,9 @@
  * without touching this file.
  */
 
-import { generateObject, generateImage } from "ai";
+import { generateObject, generateImage, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import {
   buildWatercolorPrompt,
   WATERCOLOR_DEFAULT_MODEL,
@@ -25,36 +26,33 @@ const CANDIDATE_COUNT = 10;
 
 // ---- Schemas ---------------------------------------------------------------
 
+// Schemas are intentionally permissive — models drift on edge constraints
+// (exact array lengths, tight min/max), so we validate shape, not bounds,
+// and trim to spec in post.
 export const RecipeCandidateSchema = z.object({
-  name: z.string().min(3).max(80).describe("The dish name, evocative but precise"),
+  name: z.string().describe("The dish name, evocative but precise"),
   oneLiner: z
     .string()
-    .min(10)
-    .max(160)
     .describe("Single-sentence appetite hook, 1-2 standout ingredients"),
   tags: z
     .array(z.string())
-    .min(2)
-    .max(5)
-    .describe("Lowercase tags: cuisine, technique, occasion, dietary"),
+    .describe("2-5 lowercase tags: cuisine, technique, occasion, dietary"),
 });
 
 export const RecipeCandidatesSchema = z.object({
-  candidates: z.array(RecipeCandidateSchema).length(CANDIDATE_COUNT),
+  candidates: z.array(RecipeCandidateSchema),
 });
 
 export const FullRecipeSchema = z.object({
-  ingredients: z
-    .array(
-      z.object({
-        amount: z.string().describe("e.g. '200 g', '2 EL', '1 Prise'"),
-        name: z.string(),
-      }),
-    )
-    .min(3),
-  steps: z.array(z.string().min(20)).min(3).max(12),
-  cookTimeMinutes: z.number().int().positive().max(720),
-  servings: z.number().int().positive().max(20),
+  ingredients: z.array(
+    z.object({
+      amount: z.string().describe("e.g. '200 g', '2 EL', '1 Prise'"),
+      name: z.string(),
+    }),
+  ),
+  steps: z.array(z.string()),
+  cookTimeMinutes: z.number(),
+  servings: z.number(),
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
 
@@ -96,22 +94,38 @@ function buildBriefPrompt(brief: GalleyBrief): string {
 export async function generateRecipeCandidates(brief: GalleyBrief): Promise<RecipeCandidate[]> {
   const locale = brief.locale ?? "en";
 
-  const { object } = await generateObject({
-    model: CANDIDATE_MODEL,
-    schema: RecipeCandidatesSchema,
-    system: [
-      "You are a cookbook editor curating a themed 'Galley of the Week' for galleybook.",
-      `Generate exactly ${CANDIDATE_COUNT} recipe ideas that hang together as one coherent collection.`,
-      "Names must be specific and evocative — never generic like 'Pasta with sauce'.",
-      "Avoid near-duplicates within the set (no two pasta dishes unless the brief is pasta-only).",
-      "Mix complexity: ~3 quick weeknight, ~5 main centerpiece, ~2 ambitious or showpiece.",
-      `Output language for name + one-liner: ${locale === "de" ? "German" : "English"}.`,
-      "Tags are always lowercase English regardless of locale.",
-    ].join(" "),
-    prompt: `Brief:\n${buildBriefPrompt(brief)}`,
-  });
+  try {
+    const { object } = await generateObject({
+      model: CANDIDATE_MODEL,
+      schema: RecipeCandidatesSchema,
+      system: [
+        "You are a cookbook editor curating a themed 'Galley of the Week' for galleybook.",
+        `Generate exactly ${CANDIDATE_COUNT} recipe ideas that hang together as one coherent collection.`,
+        "Names must be specific and evocative — never generic like 'Pasta with sauce'.",
+        "Avoid near-duplicates within the set (no two pasta dishes unless the brief is pasta-only).",
+        "Mix complexity: ~3 quick weeknight, ~5 main centerpiece, ~2 ambitious or showpiece.",
+        `Output language for name + one-liner: ${locale === "de" ? "German" : "English"}.`,
+        "Tags are always lowercase English regardless of locale.",
+      ].join(" "),
+      prompt: `Brief:\n${buildBriefPrompt(brief)}`,
+    });
 
-  return object.candidates;
+    // Trim to spec — models often return 9 or 11. We accept ≥6 as success.
+    const candidates = object.candidates.slice(0, CANDIDATE_COUNT);
+    if (candidates.length < 6) {
+      throw new Error(`Model returned only ${candidates.length} candidates`);
+    }
+    return candidates;
+  } catch (err) {
+    if (NoObjectGeneratedError.isInstance(err)) {
+      logger.error("campaign_studio.candidates.no_object", {
+        cause: err.cause instanceof Error ? err.cause.message : String(err.cause),
+        rawText: err.text?.slice(0, 2000),
+        finishReason: err.finishReason,
+      });
+    }
+    throw err;
+  }
 }
 
 // ---- 2) Image --------------------------------------------------------------
