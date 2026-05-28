@@ -77,9 +77,15 @@ export default async function RunDetailPage({
           <Link
             href={`/galley/${run.published_galley_id}`}
             target="_blank"
-            className="block border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full text-center mb-6"
+            className="block border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full text-center mb-3"
           >
             Open public landing page →
+          </Link>
+          <Link
+            href={`/admin/campaign-studio/runs/${id}/distribute`}
+            className="block border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full text-center mb-6"
+          >
+            Distribute → IG + Ads
           </Link>
         </>
       )}

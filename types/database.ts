@@ -163,6 +163,78 @@ export type Database = {
           },
         ]
       }
+      galley_distributions: {
+        Row: {
+          ad_variants: Json
+          caption_de: string | null
+          caption_en: string | null
+          carousel_paths: Json
+          created_at: string
+          galley_id: string
+          id: string
+          ig_error: string | null
+          ig_post_id: string | null
+          ig_status: Database["public"]["Enums"]["ig_post_status"]
+          meta_creative_ids: Json
+          meta_error: string | null
+          meta_status: Database["public"]["Enums"]["meta_push_status"]
+          run_id: string | null
+          updated_at: string
+          video_path: string | null
+        }
+        Insert: {
+          ad_variants?: Json
+          caption_de?: string | null
+          caption_en?: string | null
+          carousel_paths?: Json
+          created_at?: string
+          galley_id: string
+          id?: string
+          ig_error?: string | null
+          ig_post_id?: string | null
+          ig_status?: Database["public"]["Enums"]["ig_post_status"]
+          meta_creative_ids?: Json
+          meta_error?: string | null
+          meta_status?: Database["public"]["Enums"]["meta_push_status"]
+          run_id?: string | null
+          updated_at?: string
+          video_path?: string | null
+        }
+        Update: {
+          ad_variants?: Json
+          caption_de?: string | null
+          caption_en?: string | null
+          carousel_paths?: Json
+          created_at?: string
+          galley_id?: string
+          id?: string
+          ig_error?: string | null
+          ig_post_id?: string | null
+          ig_status?: Database["public"]["Enums"]["ig_post_status"]
+          meta_creative_ids?: Json
+          meta_error?: string | null
+          meta_status?: Database["public"]["Enums"]["meta_push_status"]
+          run_id?: string | null
+          updated_at?: string
+          video_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "galley_distributions_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "galley_distributions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "galley_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       galley_followers: {
         Row: {
           followed_at: string
@@ -986,6 +1058,7 @@ export type Database = {
       }
       users: {
         Row: {
+          attribution_captured_at: string | null
           avatar_url: string | null
           created_at: string
           email: string
@@ -994,10 +1067,18 @@ export type Database = {
           name: string | null
           onboarding_completed: boolean
           preferred_language: string | null
+          ref_landing_path: string | null
+          ref_referrer: string | null
           translation_language: string | null
           username: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
         }
         Insert: {
+          attribution_captured_at?: string | null
           avatar_url?: string | null
           created_at?: string
           email: string
@@ -1006,10 +1087,18 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean
           preferred_language?: string | null
+          ref_landing_path?: string | null
+          ref_referrer?: string | null
           translation_language?: string | null
           username?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Update: {
+          attribution_captured_at?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
@@ -1018,8 +1107,15 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean
           preferred_language?: string | null
+          ref_landing_path?: string | null
+          ref_referrer?: string | null
           translation_language?: string | null
           username?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
         }
         Relationships: []
       }
@@ -1157,6 +1253,8 @@ export type Database = {
         | "in_billing_retry"
         | "cancelled"
         | "revoked"
+      ig_post_status: "pending" | "published" | "failed"
+      meta_push_status: "none" | "pushed" | "failed"
       premium_invite_status: "pending" | "active" | "revoked" | "expired"
       recipe_season: "spring" | "summer" | "autumn" | "winter" | "all_year"
       recipe_type:
@@ -1314,6 +1412,8 @@ export const Constants = {
         "cancelled",
         "revoked",
       ],
+      ig_post_status: ["pending", "published", "failed"],
+      meta_push_status: ["none", "pushed", "failed"],
       premium_invite_status: ["pending", "active", "revoked", "expired"],
       recipe_season: ["spring", "summer", "autumn", "winter", "all_year"],
       recipe_type: [

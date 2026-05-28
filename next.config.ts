@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   // wouldn't otherwise be bundled into the serverless function.
   outputFileTracingIncludes: {
     "/api/iap/**/*": ["./lib/iap/apple-root-certs/*.cer"],
+    // GAL-390 — carousel renderer reads Inter ttf via fs.readFile (string arg),
+    // which the tracer doesn't follow, so force-include the fonts in the
+    // Campaign Studio distribution function.
+    "/api/admin/campaign-studio/**/*": ["./assets/fonts/*.ttf"],
   },
   images: {
     formats: ["image/avif", "image/webp"],
