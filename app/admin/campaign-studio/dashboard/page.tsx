@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getInsights, type InsightRow } from "@/lib/marketing/meta-ads";
+import { AdsControls } from "./ads-controls";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +68,21 @@ export default async function DashboardPage() {
   const sorted = [...rows.values()].sort((a, b) => b.signups - a.signups);
   const overallConv = totalSignups ? Math.round((totalPremium / totalSignups) * 100) : 0;
 
+  // Paid metrics (GAL-391) — best-effort; the campaign may be paused / no delivery.
+  let paidTotals: InsightRow | null = null;
+  let paidByAudience: InsightRow[] = [];
+  let paidError: string | null = null;
+  try {
+    const [totals, byAudience] = await Promise.all([
+      getInsights({ datePreset: "last_7d" }),
+      getInsights({ datePreset: "last_7d", breakdowns: ["age", "gender"] }),
+    ]);
+    paidTotals = totals[0] ?? null;
+    paidByAudience = byAudience;
+  } catch (e) {
+    paidError = e instanceof Error ? e.message : "Insights unavailable";
+  }
+
   return (
     <div>
       <Link href="/admin/campaign-studio" className="text-xs font-light text-on-surface-variant">
@@ -117,16 +134,67 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      {/* Paid metrics placeholder */}
-      <div className="bg-surface-low rounded-md p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1">
-          Paid metrics
-        </p>
-        <p className="text-xs font-light text-on-surface-variant">
-          Spend, impressions, clicks, CPS and audience breakdowns land with GAL-391
-          (needs the GAL-54 Advantage+ campaign). Pause-creative controls arrive then too.
-        </p>
+      {/* Paid metrics (GAL-391) */}
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+        Paid · last 7 days
+      </p>
+
+      <div className="mb-3">
+        <AdsControls />
       </div>
+
+      {paidError ? (
+        <div className="bg-surface-low rounded-md p-4 mb-3">
+          <p className="text-xs font-light text-on-surface-variant">
+            Insights unavailable: {paidError}
+          </p>
+        </div>
+      ) : paidTotals && paidTotals.impressions > 0 ? (
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Stat label="Spend" value={`€${paidTotals.spend.toFixed(2)}`} />
+            <Stat label="Signups" value={paidTotals.signups} />
+            <Stat
+              label="Cost / signup"
+              value={paidTotals.costPerSignup != null ? `€${paidTotals.costPerSignup.toFixed(2)}` : "—"}
+            />
+          </div>
+          <div className="flex flex-col gap-2 mb-3">
+            <div className="bg-white rounded-md p-4 shadow-ambient flex gap-6">
+              <Metric label="Impressions" value={paidTotals.impressions} />
+              <Metric label="Clicks" value={paidTotals.clicks} />
+            </div>
+          </div>
+
+          {paidByAudience.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+                By audience (age · gender)
+              </p>
+              <div className="flex flex-col gap-2 mb-3">
+                {paidByAudience.map((r, i) => (
+                  <div key={i} className="bg-white rounded-md p-3 shadow-ambient flex items-center justify-between">
+                    <span className="text-sm font-light text-anthracite">
+                      {r.breakdown?.age} · {r.breakdown?.gender}
+                    </span>
+                    <span className="text-xs font-light text-on-surface-variant">
+                      €{r.spend.toFixed(2)} · {r.signups} signups ·{" "}
+                      {r.costPerSignup != null ? `€${r.costPerSignup.toFixed(2)}/signup` : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      ) : (
+        <div className="bg-surface-low rounded-md p-4">
+          <p className="text-xs font-light text-on-surface-variant">
+            No delivery yet — the campaign is paused or hasn&apos;t spent. Set a budget and launch
+            above; metrics + audience breakdowns appear here once it delivers.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

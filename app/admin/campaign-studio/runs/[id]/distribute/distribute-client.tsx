@@ -27,6 +27,7 @@ export function DistributeClient({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captionDe, setCaptionDe] = useState(initialDistribution?.caption_de ?? "");
   const [captionEn, setCaptionEn] = useState(initialDistribution?.caption_en ?? "");
@@ -65,6 +66,22 @@ export function DistributeClient({
     if (!res.ok) setError(body.error ?? "Failed to save captions");
     else setDist(body.distribution);
     setSaving(false);
+  }
+
+  async function pushToMeta() {
+    setPushing(true);
+    setError(null);
+    const res = await fetch(
+      `/api/admin/campaign-studio/runs/${runId}/distribute/meta-push`,
+      { method: "POST" },
+    );
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "Failed to push to Meta");
+    } else if (dist) {
+      setDist({ ...dist, meta_status: "pushed", meta_creative_ids: body.pushed, meta_error: null });
+    }
+    setPushing(false);
   }
 
   async function postToInstagram() {
@@ -245,9 +262,35 @@ export function DistributeClient({
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] font-light text-on-surface-variant">
-                Pushing these to Meta Ads is coming with GAL-391 (needs the GAL-54 campaign).
-              </p>
+              {dist.meta_status === "pushed" ? (
+                <div className="bg-white rounded-md p-4 shadow-ambient">
+                  <p className="text-sm font-light text-anthracite mb-1">Pushed to Meta ✓</p>
+                  <p className="text-xs font-light text-on-surface-variant">
+                    {((dist.meta_creative_ids as unknown[]) ?? []).length} ads created · paused ·
+                    manage budget/launch from the dashboard
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-md p-4 shadow-ambient">
+                  {dist.meta_status === "failed" && dist.meta_error && (
+                    <p className="text-xs font-light text-red-600 mb-3">
+                      Last push failed: {dist.meta_error}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={pushToMeta}
+                    disabled={pushing || carouselPaths.length === 0}
+                    className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full disabled:opacity-40"
+                  >
+                    {pushing ? "Pushing to Meta…" : "Push ad creatives to Meta (paused)"}
+                  </button>
+                  <p className="text-[11px] font-light text-on-surface-variant mt-2">
+                    Creates paused ads in the Advantage+ campaign. Nothing spends until you launch
+                    from the dashboard.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
