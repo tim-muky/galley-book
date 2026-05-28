@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ATTRIBUTION_COOKIE, parseAttributionCookie } from "@/lib/attribution";
+import { sendCompleteRegistration } from "@/lib/marketing/capi";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -72,6 +73,25 @@ export async function GET(request: NextRequest) {
       path: "/",
       maxAge: 0,
       ...(isProd ? { domain: ".galleybook.com" } : {}),
+    });
+  }
+
+  // Best-effort server-side CompleteRegistration for fresh signups (GAL-47).
+  // The browser pixel can't observe the OAuth signup, so fire it via the
+  // Conversions API. event_id = signup_<userId> dedups any double-fire.
+  const createdAt = data.user?.created_at;
+  const isNewSignup =
+    !!createdAt && Date.now() - new Date(createdAt).getTime() < 2 * 60 * 1000;
+  if (isNewSignup && data.user?.email && userId) {
+    const clientIp =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      request.headers.get("x-real-ip");
+    await sendCompleteRegistration({
+      email: data.user.email,
+      eventId: `signup_${userId}`,
+      clientIp,
+      userAgent: request.headers.get("user-agent"),
+      eventSourceUrl: `${url.origin}${next}`,
     });
   }
 

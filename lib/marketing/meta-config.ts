@@ -19,6 +19,8 @@ export const META = {
   campaignId: process.env.META_CAMPAIGN_ID ?? "52765486717127",
   /** Ad set inside the Advantage+ campaign. */
   adSetId: process.env.META_ADSET_ID ?? "52765486716927",
+  /** Pixel / dataset id — also the Conversions API dataset (GAL-47). */
+  pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "986119167455201",
 } as const;
 
 /** Marketing API node path for the ad account, e.g. "act_1503605791229179". */
