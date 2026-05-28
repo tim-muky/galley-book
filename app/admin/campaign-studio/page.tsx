@@ -86,9 +86,15 @@ export default async function CampaignStudioPage() {
         <h2 className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">
           Distribution
         </h2>
-        <div className="bg-white rounded-md px-4 py-6 shadow-ambient text-sm font-light text-on-surface-variant text-center">
-          Attribution dashboard arrives with the first published galley.
-        </div>
+        <Link
+          href="/admin/campaign-studio/dashboard"
+          className="bg-white rounded-md px-4 py-3 shadow-ambient flex items-center justify-between"
+        >
+          <span className="text-sm font-light text-anthracite">Attribution dashboard</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            Signups → premium →
+          </span>
+        </Link>
       </section>
     </div>
   );

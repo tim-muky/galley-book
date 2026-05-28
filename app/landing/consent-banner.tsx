@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { captureAttribution } from "@/lib/attribution";
 
 const CONSENT_KEY = "galley-cookie-consent";
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
@@ -39,6 +40,7 @@ export function ConsentBanner() {
       setVisible(true);
     } else if (stored === "accepted") {
       initMetaPixel();
+      captureAttribution();
     }
   }, []);
 
@@ -48,6 +50,7 @@ export function ConsentBanner() {
     localStorage.setItem(CONSENT_KEY, "accepted");
     setVisible(false);
     initMetaPixel();
+    captureAttribution();
   }
 
   function decline() {
