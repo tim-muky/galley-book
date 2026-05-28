@@ -16,7 +16,14 @@ import { META, adAccountPath } from "./meta-config";
 const GRAPH = "https://graph.facebook.com/v25.0";
 
 interface MetaErrorEnvelope {
-  error?: { message?: string; code?: number; error_subcode?: number; fbtrace_id?: string };
+  error?: {
+    message?: string;
+    code?: number;
+    error_subcode?: number;
+    error_user_title?: string;
+    error_user_msg?: string;
+    fbtrace_id?: string;
+  };
 }
 
 export class MetaAdsError extends Error {
@@ -47,7 +54,10 @@ async function call<T>(
   const json = (await res.json().catch(() => ({}))) as T & MetaErrorEnvelope;
   if (!res.ok || (json as MetaErrorEnvelope).error) {
     const e = (json as MetaErrorEnvelope).error;
-    throw new MetaAdsError(e?.message ?? `Marketing API ${res.status} on ${path}`, e);
+    // Prefer Meta's human-readable user message — the generic `message` is
+    // often just "Invalid parameter" while error_user_msg names the real cause.
+    const msg = e?.error_user_msg ?? e?.message ?? `Marketing API ${res.status} on ${path}`;
+    throw new MetaAdsError(msg, e);
   }
   return json as T;
 }
