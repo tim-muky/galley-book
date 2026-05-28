@@ -16,6 +16,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { META } from "./meta-config";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const MAX_CAROUSEL_ITEMS = 10;
@@ -137,8 +138,7 @@ export async function postCarouselToInstagram({
   imageUrls,
   caption,
 }: PostCarouselInput): Promise<PostCarouselResult> {
-  const igUserId = process.env.META_IG_USER_ID;
-  if (!igUserId) throw new InstagramApiError("META_IG_USER_ID not set");
+  const igUserId = META.igUserId;
   if (imageUrls.length < 2) {
     throw new InstagramApiError("A carousel needs at least 2 images");
   }
