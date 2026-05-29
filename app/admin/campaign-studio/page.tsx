@@ -38,6 +38,12 @@ export default async function CampaignStudioPage() {
         >
           + New Galley of the Week
         </Link>
+        <Link
+          href="/admin/campaign-studio/import"
+          className="border border-anthracite bg-white text-anthracite rounded-full px-5 py-3 text-sm font-light text-center"
+        >
+          Import a public galley
+        </Link>
       </div>
 
       <section className="mb-8">
