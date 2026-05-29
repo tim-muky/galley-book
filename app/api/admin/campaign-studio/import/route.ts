@@ -77,8 +77,14 @@ export async function POST(request: Request) {
   };
 
   try {
+    // Honor the admin's chosen order (= carousel slide order), not DB order.
+    const byId = new Map(recipes.map((r) => [r.id as string, r]));
+    const ordered = recipeIds
+      .map((rid) => byId.get(rid))
+      .filter((r): r is (typeof recipes)[number] => Boolean(r));
+
     const candidates: RunCandidateWithImage[] = [];
-    for (const r of recipes) {
+    for (const r of ordered) {
       const oneLiner = (r.description as string | null)?.trim() || r.name;
       // Keep mode uses the existing photo; watercolor mode (or a keep-mode recipe
       // with no photo) generates one — so a selected recipe is never dropped.

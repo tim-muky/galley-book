@@ -26,20 +26,30 @@ export function SelectClient({
   recipes: RecipeItem[];
 }) {
   const router = useRouter();
-  // Default-select recipes that have a photo (usable in "keep" mode).
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(recipes.filter((r) => r.photoPath).map((r) => r.id)),
+  // Ordered selection — the order is the carousel slide order. Default to
+  // recipes that have a photo, in their existing order.
+  const [order, setOrder] = useState<string[]>(
+    () => recipes.filter((r) => r.photoPath).map((r) => r.id),
   );
   const [imageMode, setImageMode] = useState<"keep" | "watercolor">("keep");
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const selectedSet = new Set(order);
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+
   function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+    setOrder((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function move(id: string, dir: -1 | 1) {
+    setOrder((prev) => {
+      const i = prev.indexOf(id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
   }
@@ -52,7 +62,7 @@ export function SelectClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         galleyId,
-        recipeIds: [...selected],
+        recipeIds: order,
         imageMode,
         title: title.trim() || undefined,
       }),
@@ -66,7 +76,7 @@ export function SelectClient({
     router.push(`/admin/campaign-studio/runs/${body.runId}/distribute`);
   }
 
-  const count = selected.size;
+  const count = order.length;
 
   return (
     <div>
@@ -133,7 +143,8 @@ export function SelectClient({
       </p>
       <div className="grid grid-cols-2 gap-3 mb-6">
         {recipes.map((r) => {
-          const sel = selected.has(r.id);
+          const sel = selectedSet.has(r.id);
+          const pos = order.indexOf(r.id);
           return (
             <button
               key={r.id}
@@ -159,12 +170,58 @@ export function SelectClient({
               </div>
               <p className="text-sm font-light text-anthracite line-clamp-2">{r.name}</p>
               <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
-                {sel ? "Selected" : "Tap to add"}
+                {sel ? `#${pos + 1} selected` : "Tap to add"}
               </span>
             </button>
           );
         })}
       </div>
+
+      {/* Order (carousel sequence) */}
+      {order.length > 0 && (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Order (carousel sequence)
+          </p>
+          <div className="flex flex-col gap-2 mb-6">
+            {order.map((id, i) => {
+              const r = byId.get(id);
+              if (!r) return null;
+              return (
+                <div
+                  key={id}
+                  className="bg-white rounded-md px-3 py-2 shadow-ambient flex items-center gap-3"
+                >
+                  <span className="text-[10px] font-semibold text-on-surface-variant w-4">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm font-light text-anthracite flex-1 truncate">
+                    {r.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => move(id, -1)}
+                    disabled={i === 0}
+                    aria-label="Move up"
+                    className="border border-anthracite bg-white text-anthracite text-xs font-light w-7 h-7 rounded-full disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(id, 1)}
+                    disabled={i === order.length - 1}
+                    aria-label="Move down"
+                    className="border border-anthracite bg-white text-anthracite text-xs font-light w-7 h-7 rounded-full disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {imageMode === "keep" && (
         <p className="text-[11px] font-light text-on-surface-variant mb-3">
