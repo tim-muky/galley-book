@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     .from("recipes")
     .select("share_token, servings")
     .eq("id", recipeId)
+    .is("deleted_at", null)
     .single();
 
   if (!recipe) {

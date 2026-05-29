@@ -17,6 +17,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(request: Request) {
   const supabase = await createClient();
@@ -119,7 +120,7 @@ export async function DELETE() {
   const { error: deleteError } = await service.auth.admin.deleteUser(userId);
 
   if (deleteError) {
-    console.error("[account/delete]", { userId, message: deleteError.message, status: deleteError.status });
+    logger.error("account_delete_failed", { userId, message: deleteError.message, status: deleteError.status });
     return NextResponse.json(
       { error: `${deleteError.message} (status ${deleteError.status ?? "unknown"})` },
       { status: 500 }

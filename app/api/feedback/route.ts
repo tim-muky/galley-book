@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const resend = new Resend(process.env.RESEND_API_KEY);
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    console.error("[feedback] Resend error:", error);
+    logger.error("feedback_resend_failed", { error: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

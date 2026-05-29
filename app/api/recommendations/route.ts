@@ -149,7 +149,7 @@ export async function GET(request: Request) {
   // discover we anchor on the collection so suggestions complement it.
   const needsRecipeContext = !cuisine && !ingredient;
   const { data: recipes } = needsRecipeContext
-    ? await supabase.from("recipes").select("name").eq("galley_id", galleyId).limit(30)
+    ? await supabase.from("recipes").select("name").eq("galley_id", galleyId).is("deleted_at", null).limit(30)
     : { data: null };
 
   let searchQuery: string;
