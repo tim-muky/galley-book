@@ -168,7 +168,7 @@ export function SelectClient({
 
       {imageMode === "keep" && (
         <p className="text-[11px] font-light text-on-surface-variant mb-3">
-          Recipes without a photo are skipped in Keep mode — switch to watercolor to include them.
+          Recipes without a photo get an auto-generated watercolor version so nothing is dropped.
         </p>
       )}
       {error && <p className="text-xs font-light text-red-600 mb-3">{error}</p>}

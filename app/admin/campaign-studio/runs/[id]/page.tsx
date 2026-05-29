@@ -108,7 +108,7 @@ export default async function RunDetailPage({
         </pre>
       </div>
 
-      {run.status !== "published" && <DeleteRunButton runId={id} />}
+      <DeleteRunButton runId={id} published={run.status === "published"} />
     </div>
   );
 }

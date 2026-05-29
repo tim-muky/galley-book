@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function DeleteRunButton({ runId }: { runId: string }) {
+export function DeleteRunButton({
+  runId,
+  published = false,
+}: {
+  runId: string;
+  published?: boolean;
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -32,14 +38,18 @@ export function DeleteRunButton({ runId }: { runId: string }) {
         onClick={() => setConfirm(true)}
         className="text-xs font-light text-on-surface-variant underline underline-offset-4"
       >
-        Delete run
+        {published ? "Delete campaign + landing page" : "Delete run"}
       </button>
     );
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs font-light text-anthracite">Delete this run permanently?</p>
+      <p className="text-xs font-light text-anthracite">
+        {published
+          ? "Delete this campaign and its public landing page? Imported galleys keep their source galley."
+          : "Delete this run permanently?"}
+      </p>
       <div className="flex gap-2">
         <button
           type="button"

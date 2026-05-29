@@ -80,9 +80,14 @@ export async function POST(request: Request) {
     const candidates: RunCandidateWithImage[] = [];
     for (const r of recipes) {
       const oneLiner = (r.description as string | null)?.trim() || r.name;
-      let imagePath: string | undefined;
+      // Keep mode uses the existing photo; watercolor mode (or a keep-mode recipe
+      // with no photo) generates one — so a selected recipe is never dropped.
+      const existingPhoto = imageMode === "keep" ? primaryPath(r.id) : null;
+      let imagePath: string;
 
-      if (imageMode === "watercolor") {
+      if (existingPhoto) {
+        imagePath = existingPhoto;
+      } else {
         const img = await generateRecipeImage({ name: r.name, oneLiner });
         const path = `campaign-assets/import/${galleyId}/${r.id}.png`;
         const buf = Buffer.from(img.base64, "base64");
@@ -91,25 +96,13 @@ export async function POST(request: Request) {
           .upload(path, buf, { contentType: img.mediaType, upsert: true });
         if (upErr) throw new Error(`watercolor upload (${r.id}): ${upErr.message}`);
         imagePath = path;
-      } else {
-        imagePath = primaryPath(r.id) ?? undefined;
       }
 
-      if (imagePath) {
-        candidates.push({ name: r.name, oneLiner, tags: [], keep: true, imagePath });
-      }
+      candidates.push({ name: r.name, oneLiner, tags: [], keep: true, imagePath });
     }
 
     if (candidates.length < 2) {
-      return NextResponse.json(
-        {
-          error:
-            imageMode === "keep"
-              ? "Fewer than 2 selected recipes have images — pick recipes with photos or use watercolor mode"
-              : "Image generation produced fewer than 2 usable images",
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Need at least 2 recipes" }, { status: 400 });
     }
 
     // Lightweight "published" run pointing at the existing galley → reuses the
