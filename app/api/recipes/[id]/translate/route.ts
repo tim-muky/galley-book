@@ -9,6 +9,7 @@ export const maxDuration = 30;
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
 const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
   de: "German",
   fr: "French",
   es: "Spanish",
