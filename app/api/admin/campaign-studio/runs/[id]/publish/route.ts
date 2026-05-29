@@ -118,17 +118,27 @@ export async function POST(
           .single();
         if (recipeErr || !recipe) throw new Error(`recipe: ${recipeErr?.message}`);
 
-        // Copy generated image from galley-runs/ to {recipeId}/primary.png
+        // Copy generated image from galley-runs/ to {recipeId}/primary.png,
+        // then register it in recipe_photos so in-app views (library, recipe
+        // detail) show it — the public galley page reads {id}/primary.png by
+        // convention, but the app reads the recipe_photos table.
         if (c.imagePath) {
           const { data: src } = await service.storage.from(BUCKET).download(c.imagePath);
           if (src) {
             const buf = await src.arrayBuffer();
+            const storagePath = `${recipe.id}/primary.png`;
             await service.storage
               .from(BUCKET)
-              .upload(`${recipe.id}/primary.png`, buf, {
+              .upload(storagePath, buf, {
                 contentType: "image/png",
                 upsert: true,
               });
+            await service.from("recipe_photos").insert({
+              recipe_id: recipe.id,
+              storage_path: storagePath,
+              is_primary: true,
+              sort_order: 0,
+            });
           }
         }
 
