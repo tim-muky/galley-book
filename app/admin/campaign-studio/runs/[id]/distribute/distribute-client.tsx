@@ -29,6 +29,7 @@ export function DistributeClient({
   const [posting, setPosting] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postTitle, setPostTitle] = useState(initialDistribution?.post_title ?? "");
   const [captionDe, setCaptionDe] = useState(initialDistribution?.caption_de ?? "");
   const [captionEn, setCaptionEn] = useState(initialDistribution?.caption_en ?? "");
   const [postLocale, setPostLocale] = useState<"de" | "en">("de");
@@ -48,6 +49,7 @@ export function DistributeClient({
       setError(body.error ?? "Failed to generate assets");
     } else {
       setDist(body.distribution);
+      setPostTitle(body.distribution.post_title ?? "");
       setCaptionDe(body.distribution.caption_de ?? "");
       setCaptionEn(body.distribution.caption_en ?? "");
     }
@@ -60,7 +62,7 @@ export function DistributeClient({
     const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/distribute`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ caption_de: captionDe, caption_en: captionEn }),
+      body: JSON.stringify({ post_title: postTitle, caption_de: captionDe, caption_en: captionEn }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) setError(body.error ?? "Failed to save captions");
@@ -160,6 +162,17 @@ export function DistributeClient({
           >
             {generating ? "Regenerating…" : "Regenerate assets"}
           </button>
+
+          {/* Post title */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Post title
+          </p>
+          <input
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            placeholder="Catchy post title"
+            className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite outline-none mb-4"
+          />
 
           {/* Caption editor */}
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">

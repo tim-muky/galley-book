@@ -32,6 +32,49 @@ export const AdVariantsSchema = z.object({
 
 export type AdVariant = z.infer<typeof AdVariantSchema>;
 
+// ---- Post title -----------------------------------------------------------
+
+export const PostTitleSchema = z.object({
+  title: z.string().describe("Catchy post headline, <55 chars"),
+});
+
+export interface GeneratePostTitleInput {
+  theme: string;
+  recipeNames: string[];
+  locale?: "en" | "de";
+}
+
+/**
+ * An appealing marketing headline for the post — replaces the internal galley
+ * name (which carries the "— KW XX" suffix nobody cares about). Used on the
+ * carousel cover + as the IG caption opener.
+ */
+export async function generatePostTitle({
+  theme,
+  recipeNames,
+  locale = "de",
+}: GeneratePostTitleInput): Promise<string> {
+  const { object } = await generateObject({
+    model: COPY_MODEL,
+    schema: PostTitleSchema,
+    system: [
+      "You write scroll-stopping social post headlines for galleybook recipe collections.",
+      "Make it concrete and appealing — lead with a number or a benefit when it fits",
+      "(e.g. '5 high-protein dinners kids actually eat').",
+      "Under 55 characters. No hashtags, no emoji, no quotes.",
+      "NEVER mention calendar weeks, 'KW', dates, or 'Galley of the Week'.",
+      `Output language: ${locale === "de" ? "German" : "English"}.`,
+    ].join(" "),
+    prompt: [
+      `Theme: ${theme}`,
+      recipeNames.length ? `Dishes: ${recipeNames.slice(0, 6).join(", ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
+  return object.title.trim();
+}
+
 export interface GenerateAdCopyInput {
   /** Galley theme / name, e.g. "Kids dish · healthy; high protein" */
   theme: string;

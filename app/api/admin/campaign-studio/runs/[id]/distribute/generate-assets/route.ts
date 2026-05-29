@@ -2,7 +2,7 @@ import { requireAdminApi } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { renderCarousel } from "@/lib/marketing/carousel";
-import { generateAdCopy } from "@/lib/marketing/ad-copy";
+import { generateAdCopy, generatePostTitle } from "@/lib/marketing/ad-copy";
 import type { RunCandidateWithImage } from "@/app/admin/campaign-studio/runs/[id]/curate-images/curate-images-client";
 import { NextResponse } from "next/server";
 
@@ -16,9 +16,9 @@ function publicUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
 }
 
-/** Compose a default IG caption + hashtags from theme and candidate tags. */
+/** Compose a default IG caption + hashtags from the post title and candidate tags. */
 function buildCaption(
-  theme: string,
+  title: string,
   recipeNames: string[],
   tags: string[],
   locale: "de" | "en",
@@ -36,8 +36,8 @@ function buildCaption(
 
   const intro =
     locale === "de"
-      ? `Galley der Woche: ${theme} 🍳\n\nDiese Rezepte – plus den Rest – speicherst du mit einem Tipp in deine eigene galleybook-Sammlung. Link in Bio.`
-      : `Galley of the Week: ${theme} 🍳\n\nSave these — and the rest — to your own galleybook collection in one tap. Link in bio.`;
+      ? `${title} 🍳\n\nDiese Rezepte – plus den Rest – speicherst du mit einem Tipp in deine eigene galleybook-Sammlung. Link in Bio.`
+      : `${title} 🍳\n\nSave these — and the rest — to your own galleybook collection in one tap. Link in bio.`;
 
   const list = recipeNames.slice(0, 5).map((n) => `• ${n}`).join("\n");
   return `${intro}\n\n${list}\n\n${hashtags}`;
@@ -84,9 +84,19 @@ export async function POST(
   }
 
   try {
-    // 1) Render carousel slides (cover + per-recipe + CTA)
+    // Reuse an admin-edited title across regenerations; else a catchy default.
+    const recipeNames = kept.map((c) => c.name);
+    const { data: existing } = await service
+      .from("galley_distributions")
+      .select("id, post_title")
+      .eq("galley_id", galleyId)
+      .maybeSingle();
+    const postTitle =
+      existing?.post_title || (await generatePostTitle({ theme, recipeNames, locale }));
+
+    // 1) Render carousel slides (cover uses the post title)
     const slides = await renderCarousel({
-      theme,
+      title: postTitle,
       recipes: kept.map((c) => ({
         name: c.name,
         oneLiner: c.oneLiner,
@@ -105,22 +115,15 @@ export async function POST(
       carouselPaths.push(path);
     }
 
-    // 3) Generate ad-copy variants (parallel with nothing — quick single call)
-    const recipeNames = kept.map((c) => c.name);
+    // 3) Generate ad-copy variants (quick single call)
     const adVariants = await generateAdCopy({ theme, recipeNames, locale });
 
-    // 4) Default captions (DE + EN), hashtags from candidate tags
+    // 4) Default captions (DE + EN) — opener uses the post title
     const allTags = Array.from(new Set(kept.flatMap((c) => c.tags ?? [])));
-    const captionDe = buildCaption(theme, recipeNames, allTags, "de");
-    const captionEn = buildCaption(theme, recipeNames, allTags, "en");
+    const captionDe = buildCaption(postTitle, recipeNames, allTags, "de");
+    const captionEn = buildCaption(postTitle, recipeNames, allTags, "en");
 
     // 5) Upsert the distribution row (one per galley)
-    const { data: existing } = await service
-      .from("galley_distributions")
-      .select("id")
-      .eq("galley_id", galleyId)
-      .maybeSingle();
-
     const payload = {
       galley_id: galleyId,
       run_id: id,
@@ -128,6 +131,7 @@ export async function POST(
       ad_variants: adVariants,
       caption_de: captionDe,
       caption_en: captionEn,
+      post_title: postTitle,
     };
 
     const { data: distribution, error: writeErr } = existing

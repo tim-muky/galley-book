@@ -178,6 +178,7 @@ export type Database = {
           meta_creative_ids: Json
           meta_error: string | null
           meta_status: Database["public"]["Enums"]["meta_push_status"]
+          post_title: string | null
           run_id: string | null
           updated_at: string
           video_path: string | null
@@ -196,6 +197,7 @@ export type Database = {
           meta_creative_ids?: Json
           meta_error?: string | null
           meta_status?: Database["public"]["Enums"]["meta_push_status"]
+          post_title?: string | null
           run_id?: string | null
           updated_at?: string
           video_path?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           meta_creative_ids?: Json
           meta_error?: string | null
           meta_status?: Database["public"]["Enums"]["meta_push_status"]
+          post_title?: string | null
           run_id?: string | null
           updated_at?: string
           video_path?: string | null

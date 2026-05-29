@@ -82,7 +82,7 @@ async function renderToJpeg(
 
 // ---- Slide templates -------------------------------------------------------
 
-function CoverSlide({ theme, heroUri }: { theme: string; heroUri: string | null }) {
+function CoverSlide({ title, heroUri }: { title: string; heroUri: string | null }) {
   return (
     <div
       style={{
@@ -116,7 +116,7 @@ function CoverSlide({ theme, heroUri }: { theme: string; heroUri: string | null 
           Galley of the Week
         </div>
         <div style={{ display: "flex", fontSize: 76, fontWeight: 300, color: ANTHRACITE, lineHeight: 1.05 }}>
-          {theme}
+          {title}
         </div>
       </div>
     </div>
@@ -198,7 +198,8 @@ export interface CarouselRecipe {
 }
 
 export interface RenderCarouselInput {
-  theme: string;
+  /** The marketing post title shown on the cover slide. */
+  title: string;
   recipes: CarouselRecipe[];
 }
 
@@ -208,7 +209,7 @@ export interface RenderCarouselInput {
  * (cover + 8 + CTA = 10).
  */
 export async function renderCarousel({
-  theme,
+  title,
   recipes,
 }: RenderCarouselInput): Promise<Buffer[]> {
   const fonts = await loadFonts();
@@ -221,7 +222,7 @@ export async function renderCarousel({
   );
 
   const slides: React.ReactElement[] = [
-    <CoverSlide key="cover" theme={theme} heroUri={heroUri} />,
+    <CoverSlide key="cover" title={title} heroUri={heroUri} />,
     ...capped.map((r, i) => (
       <RecipeSlide
         key={`recipe-${i}`}

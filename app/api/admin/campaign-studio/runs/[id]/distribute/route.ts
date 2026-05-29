@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const CaptionPatchSchema = z.object({
+  post_title: z.string().max(200).optional(),
   caption_de: z.string().max(2200).optional(),
   caption_en: z.string().max(2200).optional(),
 });
