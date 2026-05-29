@@ -5,7 +5,7 @@ import { isTikTokUrl, parseTikTok } from "./tiktok";
 import { parseWebsite } from "./website";
 
 export type { FetchResult } from "./types";
-export { cacheInstagramImage } from "./instagram";
+export { cacheInstagramImage, isInstagramUrl } from "./instagram";
 export { fetchInlineImage } from "./utils";
 
 /** Dispatcher — picks the right parser by URL pattern.

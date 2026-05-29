@@ -13,7 +13,8 @@ import { checkUrlSafety } from "@/lib/utils/url-validation";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseLimit } from "@/lib/rate-limit";
 import { buildRecipePrompt, normalizeRecipeTags } from "@/lib/recipe-prompts";
-import { fetchPageContent, fetchInlineImage, cacheInstagramImage } from "@/lib/parsers";
+import { fetchPageContent, fetchInlineImage, cacheInstagramImage, isInstagramUrl } from "@/lib/parsers";
+import type { FetchResult } from "@/lib/parsers";
 import { logParseQuality, detectMissingFields } from "@/lib/parse-quality-logger";
 import { getGalleyPlan } from "@/lib/subscription";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
@@ -21,6 +22,12 @@ import { z } from "zod";
 
 const ParseSchema = z.object({
   url: z.string().min(1).max(2000),
+  // Optional caption + image the *client* already fetched (e.g. the iOS share
+  // extension reading Instagram oEmbed from the device's residential IP, which
+  // Instagram serves even though it blocks Vercel's datacenter IPs). When
+  // present we skip the server-side fetch and feed this straight to Gemini.
+  content: z.string().min(1).max(20000).optional(),
+  imageUrl: z.string().url().max(2000).optional(),
 });
 
 export const maxDuration = 60;
@@ -79,6 +86,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  let fetchResult: FetchResult;
+  if (parsedBody.data.content) {
+    // Client-prefetched content — trust the caption, but still SSRF-validate the
+    // image URL since we fetch it server-side (cache + multimodal input).
+    let safeImage: string | null = null;
+    const providedImage = parsedBody.data.imageUrl?.trim();
+    if (providedImage) {
+      const imgSafety = await checkUrlSafety(providedImage);
+      if (imgSafety.ok) safeImage = providedImage;
+    }
+    const isIg = isInstagramUrl(url);
+    fetchResult = {
+      content: parsedBody.data.content.slice(0, 6000),
+      imageUrl: safeImage,
+      imageCandidates: safeImage ? [safeImage] : [],
+      parsedVia: isIg ? "instagram_caption" : "html_text",
+      imageSource: safeImage ? (isIg ? "instagram_embed" : "og_image") : "none",
+      diagnostics: { routeWinner: isIg ? "instagram_caption" : "html_text" },
+    };
+  } else {
+    fetchResult = await fetchPageContent(url);
+  }
+
   const {
     content: pageContent,
     imageUrl: rawImageUrl,
@@ -87,7 +117,7 @@ export async function POST(request: Request) {
     imageSource,
     error: fetchError,
     diagnostics,
-  } = await fetchPageContent(url);
+  } = fetchResult;
 
   if (fetchError) {
     void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: fetchError });

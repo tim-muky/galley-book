@@ -26,6 +26,14 @@ export interface ParseDiagnostics {
   };
   /** Which route ultimately produced the content (mirrors `parsedVia` but cheap to scan in logs). */
   routeWinner?: ParsedVia;
+  /** Instagram: HTTP status of the embed fetch (the leg most affected by datacenter-IP blocking). null if the request threw. */
+  embedHttpStatus?: number | null;
+  /** Instagram: byte length of the embed HTML response — a login-wall stub is ~89KB with no caption. */
+  embedBytes?: number;
+  /** Instagram: stripped-text length of the embed page (≤200 means the embed gave us nothing usable). */
+  embedTextLength?: number;
+  /** Instagram: outcome of the public oEmbed fallback. */
+  oembedOutcome?: "ok" | "gated_age" | "gated_other" | "none" | "skipped";
 }
 
 export interface FetchResult {

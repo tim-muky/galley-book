@@ -1,11 +1,62 @@
 import type { createClient } from "@/lib/supabase/server";
-import type { FetchResult, ImageSource } from "./types";
+import type { FetchResult, ParseDiagnostics } from "./types";
 import { extractImageUrl } from "./utils";
 import { fetchViaPerplexity } from "./perplexity";
 import { logger } from "@/lib/logger";
 
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
 export function isInstagramUrl(url: string): boolean {
   return /instagram\.com\/(p|reel|tv)\//i.test(url);
+}
+
+type InstagramOEmbed =
+  | { kind: "ok"; caption: string; thumbnailUrl: string | null }
+  | { kind: "gated"; ageRestricted: boolean }
+  | { kind: "none" };
+
+/** Public web oEmbed JSON (no login required). Returns the full caption plus
+ *  cover thumbnail for readable posts, or a gating signal for age-restricted /
+ *  private ones. More reliable than scraping the embed HTML when Instagram
+ *  serves a CSR shell.
+ *
+ *  The documented api.instagram.com/oembed endpoint is deprecated (302 → login);
+ *  this internal www endpoint still serves structured metadata unauthenticated. */
+async function fetchInstagramOEmbed(url: string): Promise<InstagramOEmbed> {
+  try {
+    const endpoint = `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(url)}`;
+    const res = await fetch(endpoint, {
+      headers: { "User-Agent": IPHONE_UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(6000),
+    });
+    // Gated posts answer with HTTP 400 but a JSON body carrying the gating
+    // reason, so parse the body regardless of status; bail only if it isn't JSON.
+    const raw = await res.text();
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return { kind: "none" };
+    }
+
+    // Gating payload carries `message` instead of a caption, e.g.
+    // { message: "geoblock_required", blocks_logging_data: "MIN_AGE_ACCOUNT",
+    //   title: "People under 21 can't see this content" }.
+    if (typeof data.message === "string") {
+      const ageRestricted =
+        /MIN_AGE/i.test(String(data.blocks_logging_data ?? "")) ||
+        data.message === "geoblock_required";
+      return { kind: "gated", ageRestricted };
+    }
+
+    const caption = typeof data.title === "string" ? data.title : "";
+    const thumbnailUrl = typeof data.thumbnail_url === "string" ? data.thumbnail_url : null;
+    if (caption || thumbnailUrl) return { kind: "ok", caption, thumbnailUrl };
+    return { kind: "none" };
+  } catch {
+    return { kind: "none" };
+  }
 }
 
 /** Extract the post photo from an Instagram embed page.
@@ -31,14 +82,26 @@ function hasRecipeSignal(text: string): boolean {
 interface EmbedResult {
   text: string;
   imageUrl: string | null;
+  /** Diagnostics from the embed attempt — the leg most affected by datacenter-IP blocking. */
+  httpStatus: number | null;
+  bytes: number;
+  textLength: number;
 }
 
 /** Fetch the Instagram embed page once, extract both caption text and cover image. */
 async function fetchInstagramEmbedPage(url: string): Promise<EmbedResult> {
   const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return { text: "", imageUrl: null };
+  if (!match) return { text: "", imageUrl: null, httpStatus: null, bytes: 0, textLength: 0 };
   const shortcode = match[1];
   const isReel = /instagram\.com\/reel\//i.test(url);
+
+  // Track the most informative attempt for diagnostics: the last HTTP status
+  // seen, the largest response, and the longest stripped text. When IG blocks
+  // the server IP, status is often 200 but the body is a ~89KB login stub with
+  // <200 chars of real text — these three numbers make that visible in logs.
+  let lastStatus: number | null = null;
+  let maxBytes = 0;
+  let maxTextLength = 0;
 
   // Try the post type that matches the URL first to avoid unnecessary redirects
   const embedUrls = isReel
@@ -59,15 +122,16 @@ async function fetchInstagramEmbedPage(url: string): Promise<EmbedResult> {
     try {
       const res = await fetch(embedUrl, {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          "User-Agent": IPHONE_UA,
           Accept: "text/html,application/xhtml+xml",
           "Accept-Language": "en-US,en;q=0.9",
         },
         signal: AbortSignal.timeout(8000),
       });
+      lastStatus = res.status;
       if (!res.ok) continue;
       const html = await res.text();
+      maxBytes = Math.max(maxBytes, html.length);
 
       const imageUrl =
         extractInstagramEmbedImage(html) ?? extractImageUrl(html) ?? null;
@@ -78,24 +142,25 @@ async function fetchInstagramEmbedPage(url: string): Promise<EmbedResult> {
         .replace(/<[^>]+>/g, " ")
         .replace(/\s+/g, " ")
         .trim();
+      maxTextLength = Math.max(maxTextLength, text.length);
 
       // Require both minimum length and at least one recipe signal word to
       // guard against login-wall pages or rate-limit stubs that pass the
       // length check but contain no actual recipe content.
       if (text.length > 200 && hasRecipeSignal(text)) {
-        return { text: text.slice(0, 6000), imageUrl };
+        return { text: text.slice(0, 6000), imageUrl, httpStatus: lastStatus, bytes: maxBytes, textLength: maxTextLength };
       }
 
       // If content lacks recipe signal but we got an image, keep trying other
       // embed URLs for better text — but preserve the image if nothing else works.
       if (imageUrl && !text) {
-        return { text: "", imageUrl };
+        return { text: "", imageUrl, httpStatus: lastStatus, bytes: maxBytes, textLength: maxTextLength };
       }
     } catch {
       continue;
     }
   }
-  return { text: "", imageUrl: null };
+  return { text: "", imageUrl: null, httpStatus: lastStatus, bytes: maxBytes, textLength: maxTextLength };
 }
 
 /** Download an Instagram CDN image and re-host it in Supabase Storage.
@@ -168,22 +233,72 @@ export async function cacheInstagramImage(
 }
 
 export async function parseInstagram(url: string): Promise<FetchResult> {
-  const { text: embedContent, imageUrl } = await fetchInstagramEmbedPage(url);
+  const embed = await fetchInstagramEmbedPage(url);
+  const { text: embedContent, imageUrl } = embed;
 
-  const imageSource: ImageSource = imageUrl ? "instagram_embed" : "none";
-  const imageCandidates = imageUrl ? [imageUrl] : [];
+  // Diagnostics accumulate across the routes so a failed import in production
+  // logs (and the import-test report) reveals *which leg* failed and what the
+  // server actually saw — the key signal for diagnosing datacenter-IP blocking.
+  const diagnostics: ParseDiagnostics = {
+    embedHttpStatus: embed.httpStatus,
+    embedBytes: embed.bytes,
+    embedTextLength: embed.textLength,
+    oembedOutcome: "skipped",
+  };
 
+  // 1. Embed scrape returned a usable caption.
   if (embedContent.length > 200) {
     return {
       content: embedContent,
       imageUrl,
-      imageCandidates,
+      imageCandidates: imageUrl ? [imageUrl] : [],
       parsedVia: "instagram_caption",
-      imageSource,
+      imageSource: imageUrl ? "instagram_embed" : "none",
+      diagnostics: { ...diagnostics, routeWinner: "instagram_caption" },
     };
   }
 
-  // Embed failed — fall back to Perplexity with strict prompt
+  // 2. Embed was blocked or too thin — try the public oEmbed JSON, which often
+  //    still carries the full caption + thumbnail, and classifies gated posts.
+  const oembed = await fetchInstagramOEmbed(url);
+  diagnostics.oembedOutcome =
+    oembed.kind === "ok"
+      ? "ok"
+      : oembed.kind === "gated"
+        ? oembed.ageRestricted
+          ? "gated_age"
+          : "gated_other"
+        : "none";
+
+  if (
+    oembed.kind === "ok" &&
+    (oembed.caption.length > 80 || imageUrl || oembed.thumbnailUrl)
+  ) {
+    const img = imageUrl ?? oembed.thumbnailUrl;
+    return {
+      content: oembed.caption.slice(0, 6000),
+      imageUrl: img,
+      imageCandidates: img ? [img] : [],
+      parsedVia: "instagram_caption",
+      imageSource: img ? "instagram_embed" : "none",
+      diagnostics: { ...diagnostics, routeWinner: "instagram_caption" },
+    };
+  }
+  if (oembed.kind === "gated") {
+    return {
+      content: "",
+      imageUrl: null,
+      imageCandidates: [],
+      parsedVia: "none",
+      imageSource: "none",
+      diagnostics,
+      error: oembed.ageRestricted
+        ? "This Instagram account is age-restricted, so its posts can't be read automatically. Open the post in the Instagram app and paste the recipe in manually."
+        : "This Instagram post is private or no longer available, so it can't be read automatically. Paste the recipe in manually.",
+    };
+  }
+
+  // 3. Last resort — Perplexity web summary.
   if (process.env.PERPLEXITY_API_KEY) {
     const content = await fetchViaPerplexity(url, { kind: "instagram" });
     if (/unable to access|cannot access|requires? login|not publicly|private post/i.test(content)) {
@@ -193,16 +308,18 @@ export async function parseInstagram(url: string): Promise<FetchResult> {
         imageCandidates: [],
         parsedVia: "none",
         imageSource: "none",
+        diagnostics,
         error:
-          "Instagram blocks reading this post without an Instagram login. Try sharing it to galleybook from the Instagram app, or paste the recipe in manually.",
+          "This Instagram post can't be read automatically — it may be private, age-restricted, or login-walled. Paste the recipe in manually.",
       };
     }
     return {
       content,
       imageUrl,
-      imageCandidates,
+      imageCandidates: imageUrl ? [imageUrl] : [],
       parsedVia: "instagram_perplexity",
-      imageSource,
+      imageSource: imageUrl ? "instagram_embed" : "none",
+      diagnostics: { ...diagnostics, routeWinner: "instagram_perplexity" },
     };
   }
 
@@ -212,6 +329,7 @@ export async function parseInstagram(url: string): Promise<FetchResult> {
     imageCandidates: [],
     parsedVia: "none",
     imageSource: "none",
-    error: "Instagram posts cannot be parsed automatically. Please add the recipe manually.",
+    diagnostics,
+    error: "This Instagram post can't be read automatically. Paste the recipe in manually.",
   };
 }

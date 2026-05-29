@@ -16,6 +16,7 @@ interface RowResult {
   recipeId: string | null;
   parsedVia: string | null;
   imageSource: string | null;
+  diagnostics?: unknown;
   error?: string;
 }
 
@@ -122,11 +123,13 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
 
         if (!res.ok) {
           let errorMsg = `HTTP ${res.status}`;
+          let diagnostics: unknown;
           try {
             const body = await res.json();
             if (body.error) errorMsg = body.error;
+            if (body._diagnostics) diagnostics = body._diagnostics;
           } catch { /* ignore */ }
-          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, parsedVia: null, imageSource: null, error: errorMsg };
+          result = { status: "failed", durationMs, name: null, hasImage: false, hasPrepTime: false, ingredientCount: 0, stepCount: 0, recipeId: null, parsedVia: null, imageSource: null, diagnostics, error: errorMsg };
         } else {
           const data = await res.json();
           const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : null;
@@ -168,6 +171,7 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
             recipeId,
             parsedVia: typeof data.parsed_via === "string" ? data.parsed_via : null,
             imageSource: typeof data.image_source === "string" ? data.image_source : null,
+            diagnostics: data._diagnostics ?? undefined,
           };
         }
       } catch (err) {
@@ -209,6 +213,7 @@ export function ImportTestClient({ testKitchenGalleyId }: { testKitchenGalleyId:
         stepCount: r.stepCount,
         parsedVia: r.parsedVia,
         imageSource: r.imageSource,
+        ...(r.diagnostics ? { diagnostics: r.diagnostics } : {}),
         ...(r.error ? { error: r.error } : {}),
       })),
     };
