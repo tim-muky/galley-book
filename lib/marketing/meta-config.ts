@@ -18,7 +18,7 @@ export const META = {
   /** Standing Advantage+ campaign skeleton (GAL-54). */
   campaignId: process.env.META_CAMPAIGN_ID ?? "52765486717127",
   /** Ad set inside the Advantage+ campaign. */
-  adSetId: process.env.META_ADSET_ID ?? "52765486716927",
+  adSetId: process.env.META_ADSET_ID ?? "52767615705727",
   /** Pixel / dataset id — also the Conversions API dataset (GAL-47). */
   pixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "986119167455201",
 } as const;
