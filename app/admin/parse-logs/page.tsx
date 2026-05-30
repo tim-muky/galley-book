@@ -102,9 +102,9 @@ export default async function ParseLogsPage() {
         </div>
 
         {logs.length === 0 ? (
-          <p className="px-4 pb-8 text-sm font-light text-on-surface-variant">
+          <div className="bg-surface-lowest rounded-md px-4 py-8 shadow-ambient text-center text-sm font-light text-on-surface-variant">
             No failed or partial imports in the last 30 days.
-          </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs font-light">

@@ -36,16 +36,29 @@ export function CurateImagesClient({
   const [galleyName, setGalleyName] = useState(initialGalleyName);
   const [error, setError] = useState<string | null>(null);
 
-  // Poll for completion while images are still generating.
+  // Poll for completion while images are still generating. If the polling
+  // endpoint keeps failing (>3 consecutive), surface an error and stop —
+  // previously this silently swallowed errors and left the user staring at a
+  // stuck "pending" state forever.
   useEffect(() => {
     if (!pending) return;
+    let consecutiveFailures = 0;
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/admin/campaign-studio/runs/${runId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setCandidates(data.candidates);
-      if (data.status !== "images_pending") {
-        setPending(false);
+      try {
+        const res = await fetch(`/api/admin/campaign-studio/runs/${runId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        consecutiveFailures = 0;
+        const data = await res.json();
+        setCandidates(data.candidates);
+        if (data.status !== "images_pending") {
+          setPending(false);
+        }
+      } catch {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 3) {
+          setError("Lost contact with the image-generation job. Refresh to retry.");
+          setPending(false);
+        }
       }
     }, 3000);
     return () => clearInterval(interval);
