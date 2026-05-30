@@ -87,6 +87,7 @@ const RECIPE_SCHEMA = `{
 }`;
 
 const COMMON_RULES = `Common rules:
+- Output language: keep name, description, ingredient names, ingredient group labels, and step instructions in the SAME LANGUAGE as the source content — do NOT translate to English (or any other language). If the source is in German, the recipe stays in German; if it's in Italian, it stays in Italian. Type, season, cuisine, and main_ingredients stay in lowercase English (they're tag values, not display text). Users translate on demand via the in-app Translate button.
 - Convert all ingredient amounts to numbers (e.g. "½" → 0.5, "1/3" → 0.33)
 - Unit should be one of: g, kg, ml, l, tsp, tbsp, cup, piece, pinch, slice, clove, handful, "to taste", or null
 - prep_time: total active + passive cooking time in minutes

@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { FetchResult, ImageSource, ParsedVia, ParseDiagnostics } from "./types";
 import { firstUsable } from "./utils";
 import { fetchViaPerplexity } from "./perplexity";
+import { logger } from "@/lib/logger";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
 
@@ -335,12 +336,16 @@ export async function parseYouTube(url: string): Promise<FetchResult> {
 
   // Single structured log per parse — Vercel/Drains pick this up. Keeps the
   // GAL-139 test harness honest about which route fell through and why.
-  console.info(
-    `[parseYouTube] ${canonicalYouTubeUrl(url)} desc=${descriptionLength}` +
-      ` looksLikeRecipe=${looksLikeRecipe} transcript=${transcriptLength}` +
-      ` thumbs=${thumbnailsR.ms}ms meta=${watchMetaR.ms}ms tx=${transcriptR.ms}ms` +
-      ` total=${Date.now() - t0}ms`
-  );
+  logger.info("parse_youtube_complete", {
+    url: canonicalYouTubeUrl(url),
+    descLen: descriptionLength,
+    looksLikeRecipe,
+    transcriptLen: transcriptLength,
+    thumbnailMs: thumbnailsR.ms,
+    metaMs: watchMetaR.ms,
+    transcriptMs: transcriptR.ms,
+    totalMs: Date.now() - t0,
+  });
 
   const baseDiagnostics: ParseDiagnostics = {
     descriptionLength,

@@ -11,10 +11,10 @@ export function NavTab({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`flex-shrink-0 pb-3 text-sm border-b-2 transition-colors ${
+      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm transition-colors ${
         active
-          ? "border-anthracite text-anthracite font-semibold"
-          : "border-transparent text-on-surface-variant font-light"
+          ? "bg-surface-low text-anthracite font-semibold"
+          : "text-on-surface-variant font-light hover:text-anthracite"
       }`}
     >
       {label}
