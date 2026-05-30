@@ -52,7 +52,9 @@ export function TakeOfflineButton({
   return (
     <div className="flex flex-col gap-2 shrink-0 ml-3 max-w-[200px]">
       <p className="text-[10px] font-light text-anthracite">
-        Take this landing page offline? It will stop resolving.
+        {imported
+          ? "Stop this campaign? Distribution is dropped; the user's public galley stays online."
+          : "Take this landing page offline? It will stop resolving."}
       </p>
       {!imported && (
         <label className="flex items-start gap-2 text-[10px] font-light text-anthracite">

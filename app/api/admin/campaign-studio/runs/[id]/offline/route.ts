@@ -69,8 +69,10 @@ export async function POST(
       // Cascades recipes, photos. This permanently removes the landing page.
       const { error: delErr } = await service.from("galleys").delete().eq("id", galleyId);
       if (delErr) throw new Error(`galley delete: ${delErr.message}`);
-    } else {
-      // Unpublish the galley — the landing page stops resolving.
+    } else if (!imported) {
+      // Pipeline-generated galley — unpublish it so the landing page stops
+      // resolving. Imported galleys belong to a real user, so we leave their
+      // public visibility untouched and only drop the campaign distribution.
       const { error: pubErr } = await service
         .from("galleys")
         .update({ is_public: false, public_since: null })
