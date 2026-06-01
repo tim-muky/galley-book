@@ -13,6 +13,10 @@ generated marketing asset.
 - **`generate-recipes.ts`** — the three-step content layer the pipeline calls in
   order: `generateRecipeCandidates(brief)` → `generateRecipeImage(candidate)` →
   `expandRecipe(candidate)`.
+- **`meta-ads.ts`** / **`meta-config.ts`** — the Meta Marketing API layer (GAL-391).
+  See [Meta Marketing API](#meta-marketing-api-gal-391).
+- **`instagram.ts`** / **`capi.ts`** — organic IG Graph API publishing and the
+  server-side Conversions API.
 
 ## Visual tone
 
@@ -50,3 +54,40 @@ call sites:
 Subject goes **first** (models weigh early tokens heavier), then optional
 composition direction, then the style block — so the watercolor look is applied
 to the right subject rather than producing a generic watercolor scene.
+
+## Meta Marketing API (GAL-391)
+
+`meta-ads.ts` pushes generated ad creatives into the standing Advantage+ campaign
+(GAL-54), controls budget/state, and reads insights for the dashboard. Call sites:
+the "Push to Meta" button on a published run (`/api/admin/campaign-studio/runs/[id]/distribute/meta-push`)
+and the budget/pause controls in the dashboard (`/api/admin/campaign-studio/ads`).
+
+### Auth
+
+One secret: a **Meta System User token**, in `META_SYSTEM_USER_TOKEN`. This is a
+business-level token, **not** user OAuth and **not** the Page token.
+
+1. Meta Business Settings → **Users → System Users** → add (or select) a System User.
+2. Assign it the **ad account** (`act_…`) and the **Page** with full control.
+3. **Generate token** → app = *galley-ads* → scopes **`ads_management`** + **`ads_read`**.
+4. Put it in `META_SYSTEM_USER_TOKEN` (Vercel env + `.env.local`). Long-lived; rotate
+   if it leaks. Everything spend-capable is created **PAUSED** — budget and resume
+   are explicit, separate admin actions, so a leaked token can't silently spend.
+
+### Asset IDs
+
+The non-secret IDs (ad account, page, IG user, app, campaign, ad set, pixel) have
+in-code defaults in `meta-config.ts` and are overridable via `META_*` env vars —
+see `.env.example`. Override only when pointing at a different ad account/campaign.
+
+### API surface
+
+| Function | Does |
+|---|---|
+| `pushAdCreative({ imageUrl, headline, primaryText, linkUrl, name })` | Creates an ad creative + a **PAUSED** ad in the standing ad set. Returns `{ creativeId, adId }`. |
+| `setDailyBudget(euros)` / `setWeeklyBudget(weeklyEuros)` | Sets campaign budget (Meta wants cents; weekly is pushed as weekly ÷ 7). |
+| `pauseCampaign()` / `resumeCampaign()` | Flip campaign delivery. |
+| `getInsights({ datePreset, breakdowns, campaignId })` | impressions/clicks/spend + `complete_registration` signups & cost-per-signup. Returns `[]` before any delivery. Feeds the GAL-393 dashboard. |
+
+Errors throw `MetaAdsError`, preferring Meta's `error_user_msg`; routes surface the
+message (never silent). Graph version is pinned at **v25.0** in `meta-ads.ts`.

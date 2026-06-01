@@ -220,3 +220,48 @@ export async function getInsights({
   );
   return (data.data ?? []).map((r) => parseRow(r, breakdowns));
 }
+
+// ---- Per-creative insights + per-ad pause ---------------------------------
+
+/** A single ad (creative) with its delivery — feeds the per-creative table. */
+export interface AdInsightRow extends InsightRow {
+  adId: string;
+  adName: string;
+}
+
+interface RawAdInsightRow extends RawInsightRow {
+  ad_id?: string;
+  ad_name?: string;
+}
+
+/**
+ * Per-creative insights (level=ad) — answers "which creative drives the
+ * cheapest signups?". Returns [] when nothing has delivered yet.
+ */
+export async function getAdInsights({
+  datePreset = "last_7d",
+  campaignId = META.campaignId,
+}: { datePreset?: string; campaignId?: string } = {}): Promise<AdInsightRow[]> {
+  const data = await call<{ data?: RawAdInsightRow[] }>(`${campaignId}/insights`, "GET", {
+    fields: "ad_id,ad_name,impressions,clicks,spend,actions,cost_per_action_type",
+    date_preset: datePreset,
+    level: "ad",
+  });
+  return (data.data ?? []).map((r) => ({
+    ...parseRow(r, []),
+    adId: String(r.ad_id ?? ""),
+    adName: String(r.ad_name ?? ""),
+  }));
+}
+
+/** Pause a single ad (creative) — kill an underperformer without touching the
+ * rest of the campaign. */
+export async function pauseAd(adId: string): Promise<void> {
+  await call(`${adId}`, "POST", { status: "PAUSED" });
+  logger.info("campaign_studio.ads.ad_paused", { adId });
+}
+
+export async function resumeAd(adId: string): Promise<void> {
+  await call(`${adId}`, "POST", { status: "ACTIVE" });
+  logger.info("campaign_studio.ads.ad_resumed", { adId });
+}

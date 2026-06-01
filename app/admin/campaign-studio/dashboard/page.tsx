@@ -1,12 +1,14 @@
 import { requireAdmin } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getInsights, type InsightRow } from "@/lib/marketing/meta-ads";
+import { getInsights, getAdInsights, type InsightRow, type AdInsightRow } from "@/lib/marketing/meta-ads";
 import { AdsControls } from "./ads-controls";
+import { CreativeControls } from "./creative-controls";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
 const ORGANIC = "__organic__";
 
 interface FunnelRow {
@@ -41,6 +43,8 @@ export default async function DashboardPage() {
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const rows = new Map<string, FunnelRow>();
+  // Signups per day for the last 7 days (index 6 = today) — sparkline trend.
+  const daily = new Array<number>(7).fill(0);
   let totalSignups = 0;
   let totalPremium = 0;
 
@@ -55,8 +59,13 @@ export default async function DashboardPage() {
       rows.set(key, row);
     }
     row.signups++;
-    if (u.created_at && now - new Date(u.created_at as string).getTime() <= WEEK_MS) {
-      row.signups7d++;
+    if (u.created_at) {
+      const ageMs = now - new Date(u.created_at as string).getTime();
+      if (ageMs <= WEEK_MS) {
+        row.signups7d++;
+        const dayIndex = 6 - Math.floor(ageMs / DAY_MS);
+        if (dayIndex >= 0 && dayIndex <= 6) daily[dayIndex]++;
+      }
     }
     const isPremium = premiumUserIds.has(u.id);
     if (isPremium) row.premium++;
@@ -71,14 +80,20 @@ export default async function DashboardPage() {
   // Paid metrics (GAL-391) — best-effort; the campaign may be paused / no delivery.
   let paidTotals: InsightRow | null = null;
   let paidByAudience: InsightRow[] = [];
+  let paidByCreative: AdInsightRow[] = [];
   let paidError: string | null = null;
   try {
-    const [totals, byAudience] = await Promise.all([
+    const [totals, byAudience, byCreative] = await Promise.all([
       getInsights({ datePreset: "last_7d" }),
       getInsights({ datePreset: "last_7d", breakdowns: ["age", "gender"] }),
+      getAdInsights({ datePreset: "last_7d" }),
     ]);
     paidTotals = totals[0] ?? null;
     paidByAudience = byAudience;
+    // Cheapest signups first; ads with no signups sink to the bottom.
+    paidByCreative = byCreative.sort(
+      (a, b) => (a.costPerSignup ?? Infinity) - (b.costPerSignup ?? Infinity),
+    );
   } catch (e) {
     paidError = e instanceof Error ? e.message : "Insights unavailable";
   }
@@ -94,10 +109,18 @@ export default async function DashboardPage() {
       </p>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-3">
         <Stat label="Signups" value={totalSignups} />
         <Stat label="Premium" value={totalPremium} />
         <Stat label="Conversion" value={`${overallConv}%`} />
+      </div>
+
+      {/* 7-day signups trend */}
+      <div className="bg-white rounded-md p-4 shadow-ambient mb-6">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+          Signups · last 7 days
+        </p>
+        <Sparkline values={daily} />
       </div>
 
       {/* Per-source funnel */}
@@ -166,6 +189,37 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {paidByCreative.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+                By creative · cheapest signups first
+              </p>
+              <div className="flex flex-col gap-2 mb-3">
+                {paidByCreative.map((r) => (
+                  <div key={r.adId} className="bg-white rounded-md p-3 shadow-ambient">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <span className="text-sm font-light text-anthracite truncate">{r.adName || r.adId}</span>
+                      <CreativeControls adId={r.adId} />
+                    </div>
+                    <div className="flex gap-5">
+                      <Metric label="Spend" value={r.spend} euro />
+                      <Metric label="Clicks" value={r.clicks} />
+                      <Metric label="Signups" value={r.signups} />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+                          Cost / signup
+                        </p>
+                        <p className="text-lg font-light text-anthracite">
+                          {r.costPerSignup != null ? `€${r.costPerSignup.toFixed(2)}` : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {paidByAudience.length > 0 && (
             <>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
@@ -210,13 +264,31 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value, euro }: { label: string; value: number; euro?: boolean }) {
   return (
     <div>
       <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
         {label}
       </p>
-      <p className="text-lg font-light text-anthracite">{value}</p>
+      <p className="text-lg font-light text-anthracite">{euro ? `€${value.toFixed(2)}` : value}</p>
+    </div>
+  );
+}
+
+/** Minimal inline bar sparkline — no chart lib (prototype scale). */
+function Sparkline({ values }: { values: number[] }) {
+  const max = Math.max(1, ...values);
+  return (
+    <div className="flex items-end gap-1.5 h-12">
+      {values.map((v, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
+          <div
+            className="w-full bg-anthracite rounded-sm"
+            style={{ height: `${Math.max(2, (v / max) * 100)}%` }}
+            title={`${v} signup${v === 1 ? "" : "s"}`}
+          />
+        </div>
+      ))}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import {
   setWeeklyBudget,
   pauseCampaign,
   resumeCampaign,
+  pauseAd,
+  resumeAd,
   MetaAdsError,
 } from "@/lib/marketing/meta-ads";
 import { NextResponse } from "next/server";
@@ -12,6 +14,8 @@ const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("budget"), weeklyEuros: z.number().positive().max(10000) }),
   z.object({ action: z.literal("pause") }),
   z.object({ action: z.literal("resume") }),
+  z.object({ action: z.literal("pause_ad"), adId: z.string().min(1) }),
+  z.object({ action: z.literal("resume_ad"), adId: z.string().min(1) }),
 ]);
 
 export async function POST(request: Request) {
@@ -36,6 +40,12 @@ export async function POST(request: Request) {
         break;
       case "resume":
         await resumeCampaign();
+        break;
+      case "pause_ad":
+        await pauseAd(parsed.data.adId);
+        break;
+      case "resume_ad":
+        await resumeAd(parsed.data.adId);
         break;
     }
     return NextResponse.json({ ok: true });
