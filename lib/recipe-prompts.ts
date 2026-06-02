@@ -9,6 +9,7 @@ export type ParsedVia =
   | "jsonld"
   | "perplexity"
   | "html_text"
+  | "pasted_text"
   | "none";
 
 export type ImageSource =
@@ -166,6 +167,14 @@ function sourceGuidance(parsedVia: ParsedVia, hasImage: boolean): string {
         "The content below is stripped HTML from a recipe page that did not expose structured data.",
         "Extract carefully. Ignore navigation, related-recipe lists, comments, and reviews.",
         "Prefer ingredients that appear in a list and steps that appear under headings like 'Method', 'Directions', or 'Preparation'.",
+      ].join(" ");
+
+    case "pasted_text":
+      return [
+        "The content below is raw recipe text the user pasted directly into the app — copied from a website, a message, a note, or typed out.",
+        "Extract directly and trust what is written: ingredient amounts, units, and steps are the source's own words — only normalise their form (½ → 0.5).",
+        "Do NOT invent ingredients or steps that aren't present. If the text omits a procedure, leave steps empty rather than fabricating one.",
+        "The text may be messy (stray headers, comments, ratings, ads copied along with the recipe) — ignore anything that isn't part of the recipe itself.",
       ].join(" ");
 
     case "none":
