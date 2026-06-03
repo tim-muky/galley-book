@@ -69,6 +69,7 @@
     "modes": {
       "link": "Import Link",
       "photo": "Photo",
+      "text": "Text",
       "manual": "Manual"
     },
     "link": {
@@ -76,6 +77,13 @@
       "placeholder": "Paste Instagram, YouTube, or web URL…",
       "privacyNote": "Recipe content is sent to Google Gemini and Perplexity AI for processing.",
       "parse": "Import from link",
+      "parsing": "Analyzing with AI…"
+    },
+    "text": {
+      "label": "Paste Recipe Text",
+      "placeholder": "Paste the full recipe text here…",
+      "privacyNote": "The text you paste is sent to Google Gemini for processing.",
+      "parse": "Import from text",
       "parsing": "Analyzing with AI…"
     },
     "photo": {

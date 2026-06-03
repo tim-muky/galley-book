@@ -4,6 +4,7 @@ export type AIOperation =
   | "parse_link"
   | `parse_link:${string}`
   | "parse_image"
+  | "parse_text"
   | "recommendation"
   | "translate";
 

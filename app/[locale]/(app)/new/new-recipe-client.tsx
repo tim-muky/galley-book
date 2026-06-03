@@ -59,7 +59,7 @@ import { TagEditor, type TagInput } from "@/components/tag-editor";
 import { PhotoCropper } from "@/components/photo-cropper";
 import type { TagKind } from "@/types/database";
 
-type Mode = "link" | "photo" | "manual";
+type Mode = "link" | "photo" | "text" | "manual";
 
 const UNITS = ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "pinch", "slice", "clove", "handful", "to taste"] as const;
 
@@ -159,7 +159,8 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
   const t = useTranslations("newRecipe");
   const [mode, setMode] = useState<Mode>("link");
   const [linkUrl, setLinkUrl] = useState("");
-  const [parsingSource, setParsingSource] = useState<"link" | "photo" | null>(null);
+  const [pastedText, setPastedText] = useState("");
+  const [parsingSource, setParsingSource] = useState<"link" | "photo" | "text" | null>(null);
   const parsing = parsingSource !== null;
   const [parseError, setParseError] = useState("");
   const [parseWarning, setParseWarning] = useState("");
@@ -227,6 +228,45 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
       if (parsedIngredientCount < 3) {
         setParseWarning("This video had limited recipe detail — check that ingredients and steps are complete before saving.");
       }
+      setShowForm(true);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Parse failed");
+    } finally {
+      setParsingSource(null);
+    }
+  }
+
+  async function handleParseText() {
+    if (!pastedText.trim()) return;
+    setParsingSource("text");
+    setParseError("");
+    setParseUpgradeNeeded(false);
+    setParseWarning("");
+    try {
+      const res = await fetch("/api/recipes/parse-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: pastedText }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        if (err?.upgrade) {
+          setParseUpgradeNeeded(true);
+          return;
+        }
+        throw new Error(err.error ?? "Failed to parse recipe");
+      }
+      const parsed: RecipeForm & {
+        cuisine?: string | null;
+        main_ingredients?: string[] | null;
+      } = await res.json();
+      setForm({
+        ...emptyForm,
+        ...parsed,
+        ingredients: (parsed.ingredients ?? []).map((ing) => ({ ...ing, _key: crypto.randomUUID(), group: ing.group ?? "" })),
+        steps: (parsed.steps ?? []).map((step) => ({ ...step, _key: crypto.randomUUID() })),
+        tags: tagsFromParsed(parsed),
+      });
       setShowForm(true);
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Parse failed");
@@ -406,6 +446,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
     setShowForm(false);
     setForm(emptyForm);
     setLinkUrl("");
+    setPastedText("");
     setParseError("");
     setParseWarning("");
     setSaveError("");
@@ -491,6 +532,13 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
           {t("modes.photo")}
         </button>
         <button
+          onClick={() => { setMode("text"); setShowForm(false); clearCamera(); setImageCandidates([]); setPhotoPreview(""); setPhotoFile(null); }}
+          style={mode === "text" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
+          className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
+        >
+          {t("modes.text")}
+        </button>
+        <button
           onClick={() => { setMode("manual"); setShowForm(true); setForm(emptyForm); setPhotoPreview(""); setPhotoFile(null); setImageCandidates([]); clearCamera(); }}
           style={mode === "manual" ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" } : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }}
           className="flex-1 py-2.5 rounded-full text-sm font-light border transition-colors"
@@ -529,6 +577,40 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
             className="w-full text-sm font-light py-4 rounded-full border disabled:opacity-40"
           >
             {parsingSource === "link" ? <ParsingLabel /> : t("link.parse")}
+          </button>
+        </div>
+      )}
+
+      {mode === "text" && !showForm && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-anthracite uppercase tracking-wide">
+            {t("text.label")}
+          </p>
+          <textarea
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
+            placeholder={t("text.placeholder")}
+            rows={10}
+            className="w-full bg-white border border-[#252729] rounded-xl px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 placeholder:font-thin outline-none resize-none"
+          />
+          {parseUpgradeNeeded ? <UpgradeCard /> : null}
+          {parseError && !parseUpgradeNeeded && (
+            <p className="text-xs font-light text-red-500">{parseError}</p>
+          )}
+          <p className="text-[11px] font-light text-on-surface-variant">{t("text.privacyNote")}</p>
+          <button
+            onClick={handleParseText}
+            disabled={!pastedText.trim() || parsing}
+            style={
+              parsingSource === "text"
+                ? { backgroundColor: PARSING_BG, borderColor: PARSING_BG, color: "#fff" }
+                : pastedText.trim()
+                  ? { backgroundColor: "#252729", borderColor: "#252729", color: "#fff" }
+                  : { backgroundColor: "#fff", borderColor: "#252729", color: "#252729" }
+            }
+            className="w-full text-sm font-light py-4 rounded-full border disabled:opacity-40"
+          >
+            {parsingSource === "text" ? <ParsingLabel /> : t("text.parse")}
           </button>
         </div>
       )}
@@ -683,7 +765,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
 
       {showForm && (
         <div className="space-y-6">
-          {(mode === "link" || mode === "photo") && (
+          {(mode === "link" || mode === "photo" || mode === "text") && (
             <div className="bg-surface-low rounded-md px-4 py-3">
               <p className="text-xs font-light text-on-surface-variant">{t("form.aiParsed")}</p>
             </div>
@@ -802,7 +884,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               </label>
               <input type="number" min="1" value={form.prep_time} onChange={(e) => updateField("prep_time", e.target.value)} placeholder="30"
                 className="w-full bg-white border border-[#252729] rounded-full px-4 py-3 text-sm font-light text-anthracite placeholder:text-on-surface-variant/40 outline-none focus-visible:ring-2 focus-visible:ring-anthracite focus-visible:ring-offset-2" />
-              {!form.prep_time && (mode === "link" || mode === "photo") && (
+              {!form.prep_time && (mode === "link" || mode === "photo" || mode === "text") && (
                 <p className="text-[11px] font-light text-on-surface-variant/70 mt-1.5 px-2">
                   Add prep time so the library quick-filter works.
                 </p>
@@ -900,7 +982,7 @@ export function NewRecipeClient({ galleys, defaultGalleyId }: Props) {
               ? t("form.saving")
               : t("form.saveTo", { galley: galleys.find((g) => g.id === selectedGalleyId)?.name ?? "Galley" })}
           </button>
-          {(mode === "link" || mode === "photo") && (
+          {(mode === "link" || mode === "photo" || mode === "text") && (
             <button
               onClick={handleDiscard}
               disabled={saving}
