@@ -2,7 +2,8 @@
  * IG carousel slide renderer (GAL-390).
  *
  * Renders 1080×1350 (4:5) slides for a published galley:
- *   cover → one slide per recipe → CTA.
+ *   cover → 3 recipes → CTA → remaining recipes → CTA.
+ * Both CTA slides carry the galleybook logo.
  *
  * Pipeline: JSX → PNG via next/og `ImageResponse` (Satori+Resvg, flexbox-only
  * CSS) → JPEG via sharp. IG requires JPEG; sharp also pre-shrinks embedded
@@ -45,6 +46,27 @@ async function loadFonts() {
     { name: "Inter", data: toArrayBuffer(semibold), weight: 600, style: "normal" },
   ];
   return fontCache;
+}
+
+// ---- Logo (memoized) -------------------------------------------------------
+
+let logoCache: string | null | undefined;
+
+/**
+ * The CTA slides sit on a dark anthracite background, but `public/logo.png` is
+ * a black monogram on transparent. Invert the RGB (black → white) while keeping
+ * the alpha channel so the mark reads cleanly on dark. Returns a PNG data URI.
+ */
+async function loadLogoDataUri(): Promise<string | null> {
+  if (logoCache !== undefined) return logoCache;
+  try {
+    const buf = await readFile(join(process.cwd(), "public", "logo.png"));
+    const white = await sharp(buf).negate({ alpha: false }).png().toBuffer();
+    logoCache = `data:image/png;base64,${white.toString("base64")}`;
+  } catch {
+    logoCache = null;
+  }
+  return logoCache;
 }
 
 // ---- Image pre-processing --------------------------------------------------
@@ -161,7 +183,8 @@ function RecipeSlide({
   );
 }
 
-function CtaSlide() {
+function CtaSlide({ logoUri, variant }: { logoUri: string | null; variant: "mid" | "end" }) {
+  const isMid = variant === "mid";
   return (
     <div
       style={{
@@ -175,15 +198,23 @@ function CtaSlide() {
         padding: "0 80px",
       }}
     >
+      {logoUri ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUri} width={150} height={120} alt="" style={{ objectFit: "contain", marginBottom: 56 }} />
+      ) : null}
       <div style={{ display: "flex", fontSize: 72, fontWeight: 300, color: "#FFFFFF", textAlign: "center", lineHeight: 1.1, marginBottom: 28 }}>
-        Save the whole galley
+        {isMid ? "Keep scrolling ↓" : "Save the whole galley"}
       </div>
-      <div style={{ display: "flex", fontSize: 34, fontWeight: 300, color: "#C9C9C9", textAlign: "center", lineHeight: 1.35, marginBottom: 56 }}>
-        Recipes from Instagram, YouTube &amp; the web — in seconds, in one place.
+      <div style={{ display: "flex", fontSize: 34, fontWeight: 300, color: "#C9C9C9", textAlign: "center", lineHeight: 1.35, marginBottom: isMid ? 0 : 56 }}>
+        {isMid
+          ? "The full galley is just ahead."
+          : "Recipes from Instagram, YouTube & the web — in seconds, in one place."}
       </div>
-      <div style={{ display: "flex", fontSize: 30, fontWeight: 600, color: "#FFFFFF", letterSpacing: 2 }}>
-        galleybook.com
-      </div>
+      {isMid ? null : (
+        <div style={{ display: "flex", fontSize: 30, fontWeight: 600, color: "#FFFFFF", letterSpacing: 2 }}>
+          galleybook.com
+        </div>
+      )}
     </div>
   );
 }
@@ -203,17 +234,22 @@ export interface RenderCarouselInput {
   recipes: CarouselRecipe[];
 }
 
+/** Insert a mid-carousel CTA after this many recipe slides. */
+const MID_CTA_AFTER = 3;
+
 /**
  * Render cover + per-recipe + CTA slides. Returns JPEG buffers in display order.
- * Caps at 8 recipe slides so the carousel stays within IG's 10-item limit
- * (cover + 8 + CTA = 10).
+ * A CTA slide is inserted after the 3rd recipe and another at the end; both
+ * carry the logo. Caps at 7 recipe slides so the carousel stays within IG's
+ * 10-item limit (cover + 7 recipes + 2 CTAs = 10).
  */
 export async function renderCarousel({
   title,
   recipes,
 }: RenderCarouselInput): Promise<Buffer[]> {
   const fonts = await loadFonts();
-  const capped = recipes.slice(0, 8);
+  const logoUri = await loadLogoDataUri();
+  const capped = recipes.slice(0, 7);
 
   const heroUri = capped[0] ? await toEmbeddedDataUri(capped[0].imageUrl, { width: W, height: Math.round(H * 0.62) }) : null;
 
@@ -223,7 +259,9 @@ export async function renderCarousel({
 
   const slides: React.ReactElement[] = [
     <CoverSlide key="cover" title={title} heroUri={heroUri} />,
-    ...capped.map((r, i) => (
+  ];
+  capped.forEach((r, i) => {
+    slides.push(
       <RecipeSlide
         key={`recipe-${i}`}
         name={r.name}
@@ -231,10 +269,15 @@ export async function renderCarousel({
         imageUri={recipeUris[i]}
         index={i + 1}
         total={capped.length}
-      />
-    )),
-    <CtaSlide key="cta" />,
-  ];
+      />,
+    );
+    // Mid-carousel CTA after the 3rd recipe — only when more recipes follow,
+    // so it never lands right before the closing CTA.
+    if (i + 1 === MID_CTA_AFTER && capped.length > MID_CTA_AFTER) {
+      slides.push(<CtaSlide key="cta-mid" logoUri={logoUri} variant="mid" />);
+    }
+  });
+  slides.push(<CtaSlide key="cta-end" logoUri={logoUri} variant="end" />);
 
   // Render sequentially — each ImageResponse is CPU-heavy (Satori + Resvg);
   // parallelizing risks OOM in a serverless function.
