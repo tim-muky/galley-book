@@ -64,10 +64,11 @@ export const WATERCOLOR_NEGATIVE_PROMPT = [
  * Default model for watercolor generation. Routed through the Vercel AI Gateway
  * so we can swap providers without touching call sites.
  *
- * Imagen 3 produces the cleanest watercolor textures in our testing;
- * gpt-image-1 is the fallback if Imagen quota is exhausted.
+ * Imagen 4 Fast produces clean watercolor textures in ~5s; gpt-image-2 is
+ * the fallback if Imagen is unavailable. (The non-fast imagen-4.0-generate-001
+ * is currently unprovisioned on the gateway and times out — do not use it.)
  */
-export const WATERCOLOR_DEFAULT_MODEL = "google/imagen-4.0-generate-001";
+export const WATERCOLOR_DEFAULT_MODEL = "google/imagen-4.0-fast-generate-001";
 export const WATERCOLOR_FALLBACK_MODEL = "openai/gpt-image-2";
 
 export interface BuildWatercolorPromptInput {
