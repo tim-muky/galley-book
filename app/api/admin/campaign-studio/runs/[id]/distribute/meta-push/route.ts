@@ -54,20 +54,29 @@ export async function POST(
   }
 
   // Use the carousel cover as the ad image; deep-link to the galley with paid UTM.
+  // Each variant gets a unique utm_content so a signup (public.users) can be
+  // attributed to the exact creative, and utm_term carries the angle (GAL-431).
   const heroImage = publicUrl(carouselPaths[0]);
-  const linkUrl = `https://galleybook.com/galley/${galleyId}?utm_source=meta&utm_medium=paid_social&utm_campaign=gotw`;
+  const baseUrl = `https://galleybook.com/galley/${galleyId}`;
+  const slug = galleyId.slice(0, 8);
 
   try {
-    const pushed: { format: string; creativeId: string; adId: string }[] = [];
+    const pushed: { format: string; creativeId: string; adId: string; utmContent: string }[] = [];
+    let i = 0;
     for (const v of variants) {
+      i += 1;
+      const utmContent = `${slug}-${v.format}-${i}`;
+      const linkUrl =
+        `${baseUrl}?utm_source=meta&utm_medium=paid_social&utm_campaign=gotw` +
+        `&utm_content=${encodeURIComponent(utmContent)}&utm_term=${encodeURIComponent(v.format)}`;
       const { creativeId, adId } = await pushAdCreative({
         imageUrl: heroImage,
         headline: v.headline,
         primaryText: v.primaryText,
         linkUrl,
-        name: `GOTW ${v.format} — ${galleyId.slice(0, 8)}`,
+        name: `GOTW ${v.format} — ${slug}`,
       });
-      pushed.push({ format: v.format, creativeId, adId });
+      pushed.push({ format: v.format, creativeId, adId, utmContent });
     }
 
     await service
