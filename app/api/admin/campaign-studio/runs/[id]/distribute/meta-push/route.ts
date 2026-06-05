@@ -2,6 +2,7 @@ import { requireAdminApi } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { pushAdCreative, MetaAdsError } from "@/lib/marketing/meta-ads";
+import { tagPushedCreatives } from "@/lib/marketing/creative-tagging";
 import type { AdVariant } from "@/lib/marketing/ad-copy";
 import { NextResponse } from "next/server";
 
@@ -83,6 +84,11 @@ export async function POST(
       .from("galley_distributions")
       .update({ meta_creative_ids: pushed, meta_status: "pushed", meta_error: null })
       .eq("id", dist.id);
+
+    // Tag the pushed creatives for the learning loop (GAL-430) — best-effort.
+    await tagPushedCreatives(dist.id).catch((e) =>
+      logger.error("campaign_studio.ads.tagging_failed", { runId: id, message: String(e) }),
+    );
 
     logger.info("campaign_studio.ads.pushed", { runId: id, count: pushed.length });
     return NextResponse.json({ ok: true, pushed });

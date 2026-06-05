@@ -12,6 +12,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { getTopLearnings } from "./learnings";
 
 const COPY_MODEL = "google/gemini-3.5-flash";
 
@@ -91,6 +92,14 @@ export async function generateAdCopy({
   recipeNames,
   locale = "de",
 }: GenerateAdCopyInput): Promise<AdVariant[]> {
+  // Bias new copy toward what's working (GAL-430 learning loop) — best-effort.
+  const learnings = await getTopLearnings(6).catch(() => []);
+  const learningsLine = learnings.length
+    ? `Proven learnings to lean into (don't contradict them):\n${learnings
+        .map((l) => `- ${l.statement} [${l.confidence}]`)
+        .join("\n")}`
+    : "";
+
   const { object } = await generateObject({
     model: COPY_MODEL,
     schema: AdVariantsSchema,
@@ -109,6 +118,7 @@ export async function generateAdCopy({
     prompt: [
       `Galley theme: ${theme}`,
       recipeNames.length ? `Example dishes: ${recipeNames.slice(0, 6).join(", ")}` : "",
+      learningsLine,
     ]
       .filter(Boolean)
       .join("\n"),
