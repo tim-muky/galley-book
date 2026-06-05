@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { DailyMetrics, GrowthAnalysis } from "@/lib/marketing/growth";
+import type { AutoAction } from "@/lib/marketing/autopause";
 import Link from "next/link";
 
 /**
@@ -22,6 +23,7 @@ interface ReportRow {
   generated_at: string;
   metrics: DailyMetrics;
   analysis: GrowthAnalysis | null;
+  auto_actions: AutoAction[] | null;
 }
 
 export async function DailyReportSection({ selectedDate }: { selectedDate?: string }) {
@@ -52,7 +54,7 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
 
   const { data: report } = await service
     .from("growth_daily_reports")
-    .select("report_date, generated_at, metrics, analysis")
+    .select("report_date, generated_at, metrics, analysis, auto_actions")
     .eq("report_date", active)
     .single<ReportRow>();
 
@@ -68,6 +70,7 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
   }
 
   const { metrics, analysis } = report;
+  const autoActions = report.auto_actions ?? [];
   const { newUsers, paid, kpis, last7d } = metrics;
   const ch = newUsers.byChannel;
   // Reports stored before GAL-425 have no `organic` field.
@@ -175,6 +178,31 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
             {organic.totals.likes} likes · {organic.totals.comments} comments
             {organic.totals.saved != null ? ` · ${organic.totals.saved} saves` : ""}
           </p>
+        </>
+      )}
+
+      {/* Auto-actions (GAL-427) */}
+      {autoActions.length > 0 && (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Auto-actions
+          </p>
+          <div className="flex flex-col gap-2 mb-4">
+            {autoActions.map((a) => (
+              <div key={a.adId} className="bg-white rounded-md p-3 shadow-ambient">
+                <p className="text-sm font-light text-anthracite">
+                  {a.adName || a.adId}
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-widest ml-2"
+                    style={{ color: a.executed ? "#b04646" : "#9a7a2f" }}
+                  >
+                    {a.executed ? "Paused" : "Would pause · dry-run"}
+                  </span>
+                </p>
+                <p className="text-xs font-light text-on-surface-variant mt-0.5">{a.reason}</p>
+              </div>
+            ))}
+          </div>
         </>
       )}
 

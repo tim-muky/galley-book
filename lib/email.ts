@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { fetchPreviousMetrics, type DailyMetrics, type GrowthAnalysis } from "@/lib/marketing/growth";
+import type { AutoAction } from "@/lib/marketing/autopause";
 
 const FROM = "galleybook <contact@galleybook.com>";
 
@@ -142,20 +143,42 @@ function organicBlock(organic: DailyMetrics["organic"]): string {
       </p>`;
 }
 
+/** Auto-pause guardrail block (GAL-427) — omitted when there were no actions. */
+function autoActionsBlock(actions: AutoAction[]): string {
+  if (!actions.length) return "";
+  const rows = actions
+    .map((a) => {
+      const tag = a.executed
+        ? `<span style="color: #b04646; font-weight: 600;">Paused</span>`
+        : `<span style="color: #9a7a2f; font-weight: 600;">Would pause (dry-run)</span>`;
+      return `
+      <div style="margin-bottom: 0.6rem;">
+        <div style="font-size: 0.8125rem; font-weight: 600; color: #252729;">${a.adName || a.adId} — ${tag}</div>
+        <div style="font-size: 0.8125rem; font-weight: 300; line-height: 1.5; color: #474747;">${a.reason}</div>
+      </div>`;
+    })
+    .join("");
+  return `
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.5rem 0 0.5rem;">Auto-actions</p>
+      ${rows}`;
+}
+
 /**
  * Render the daily growth report as a branded HTML email + plain-text fallback.
- * Mirrors the growth_daily_reports row shape (metrics + analysis), plus optional
- * previous-day metrics for day-over-day deltas.
+ * Mirrors the growth_daily_reports row shape (metrics + analysis + auto-actions),
+ * plus optional previous-day metrics for day-over-day deltas.
  */
 export function renderGrowthDailyReport({
   reportDate,
   metrics,
   analysis,
+  autoActions = [],
   prev,
 }: {
   reportDate: string;
   metrics: DailyMetrics;
   analysis: GrowthAnalysis | null;
+  autoActions?: AutoAction[];
   prev?: DailyMetrics | null;
 }): { subject: string; html: string; text: string } {
   const { newUsers, paid, kpis, last7d } = metrics;
@@ -216,6 +239,8 @@ export function renderGrowthDailyReport({
 
       ${organicBlock(metrics.organic)}
 
+      ${autoActionsBlock(autoActions)}
+
       <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin: 1.25rem 0 0;">
         Last 7 days — ${last7d.newUsers} new users · ${eur(last7d.spend)} spend
       </p>
@@ -275,6 +300,16 @@ export function renderGrowthDailyReport({
           )} comments${metrics.organic.totals.saved != null ? ` · ${num(metrics.organic.totals.saved)} saves` : ""}`,
         ]
       : []),
+    ...(autoActions.length
+      ? [
+          "",
+          "Auto-actions:",
+          ...autoActions.map(
+            (a) =>
+              `  - ${a.adName || a.adId}: ${a.executed ? "PAUSED" : "would pause (dry-run)"} — ${a.reason}`,
+          ),
+        ]
+      : []),
     ...(analysis
       ? [
           "",
@@ -300,6 +335,7 @@ export async function sendGrowthDailyReport(report: {
   reportDate: string;
   metrics: DailyMetrics;
   analysis: GrowthAnalysis | null;
+  autoActions?: AutoAction[];
 }) {
   const to = (process.env.GROWTH_REPORT_TO ?? "tim@muky-kids.com")
     .split(",")

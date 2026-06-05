@@ -13,6 +13,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { getInsights, getAdInsights, type AdInsightRow } from "./meta-ads";
 import { getOrganicIgInsights, type IgOrganicInsights } from "./instagram";
+import { runAutoPause, type AutoAction } from "./autopause";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 
@@ -269,11 +270,12 @@ export async function analyzeGrowth(metrics: DailyMetrics): Promise<GrowthAnalys
 
 // ---- Persist ---------------------------------------------------------------
 
-/** Collect + analyze + upsert one daily report. Returns the stored row shape. */
+/** Collect + analyze + auto-pause + upsert one daily report. Returns the stored row shape. */
 export async function generateAndStoreDailyReport(): Promise<{
   reportDate: string;
   metrics: DailyMetrics;
   analysis: GrowthAnalysis | null;
+  autoActions: AutoAction[];
 }> {
   const metrics = await collectDailyMetrics();
 
@@ -285,6 +287,15 @@ export async function generateAndStoreDailyReport(): Promise<{
     logger.error("growth.analysis_failed", { message: String(e) });
   }
 
+  // Auto-pause guardrail (GAL-427) — runs after analysis; dry-run unless enabled.
+  let autoActions: AutoAction[] = [];
+  try {
+    autoActions = await runAutoPause(metrics.perCreative);
+  } catch (e) {
+    // An auto-action failure must never drop the report.
+    logger.error("growth.autopause_failed", { message: String(e) });
+  }
+
   const service = createServiceClient();
   const { error } = await service.from("growth_daily_reports").upsert(
     {
@@ -293,6 +304,7 @@ export async function generateAndStoreDailyReport(): Promise<{
       metrics,
       per_creative: metrics.perCreative,
       analysis,
+      auto_actions: autoActions,
     },
     { onConflict: "report_date" },
   );
@@ -303,7 +315,8 @@ export async function generateAndStoreDailyReport(): Promise<{
     newUsers: metrics.newUsers.total,
     spend: metrics.paid.spend,
     hasAnalysis: analysis != null,
+    autoActions: autoActions.length,
   });
 
-  return { reportDate: metrics.window.date, metrics, analysis };
+  return { reportDate: metrics.window.date, metrics, analysis, autoActions };
 }
