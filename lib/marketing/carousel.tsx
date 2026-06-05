@@ -183,8 +183,32 @@ function RecipeSlide({
   );
 }
 
-function CtaSlide({ logoUri, variant }: { logoUri: string | null; variant: "mid" | "end" }) {
+const CTA_COPY = {
+  de: {
+    midTitle: "Weiter wischen ↓",
+    midSub: "Die ganze Galley kommt gleich.",
+    endTitle: "Sichere dir die ganze Galley",
+    endSub: "Rezepte von Instagram, YouTube & dem Web — in Sekunden, an einem Ort.",
+  },
+  en: {
+    midTitle: "Keep scrolling ↓",
+    midSub: "The full galley is just ahead.",
+    endTitle: "Save the whole galley",
+    endSub: "Recipes from Instagram, YouTube & the web — in seconds, in one place.",
+  },
+} as const;
+
+function CtaSlide({
+  logoUri,
+  variant,
+  locale = "de",
+}: {
+  logoUri: string | null;
+  variant: "mid" | "end";
+  locale?: "de" | "en";
+}) {
   const isMid = variant === "mid";
+  const copy = CTA_COPY[locale];
   return (
     <div
       style={{
@@ -203,12 +227,10 @@ function CtaSlide({ logoUri, variant }: { logoUri: string | null; variant: "mid"
         <img src={logoUri} width={150} height={120} alt="" style={{ objectFit: "contain", marginBottom: 56 }} />
       ) : null}
       <div style={{ display: "flex", fontSize: 72, fontWeight: 300, color: "#FFFFFF", textAlign: "center", lineHeight: 1.1, marginBottom: 28 }}>
-        {isMid ? "Keep scrolling ↓" : "Save the whole galley"}
+        {isMid ? copy.midTitle : copy.endTitle}
       </div>
       <div style={{ display: "flex", fontSize: 34, fontWeight: 300, color: "#C9C9C9", textAlign: "center", lineHeight: 1.35, marginBottom: isMid ? 0 : 56 }}>
-        {isMid
-          ? "The full galley is just ahead."
-          : "Recipes from Instagram, YouTube & the web — in seconds, in one place."}
+        {isMid ? copy.midSub : copy.endSub}
       </div>
       {isMid ? null : (
         <div style={{ display: "flex", fontSize: 30, fontWeight: 600, color: "#FFFFFF", letterSpacing: 2 }}>
@@ -232,6 +254,8 @@ export interface RenderCarouselInput {
   /** The marketing post title shown on the cover slide. */
   title: string;
   recipes: CarouselRecipe[];
+  /** Language for the CTA slide copy. Defaults to "de" (Germany-first). */
+  locale?: "de" | "en";
 }
 
 /** Insert a mid-carousel CTA after this many recipe slides. */
@@ -246,6 +270,7 @@ const MID_CTA_AFTER = 3;
 export async function renderCarousel({
   title,
   recipes,
+  locale = "de",
 }: RenderCarouselInput): Promise<Buffer[]> {
   const fonts = await loadFonts();
   const logoUri = await loadLogoDataUri();
@@ -274,10 +299,10 @@ export async function renderCarousel({
     // Mid-carousel CTA after the 3rd recipe — only when more recipes follow,
     // so it never lands right before the closing CTA.
     if (i + 1 === MID_CTA_AFTER && capped.length > MID_CTA_AFTER) {
-      slides.push(<CtaSlide key="cta-mid" logoUri={logoUri} variant="mid" />);
+      slides.push(<CtaSlide key="cta-mid" logoUri={logoUri} variant="mid" locale={locale} />);
     }
   });
-  slides.push(<CtaSlide key="cta-end" logoUri={logoUri} variant="end" />);
+  slides.push(<CtaSlide key="cta-end" logoUri={logoUri} variant="end" locale={locale} />);
 
   // Render sequentially — each ImageResponse is CPU-heavy (Satori + Resvg);
   // parallelizing risks OOM in a serverless function.

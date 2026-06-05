@@ -23,13 +23,19 @@ function buildCaption(
   tags: string[],
   locale: "de" | "en",
 ): string {
-  const hashtags = Array.from(
-    new Set([
-      "galleybook",
-      ...(locale === "de" ? ["rezepte", "kochen", "mealprep"] : ["recipes", "cooking", "mealprep"]),
-      ...tags.map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase()).filter(Boolean),
-    ]),
-  )
+  // Long-tail-first, mirroring the ASO strategy: a new, low-authority account
+  // can't surface on saturated head hashtags. Lead with the galley's own
+  // (already topical) tags + broadly-safe niche/occasion tags; keep only a few
+  // head terms, last, so they drop first when we hit the 12-tag cap. Niche tags
+  // are occasion/use-case (safe on any galley) — diet specificity comes from the
+  // galley's own tags, so we never put #vegan on a steak galley.
+  const niche =
+    locale === "de"
+      ? ["mealprepdeutsch", "schnellerezepte", "familienrezepte", "wochenplan", "einfacherezepte"]
+      : ["mealprepideas", "easyrecipes", "familymeals", "weeklymealplan", "quickrecipes"];
+  const head = locale === "de" ? ["rezepte", "kochen", "mealprep"] : ["recipes", "cooking", "mealprep"];
+  const galleyTags = tags.map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase()).filter(Boolean);
+  const hashtags = Array.from(new Set(["galleybook", ...galleyTags, ...niche, ...head]))
     .slice(0, 12)
     .map((t) => `#${t}`)
     .join(" ");
@@ -97,6 +103,7 @@ export async function POST(
     // 1) Render carousel slides (cover uses the post title)
     const slides = await renderCarousel({
       title: postTitle,
+      locale,
       recipes: kept.map((c) => ({
         name: c.name,
         oneLiner: c.oneLiner,
