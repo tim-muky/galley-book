@@ -192,6 +192,23 @@ export async function collectDailyMetrics(): Promise<DailyMetrics> {
   };
 }
 
+/** Most recent stored metrics strictly before `date` (for day-over-day deltas). */
+export async function fetchPreviousMetrics(date: string): Promise<DailyMetrics | null> {
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("growth_daily_reports")
+    .select("metrics")
+    .lt("report_date", date)
+    .order("report_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    logger.error("growth.fetch_previous_failed", { message: error.message });
+    return null;
+  }
+  return (data?.metrics as DailyMetrics | undefined) ?? null;
+}
+
 // ---- AI analysis (GAL-426) -------------------------------------------------
 
 export const GrowthAnalysisSchema = z.object({

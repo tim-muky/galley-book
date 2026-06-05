@@ -5,12 +5,14 @@
  * (Meta + new users), runs the AI analysis, and upserts one growth_daily_reports
  * row. Also triggerable manually by an admin (for testing) — same endpoint.
  *
- * Email delivery (Zoho SMTP, GAL-428) hooks in here once creds are available.
+ * Email delivery (GAL-428) reuses the existing Resend setup — sent on every
+ * scheduled run, and on a manual admin trigger only when `?email=1`.
  */
 
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/admin";
 import { generateAndStoreDailyReport } from "@/lib/marketing/growth";
+import { sendGrowthDailyReport } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 120;
@@ -25,9 +27,23 @@ export async function GET(request: Request) {
     if ("response" in guard) return guard.response;
   }
 
+  const emailRequested = new URL(request.url).searchParams.get("email") === "1";
+
   try {
     const result = await generateAndStoreDailyReport();
-    return NextResponse.json({ ok: true, ...result });
+
+    let emailed = false;
+    if (isCron || emailRequested) {
+      try {
+        await sendGrowthDailyReport(result);
+        emailed = true;
+      } catch (e) {
+        // Never let an email failure fail the report run.
+        logger.error("growth.daily_report_email_failed", { message: String(e) });
+      }
+    }
+
+    return NextResponse.json({ ok: true, emailed, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("growth.daily_report_cron_failed", { message });

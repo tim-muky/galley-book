@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { fetchPreviousMetrics, type DailyMetrics, type GrowthAnalysis } from "@/lib/marketing/growth";
 
 const FROM = "galleybook <contact@galleybook.com>";
 
@@ -40,5 +41,238 @@ export async function sendGalleyInvite({
         </p>
       </div>
     `,
+  });
+}
+
+// ---- Growth daily report (GAL-428) -----------------------------------------
+
+const eur = (n: number | null | undefined) =>
+  n == null ? "—" : `€${n.toFixed(2)}`;
+const pct = (n: number | null | undefined) =>
+  n == null ? "—" : `${(n * 100).toFixed(1)}%`;
+const num = (n: number | null | undefined) =>
+  n == null ? "—" : n.toLocaleString("en-US");
+
+/** Day-over-day delta chip. `goodWhenUp` flips the sentiment colour (e.g. CPS is good when down). */
+function delta(
+  curr: number | null | undefined,
+  prev: number | null | undefined,
+  fmt: (n: number) => string,
+  goodWhenUp = true,
+): string {
+  if (curr == null || prev == null || prev === curr) return "";
+  const diff = curr - prev;
+  const up = diff > 0;
+  const good = up === goodWhenUp;
+  const color = good ? "#2f7d4f" : "#b04646";
+  return `<span style="font-size: 0.6875rem; font-weight: 400; color: ${color}; margin-left: 0.35rem;">${
+    up ? "▲" : "▼"
+  } ${fmt(Math.abs(diff))}</span>`;
+}
+
+function stat(label: string, value: string, deltaHtml = ""): string {
+  return `
+    <td style="padding: 0.5rem 1rem 0.5rem 0; vertical-align: top;">
+      <div style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747;">${label}</div>
+      <div style="font-size: 1.5rem; font-weight: 100; color: #252729; margin-top: 0.15rem;">${value}${deltaHtml}</div>
+    </td>`;
+}
+
+function list(items: string[]): string {
+  if (!items.length) return `<p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0;">—</p>`;
+  return `<ul style="margin: 0; padding-left: 1.1rem;">${items
+    .map(
+      (i) =>
+        `<li style="font-size: 0.8125rem; font-weight: 300; line-height: 1.6; color: #474747; margin-bottom: 0.35rem;">${i}</li>`,
+    )
+    .join("")}</ul>`;
+}
+
+const CONF_COLOR: Record<string, string> = {
+  high: "#252729",
+  medium: "#474747",
+  low: "#9a9a9a",
+};
+
+/** Per-creative table (best→worst by CPS), DB-attributed new users joined in. */
+function creativeTable(perCreative: DailyMetrics["perCreative"]): string {
+  if (!perCreative.length) return "";
+  const th = (t: string, align = "left") =>
+    `<th style="text-align: ${align}; font-size: 0.5625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #9a9a9a; padding: 0 0.5rem 0.4rem 0;">${t}</th>`;
+  const td = (t: string, align = "left") =>
+    `<td style="text-align: ${align}; font-size: 0.75rem; font-weight: 300; color: #474747; padding: 0.3rem 0.5rem 0.3rem 0;">${t}</td>`;
+  const rows = perCreative
+    .map(
+      (c) =>
+        `<tr>${td(c.adName)}${td(eur(c.spend), "right")}${td(num(c.newUsers), "right")}${td(
+          eur(c.costPerSignup),
+          "right",
+        )}</tr>`,
+    )
+    .join("");
+  return `
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.5rem 0 0.5rem;">Per creative (best→worst CPS)</p>
+      <table style="border-collapse: collapse; width: 100%;">
+        <tr>${th("Creative")}${th("Spend", "right")}${th("Signups", "right")}${th("CPS", "right")}</tr>
+        ${rows}
+      </table>`;
+}
+
+/**
+ * Render the daily growth report as a branded HTML email + plain-text fallback.
+ * Mirrors the growth_daily_reports row shape (metrics + analysis), plus optional
+ * previous-day metrics for day-over-day deltas.
+ */
+export function renderGrowthDailyReport({
+  reportDate,
+  metrics,
+  analysis,
+  prev,
+}: {
+  reportDate: string;
+  metrics: DailyMetrics;
+  analysis: GrowthAnalysis | null;
+  prev?: DailyMetrics | null;
+}): { subject: string; html: string; text: string } {
+  const { newUsers, paid, kpis, last7d } = metrics;
+  const ch = newUsers.byChannel;
+  const p = prev ?? null;
+
+  const subject = `galleybook growth — ${reportDate} · ${newUsers.total} new ${
+    newUsers.total === 1 ? "user" : "users"
+  }${kpis.blendedCps != null ? ` · ${eur(kpis.blendedCps)} CPS` : ""}`;
+
+  const recs = (analysis?.recommendations ?? [])
+    .map(
+      (r) => `
+      <div style="margin-bottom: 0.9rem;">
+        <div style="font-size: 0.8125rem; font-weight: 600; color: #252729;">
+          ${r.action}
+          <span style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: ${
+            CONF_COLOR[r.confidence] ?? "#474747"
+          }; margin-left: 0.4rem;">${r.confidence}</span>
+        </div>
+        <div style="font-size: 0.8125rem; font-weight: 300; line-height: 1.5; color: #474747; margin-top: 0.15rem;">${r.rationale}</div>
+      </div>`,
+    )
+    .join("");
+
+  const html = `
+    <div style="font-family: Inter, sans-serif; max-width: 560px; margin: 0 auto; color: #252729;">
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: #474747; margin: 0;">Growth · ${reportDate}</p>
+      <p style="font-size: 2.5rem; font-weight: 100; margin: 0.25rem 0 0.1rem;">${newUsers.total} new ${
+        newUsers.total === 1 ? "user" : "users"
+      }</p>
+      <p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0;">
+        ${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct
+      </p>
+
+      <table style="margin-top: 1.5rem; border-collapse: collapse; width: 100%;">
+        <tr>${stat("Spend", eur(paid.spend), delta(paid.spend, p?.paid.spend, eur))}${stat(
+          "CPS (paid)",
+          eur(kpis.cpsPaid),
+          delta(kpis.cpsPaid, p?.kpis.cpsPaid, eur, false),
+        )}${stat(
+          "Blended CPS",
+          eur(kpis.blendedCps),
+          delta(kpis.blendedCps, p?.kpis.blendedCps, eur, false),
+        )}</tr>
+        <tr>${stat(
+          "Impressions",
+          num(paid.impressions),
+          delta(paid.impressions, p?.paid.impressions, num),
+        )}${stat("CTR", pct(paid.ctr), delta(paid.ctr, p?.paid.ctr, pct))}${stat(
+          "CPC",
+          eur(paid.cpc),
+          delta(paid.cpc, p?.paid.cpc, eur, false),
+        )}</tr>
+      </table>
+
+      ${creativeTable(metrics.perCreative)}
+
+      <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin: 1.25rem 0 0;">
+        Last 7 days — ${last7d.newUsers} new users · ${eur(last7d.spend)} spend
+      </p>
+
+      ${
+        analysis
+          ? `
+      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #F3F3F4;">
+        <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #252729; margin: 0 0 1.5rem;">${analysis.summary}</p>
+
+        <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 0 0 0.5rem;">What's working</p>
+        ${list(analysis.drivers)}
+
+        <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.25rem 0 0.5rem;">Underperforming</p>
+        ${list(analysis.underperformers)}
+
+        <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.25rem 0 0.75rem;">Recommendations</p>
+        ${recs || `<p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0;">—</p>`}
+
+        <p style="font-size: 0.6875rem; font-weight: 300; font-style: italic; color: #9a9a9a; margin: 1.5rem 0 0;">${analysis.dataQuality}</p>
+      </div>`
+          : `<p style="font-size: 0.8125rem; font-weight: 300; color: #9a9a9a; margin-top: 2rem;">AI analysis unavailable for this run.</p>`
+      }
+    </div>`;
+
+  const text = [
+    `galleybook growth — ${reportDate}`,
+    `${newUsers.total} new users (${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct)`,
+    "",
+    `Spend ${eur(paid.spend)} · CPS paid ${eur(kpis.cpsPaid)} · Blended CPS ${eur(kpis.blendedCps)}`,
+    `Impressions ${num(paid.impressions)} · CTR ${pct(paid.ctr)} · CPC ${eur(paid.cpc)}`,
+    `Last 7 days — ${last7d.newUsers} new users · ${eur(last7d.spend)} spend`,
+    ...(metrics.perCreative.length
+      ? [
+          "",
+          "Per creative (best→worst CPS):",
+          ...metrics.perCreative.map(
+            (c) =>
+              `  - ${c.adName}: ${eur(c.spend)} spend · ${num(c.newUsers)} signups · ${eur(
+                c.costPerSignup,
+              )} CPS`,
+          ),
+        ]
+      : []),
+    ...(analysis
+      ? [
+          "",
+          analysis.summary,
+          ...(analysis.drivers.length ? ["", "What's working:", ...analysis.drivers.map((d) => `  - ${d}`)] : []),
+          ...(analysis.underperformers.length
+            ? ["", "Underperforming:", ...analysis.underperformers.map((u) => `  - ${u}`)]
+            : []),
+          ...(analysis.recommendations.length
+            ? ["", "Recommendations:", ...analysis.recommendations.map((r) => `  - [${r.confidence}] ${r.action} — ${r.rationale}`)]
+            : []),
+          "",
+          analysis.dataQuality,
+        ]
+      : ["", "AI analysis unavailable for this run."]),
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+/** Send the daily growth report to the configured recipient(s). */
+export async function sendGrowthDailyReport(report: {
+  reportDate: string;
+  metrics: DailyMetrics;
+  analysis: GrowthAnalysis | null;
+}) {
+  const to = (process.env.GROWTH_REPORT_TO ?? "tim@muky-kids.com")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  const prev = await fetchPreviousMetrics(report.reportDate);
+  const { subject, html, text } = renderGrowthDailyReport({ ...report, prev });
+
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    replyTo: "contact@galleybook.com",
+    subject,
+    html,
+    text,
   });
 }
