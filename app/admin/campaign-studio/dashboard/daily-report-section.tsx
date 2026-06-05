@@ -15,6 +15,7 @@ const BASE = "/admin/campaign-studio/dashboard";
 
 const eur = (n: number | null | undefined) => (n == null ? "—" : `€${n.toFixed(2)}`);
 const pct = (n: number | null | undefined) => (n == null ? "—" : `${(n * 100).toFixed(1)}%`);
+const numOrDash = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("en-US"));
 
 interface ReportRow {
   report_date: string;
@@ -69,6 +70,12 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
   const { metrics, analysis } = report;
   const { newUsers, paid, kpis, last7d } = metrics;
   const ch = newUsers.byChannel;
+  // Reports stored before GAL-425 have no `organic` field.
+  const organic = metrics.organic ?? {
+    account: { reach: null, profileViews: null, websiteClicks: null },
+    posts: [],
+    totals: { posts: 0, likes: 0, comments: 0, saved: null },
+  };
 
   // Trend: new users per report, oldest→newest (history is desc).
   const trend = [...history]
@@ -146,6 +153,28 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
               </div>
             ))}
           </div>
+        </>
+      )}
+
+      {/* Organic IG engagement */}
+      {(organic.account.reach != null ||
+        organic.account.profileViews != null ||
+        organic.account.websiteClicks != null ||
+        organic.totals.posts > 0) && (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Organic Instagram
+          </p>
+          <div className="grid grid-cols-3 gap-3 mb-2">
+            <Tile label="Reach" value={numOrDash(organic.account.reach)} />
+            <Tile label="Profile visits" value={numOrDash(organic.account.profileViews)} />
+            <Tile label="Link taps" value={numOrDash(organic.account.websiteClicks)} />
+          </div>
+          <p className="text-xs font-light text-on-surface-variant mb-4">
+            {organic.totals.posts} post{organic.totals.posts === 1 ? "" : "s"} (7d) ·{" "}
+            {organic.totals.likes} likes · {organic.totals.comments} comments
+            {organic.totals.saved != null ? ` · ${organic.totals.saved} saves` : ""}
+          </p>
         </>
       )}
 

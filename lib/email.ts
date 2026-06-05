@@ -118,6 +118,30 @@ function creativeTable(perCreative: DailyMetrics["perCreative"]): string {
       </table>`;
 }
 
+/** Organic IG engagement block — omitted entirely when there's no organic data. */
+function organicBlock(organic: DailyMetrics["organic"]): string {
+  const { account, totals } = organic;
+  const hasData =
+    account.reach != null ||
+    account.profileViews != null ||
+    account.websiteClicks != null ||
+    totals.posts > 0;
+  if (!hasData) return "";
+  return `
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.5rem 0 0.5rem;">Organic Instagram</p>
+      <table style="border-collapse: collapse; width: 100%;">
+        <tr>${stat("Reach", num(account.reach))}${stat("Profile visits", num(account.profileViews))}${stat(
+          "Link taps",
+          num(account.websiteClicks),
+        )}</tr>
+      </table>
+      <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin: 0.5rem 0 0;">
+        ${totals.posts} post${totals.posts === 1 ? "" : "s"} (7d) · ${num(totals.likes)} likes · ${num(
+          totals.comments,
+        )} comments${totals.saved != null ? ` · ${num(totals.saved)} saves` : ""}
+      </p>`;
+}
+
 /**
  * Render the daily growth report as a branded HTML email + plain-text fallback.
  * Mirrors the growth_daily_reports row shape (metrics + analysis), plus optional
@@ -190,6 +214,8 @@ export function renderGrowthDailyReport({
 
       ${creativeTable(metrics.perCreative)}
 
+      ${organicBlock(metrics.organic)}
+
       <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin: 1.25rem 0 0;">
         Last 7 days — ${last7d.newUsers} new users · ${eur(last7d.spend)} spend
       </p>
@@ -232,6 +258,21 @@ export function renderGrowthDailyReport({
                 c.costPerSignup,
               )} CPS`,
           ),
+        ]
+      : []),
+    ...(metrics.organic.account.reach != null ||
+    metrics.organic.account.profileViews != null ||
+    metrics.organic.account.websiteClicks != null ||
+    metrics.organic.totals.posts > 0
+      ? [
+          "",
+          "Organic Instagram:",
+          `  Reach ${num(metrics.organic.account.reach)} · Profile visits ${num(
+            metrics.organic.account.profileViews,
+          )} · Link taps ${num(metrics.organic.account.websiteClicks)}`,
+          `  ${metrics.organic.totals.posts} posts (7d) · ${num(metrics.organic.totals.likes)} likes · ${num(
+            metrics.organic.totals.comments,
+          )} comments${metrics.organic.totals.saved != null ? ` · ${num(metrics.organic.totals.saved)} saves` : ""}`,
         ]
       : []),
     ...(analysis

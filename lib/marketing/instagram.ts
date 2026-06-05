@@ -187,3 +187,123 @@ export async function postCarouselToInstagram({
   });
   return { igPostId };
 }
+
+// ---- Organic insights (GAL-425) -------------------------------------------
+
+export interface IgPostEngagement {
+  id: string;
+  permalink: string;
+  timestamp: string;
+  likes: number;
+  comments: number;
+  saved: number | null;
+}
+
+export interface IgOrganicInsights {
+  /** Account-level, for the day window. */
+  account: { reach: number | null; profileViews: number | null; websiteClicks: number | null };
+  /** Posts published within the lookback window, with lifetime engagement. */
+  posts: IgPostEngagement[];
+  totals: { posts: number; likes: number; comments: number; saved: number | null };
+}
+
+interface InsightResponse {
+  data?: { name: string; values?: { value: number }[]; total_value?: { value: number } }[];
+}
+
+/** One account-level metric for the day. Best-effort — null on any failure. */
+async function accountMetric(token: string, metric: string): Promise<number | null> {
+  try {
+    // v25 account insights return aggregates via metric_type=total → total_value.
+    const json = await metaFetch<InsightResponse>(
+      `${GRAPH}/${META.igUserId}/insights?metric=${metric}&period=day&metric_type=total&access_token=${encodeURIComponent(token)}`,
+      { method: "GET" },
+    );
+    const row = json.data?.[0];
+    return row?.total_value?.value ?? row?.values?.[0]?.value ?? null;
+  } catch (e) {
+    logger.error("growth.ig.account_metric_failed", { metric, message: String(e) });
+    return null;
+  }
+}
+
+/** Saves for one media (per-media insight). Best-effort — null on failure. */
+async function mediaSaved(token: string, mediaId: string): Promise<number | null> {
+  try {
+    const json = await metaFetch<InsightResponse>(
+      `${GRAPH}/${mediaId}/insights?metric=saved&access_token=${encodeURIComponent(token)}`,
+      { method: "GET" },
+    );
+    return json.data?.[0]?.values?.[0]?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Organic IG engagement for the daily growth report (GAL-425). Account-level
+ * reach / profile visits / website (link-in-bio) taps for the day, plus
+ * per-post likes/comments/saves for posts in the lookback window. Every call is
+ * wrapped so a missing metric or token never breaks the pipeline — callers get
+ * nulls/[].
+ */
+export async function getOrganicIgInsights(
+  { sinceDays = 7 }: { sinceDays?: number } = {},
+): Promise<IgOrganicInsights> {
+  const empty: IgOrganicInsights = {
+    account: { reach: null, profileViews: null, websiteClicks: null },
+    posts: [],
+    totals: { posts: 0, likes: 0, comments: 0, saved: null },
+  };
+
+  let token: string;
+  try {
+    token = await getPageAccessToken();
+  } catch (e) {
+    logger.error("growth.ig.token_failed", { message: String(e) });
+    return empty;
+  }
+
+  const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+
+  const [reach, profileViews, websiteClicks, mediaRes] = await Promise.all([
+    accountMetric(token, "reach"),
+    accountMetric(token, "profile_views"),
+    accountMetric(token, "website_clicks"),
+    metaFetch<{
+      data?: { id: string; permalink: string; timestamp: string; like_count?: number; comments_count?: number }[];
+    }>(
+      `${GRAPH}/${META.igUserId}/media?fields=id,permalink,timestamp,like_count,comments_count&limit=25&access_token=${encodeURIComponent(token)}`,
+      { method: "GET" },
+    ).catch((e) => {
+      logger.error("growth.ig.media_failed", { message: String(e) });
+      return { data: [] as NonNullable<never>[] };
+    }),
+  ]);
+
+  const recent = (mediaRes.data ?? []).filter(
+    (m) => new Date(m.timestamp).getTime() >= cutoff,
+  );
+  const posts: IgPostEngagement[] = await Promise.all(
+    recent.map(async (m) => ({
+      id: m.id,
+      permalink: m.permalink,
+      timestamp: m.timestamp,
+      likes: m.like_count ?? 0,
+      comments: m.comments_count ?? 0,
+      saved: await mediaSaved(token, m.id),
+    })),
+  );
+
+  const savedVals = posts.map((p) => p.saved).filter((v): v is number => v != null);
+  return {
+    account: { reach, profileViews, websiteClicks },
+    posts,
+    totals: {
+      posts: posts.length,
+      likes: posts.reduce((s, p) => s + p.likes, 0),
+      comments: posts.reduce((s, p) => s + p.comments, 0),
+      saved: savedVals.length ? savedVals.reduce((s, v) => s + v, 0) : null,
+    },
+  };
+}
