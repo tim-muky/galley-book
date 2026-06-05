@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getInsights, getAdInsights, type InsightRow, type AdInsightRow } from "@/lib/marketing/meta-ads";
 import { AdsControls } from "./ads-controls";
 import { CreativeControls } from "./creative-controls";
+import { DailyReportSection } from "./daily-report-section";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +21,14 @@ interface FunnelRow {
   premium: number;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ report?: string }>;
+}) {
   await requireAdmin();
   const service = createServiceClient();
+  const { report: selectedReportDate } = await searchParams;
 
   // Prototype scale (≈20 users) — fetch + aggregate in JS rather than an RPC.
   const [{ data: users }, { data: subs }] = await Promise.all([
@@ -103,9 +109,12 @@ export default async function DashboardPage() {
       <Link href="/admin/campaign-studio" className="text-xs font-light text-on-surface-variant">
         ← Studio
       </Link>
-      <h1 className="text-4xl font-thin text-anthracite mt-1 mb-1">Attribution</h1>
-      <p className="text-xs font-light text-on-surface-variant mb-6">
-        Signups → premium by source · first-touch UTM
+      <h1 className="text-4xl font-thin text-anthracite mt-1 mb-6">Growth</h1>
+
+      <DailyReportSection selectedDate={selectedReportDate} />
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+        Attribution · signups → premium by source · first-touch UTM
       </p>
 
       {/* Summary */}
