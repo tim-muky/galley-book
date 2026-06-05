@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Database } from "@/types/database";
 import type { AdVariant } from "@/lib/marketing/ad-copy";
+import type { ReelScript } from "@/lib/marketing/reel-script";
 
 type Distribution = Database["public"]["Tables"]["galley_distributions"]["Row"];
 
@@ -33,6 +34,8 @@ export function DistributeClient({
   const [captionDe, setCaptionDe] = useState(initialDistribution?.caption_de ?? "");
   const [captionEn, setCaptionEn] = useState(initialDistribution?.caption_en ?? "");
   const [postLocale, setPostLocale] = useState<"de" | "en">("de");
+  const [scripts, setScripts] = useState<ReelScript[] | null>(null);
+  const [scripting, setScripting] = useState(false);
 
   const carouselPaths = (dist?.carousel_paths as string[] | null) ?? [];
   const adVariants = (dist?.ad_variants as AdVariant[] | null) ?? [];
@@ -104,6 +107,19 @@ export function DistributeClient({
       setDist({ ...dist, ig_status: "published", ig_post_id: body.igPostId, ig_error: null });
     }
     setPosting(false);
+  }
+
+  async function generateScripts() {
+    setScripting(true);
+    setError(null);
+    const res = await fetch(
+      `/api/admin/campaign-studio/runs/${runId}/distribute/reel-scripts`,
+      { method: "POST" },
+    );
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) setError(body.error ?? "Failed to generate reel scripts");
+    else setScripts(body.scripts);
+    setScripting(false);
   }
 
   return (
@@ -202,6 +218,38 @@ export function DistributeClient({
           >
             {saving ? "Saving…" : "Save captions"}
           </button>
+
+          {/* Comment → DM mechanic (GAL-433) — trigger word + the DM auto-reply
+              copy to paste into ManyChat / IG native auto-reply. */}
+          {(dist.comment_trigger || dist.dm_reply_de || dist.dm_reply_en) && (
+            <div className="bg-surface-low rounded-md p-4 mb-6">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+                Comment → DM mechanic
+              </p>
+              {dist.comment_trigger && (
+                <p className="text-sm font-light text-anthracite mb-2">
+                  Trigger word:{" "}
+                  <code className="text-xs font-semibold tracking-wide">{dist.comment_trigger}</code>
+                </p>
+              )}
+              {dist.dm_reply_de && (
+                <p className="text-xs font-light text-on-surface-variant whitespace-pre-line mb-2">
+                  <span className="font-semibold">DM (DE): </span>
+                  {dist.dm_reply_de}
+                </p>
+              )}
+              {dist.dm_reply_en && (
+                <p className="text-xs font-light text-on-surface-variant whitespace-pre-line mb-2">
+                  <span className="font-semibold">DM (EN): </span>
+                  {dist.dm_reply_en}
+                </p>
+              )}
+              <p className="text-[11px] font-light text-on-surface-variant">
+                Wire the trigger word → this DM once in ManyChat or IG auto-reply. Posting the comment
+                CTA without the automation set up sends nobody the recipe.
+              </p>
+            </div>
+          )}
 
           {/* Instagram post */}
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
@@ -306,6 +354,48 @@ export function DistributeClient({
               )}
             </>
           )}
+
+          {/* Reel / TikTok scripts (GAL-434) — copy-paste filming scripts.
+              Not persisted; regenerate any time. */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
+            Reel / TikTok scripts
+          </p>
+          <div className="bg-white rounded-md p-4 shadow-ambient mb-4">
+            <button
+              type="button"
+              onClick={generateScripts}
+              disabled={scripting}
+              className="border border-anthracite bg-white text-anthracite text-[11px] font-light py-1.5 px-4 rounded-full disabled:opacity-40"
+            >
+              {scripting ? "Writing scripts…" : scripts ? "Regenerate scripts" : "Generate reel scripts"}
+            </button>
+            {scripts && scripts.length > 0 && (
+              <div className="flex flex-col gap-3 mt-3">
+                {scripts.map((s, i) => (
+                  <div key={i} className="bg-surface-low rounded-md p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1">
+                      {s.angle}
+                      {s.trigger ? ` · ${s.trigger}` : ""}
+                    </p>
+                    <p className="text-sm font-light text-anthracite mb-2">{s.hook}</p>
+                    <ol className="flex flex-col gap-1 mb-2">
+                      {s.shots.map((shot, j) => (
+                        <li key={j} className="text-xs font-light text-on-surface-variant">
+                          <span className="font-semibold">{j + 1}.</span> {shot.visual}
+                          {shot.onScreen ? ` — “${shot.onScreen}”` : ""}
+                          {shot.voiceover ? ` · VO: ${shot.voiceover}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="text-xs font-light text-anthracite whitespace-pre-line">{s.caption}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] font-light text-on-surface-variant mt-2">
+              Scripts to film + upload manually (Reels / TikTok). Pick trending audio yourself.
+            </p>
+          </div>
 
           <p className="text-[10px] font-light text-on-surface-variant mt-6">
             galley id <code>{galleyId}</code>

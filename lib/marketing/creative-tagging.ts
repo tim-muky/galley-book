@@ -11,8 +11,16 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import type { AdVariant } from "./ad-copy";
 
-const HOOK_BY_ANGLE: Record<string, string> = { problem: "pain-point", hero: "appetite" };
-const CTA_BY_ANGLE: Record<string, string> = { problem: "import", hero: "save-to-galley" };
+const HOOK_BY_ANGLE: Record<string, string> = {
+  problem: "pain-point",
+  hero: "appetite",
+  comment: "curiosity",
+};
+const CTA_BY_ANGLE: Record<string, string> = {
+  problem: "import",
+  hero: "save-to-galley",
+  comment: "comment-dm",
+};
 
 interface CreativeIdEntry {
   adId: string;
@@ -75,4 +83,45 @@ export async function tagPushedCreatives(distributionId: string): Promise<number
   }
   logger.info("growth.tagging.tagged", { distributionId, count: rows.length });
   return rows.length;
+}
+
+/**
+ * Tag an organic IG post (GAL-436) with the same taxonomy as paid creatives so
+ * the learning loop covers organic — the channel that carries early growth. The
+ * default Campaign Studio caption uses the comment → DM mechanic, so an organic
+ * carousel post is angle "comment" / cta "comment-dm". Best-effort: never fail
+ * the post.
+ */
+export async function tagOrganicPost(params: {
+  igPostId: string;
+  distributionId: string;
+  galleyId: string;
+  language: "de" | "en";
+  mediaFormat?: "carousel" | "video" | "single";
+  angle?: "problem" | "hero" | "comment";
+  postTitle?: string | null;
+}): Promise<boolean> {
+  const angle = params.angle ?? "comment";
+  const service = createServiceClient();
+  const { error } = await service.from("organic_attributes").upsert(
+    {
+      ig_post_id: params.igPostId,
+      distribution_id: params.distributionId,
+      galley_id: params.galleyId,
+      angle,
+      hook_type: HOOK_BY_ANGLE[angle] ?? "other",
+      cta: CTA_BY_ANGLE[angle] ?? "save-to-galley",
+      media_format: params.mediaFormat ?? "carousel",
+      language: params.language,
+      placement: "organic-ig",
+      post_title: params.postTitle ?? null,
+    },
+    { onConflict: "ig_post_id" },
+  );
+  if (error) {
+    logger.error("growth.tagging.organic_failed", { igPostId: params.igPostId, message: error.message });
+    return false;
+  }
+  logger.info("growth.tagging.organic_tagged", { igPostId: params.igPostId });
+  return true;
 }

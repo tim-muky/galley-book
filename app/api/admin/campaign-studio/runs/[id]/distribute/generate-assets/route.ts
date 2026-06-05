@@ -16,12 +16,29 @@ function publicUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
 }
 
-/** Compose a default IG caption + hashtags from the post title and candidate tags. */
+/** The one-word, ALL-CAPS comment trigger viewers type to get the recipe DMed. */
+function commentTrigger(locale: "de" | "en"): string {
+  return locale === "de" ? "REZEPT" : "RECIPE";
+}
+
+/** The DM auto-reply copy the admin pastes into ManyChat / IG auto-reply. */
+function dmReply(locale: "de" | "en", galleyUrl: string): string {
+  return locale === "de"
+    ? `Hier ist dein Rezept 👉 ${galleyUrl}\n\nIn galleybook speicherst du jedes Rezept mit einem Tipp – auf iPhone, Android und im Web. 1,99 €/Monat.`
+    : `Here's your recipe 👉 ${galleyUrl}\n\nIn galleybook you save any recipe in one tap – on iPhone, Android and the web. €1.99/month.`;
+}
+
+/**
+ * Compose a default IG caption + hashtags. The CTA is the comment → DM mechanic
+ * (GAL-433): viewers comment the trigger word and an auto-reply DMs them the
+ * recipe link — this out-converts "link in bio" and lifts reach via comments.
+ */
 function buildCaption(
   title: string,
   recipeNames: string[],
   tags: string[],
   locale: "de" | "en",
+  trigger: string,
 ): string {
   // Long-tail-first, mirroring the ASO strategy: a new, low-authority account
   // can't surface on saturated head hashtags. Lead with the galley's own
@@ -42,8 +59,8 @@ function buildCaption(
 
   const intro =
     locale === "de"
-      ? `${title} 🍳\n\nDiese Rezepte – plus den Rest – speicherst du mit einem Tipp in deine eigene galleybook-Sammlung. Link in Bio.`
-      : `${title} 🍳\n\nSave these — and the rest — to your own galleybook collection in one tap. Link in bio.`;
+      ? `${title} 🍳\n\nKommentiere ${trigger} und ich schicke dir das ganze Rezept per DM. 💌 Alle Rezepte in deiner eigenen galleybook-Sammlung – auf jedem Gerät.`
+      : `${title} 🍳\n\nComment ${trigger} and I'll send you the full recipe by DM. 💌 Every recipe in your own galleybook collection – on any device.`;
 
   const list = recipeNames.slice(0, 5).map((n) => `• ${n}`).join("\n");
   return `${intro}\n\n${list}\n\n${hashtags}`;
@@ -125,10 +142,13 @@ export async function POST(
     // 3) Generate ad-copy variants (quick single call)
     const adVariants = await generateAdCopy({ theme, recipeNames, locale });
 
-    // 4) Default captions (DE + EN) — opener uses the post title
+    // 4) Default captions (DE + EN) with the comment → DM mechanic (GAL-433)
     const allTags = Array.from(new Set(kept.flatMap((c) => c.tags ?? [])));
-    const captionDe = buildCaption(postTitle, recipeNames, allTags, "de");
-    const captionEn = buildCaption(postTitle, recipeNames, allTags, "en");
+    const triggerDe = commentTrigger("de");
+    const triggerEn = commentTrigger("en");
+    const captionDe = buildCaption(postTitle, recipeNames, allTags, "de", triggerDe);
+    const captionEn = buildCaption(postTitle, recipeNames, allTags, "en", triggerEn);
+    const galleyUrl = `https://galleybook.com/galley/${galleyId}?utm_source=instagram&utm_medium=organic&utm_campaign=gotw`;
 
     // 5) Upsert the distribution row (one per galley)
     const payload = {
@@ -139,6 +159,9 @@ export async function POST(
       caption_de: captionDe,
       caption_en: captionEn,
       post_title: postTitle,
+      comment_trigger: triggerDe,
+      dm_reply_de: dmReply("de", galleyUrl),
+      dm_reply_en: dmReply("en", galleyUrl),
     };
 
     const { data: distribution, error: writeErr } = existing
