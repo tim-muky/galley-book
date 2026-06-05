@@ -12,6 +12,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getInsights, getAdInsights, type AdInsightRow } from "./meta-ads";
+import { getOrganicIgInsights, type IgOrganicInsights } from "./instagram";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 
@@ -137,6 +138,8 @@ export interface DailyMetrics {
     blendedCps: number | null; // spend ÷ all new users
   };
   perCreative: (AdInsightRow & { newUsers: number })[];
+  /** Organic IG engagement for the window (GAL-425). */
+  organic: IgOrganicInsights;
   last7d: { spend: number; metaSignups: number; newUsers: number };
 }
 
@@ -147,7 +150,7 @@ export async function collectDailyMetrics(): Promise<DailyMetrics> {
   const window7 = dayWindowUTC(7);
 
   // Meta is resilient to [] (no delivery yet) → totals null → zeros.
-  const [totalsArr, perCreativeRaw, totals7Arr, newUsers, newUsers7, adContentMap] =
+  const [totalsArr, perCreativeRaw, totals7Arr, newUsers, newUsers7, adContentMap, organic] =
     await Promise.all([
       getInsights({ datePreset: "yesterday" }).catch((e) => {
         logger.error("growth.meta.totals_failed", { message: String(e) });
@@ -161,6 +164,8 @@ export async function collectDailyMetrics(): Promise<DailyMetrics> {
       fetchNewUsers(service, window.startISO, window.endISO),
       fetchNewUsers(service, window7.startISO, window7.endISO),
       fetchAdContentMap(service),
+      // Already internally resilient (returns empty shape on failure).
+      getOrganicIgInsights({ sinceDays: 7 }),
     ]);
 
   const totals = totalsArr[0] ?? { spend: 0, impressions: 0, clicks: 0, signups: 0 };
@@ -188,6 +193,7 @@ export async function collectDailyMetrics(): Promise<DailyMetrics> {
       blendedCps: ratio(totals.spend, newUsers.total),
     },
     perCreative,
+    organic,
     last7d: { spend: totals7.spend, metaSignups: totals7.signups, newUsers: newUsers7.total },
   };
 }
@@ -244,6 +250,7 @@ export async function analyzeGrowth(metrics: DailyMetrics): Promise<GrowthAnalys
     schema: GrowthAnalysisSchema,
     system: [
       "You are a senior performance-marketing analyst for galleybook, a recipe app in a German softlaunch.",
+      "This is an ALL-CHANNELS view: paid Meta ads, organic Instagram (reach / profile visits / link-in-bio taps / post engagement), and direct. Read the channel mix, not just paid.",
       "Primary success metric: NET-NEW USERS in the database (a real signup), not impressions or clicks.",
       "Cost-per-signup (CPS) = ad spend ÷ paid-attributed new users. The go/no-go gate is CPS ≤ €5 (≤ €8 acceptable early).",
       "Ad angles: 'problem' (pain-point hook) vs 'hero' (appetite hook). Note which performs better when data allows.",
