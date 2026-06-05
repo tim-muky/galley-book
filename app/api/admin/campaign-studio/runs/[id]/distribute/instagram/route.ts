@@ -5,6 +5,7 @@ import {
   postCarouselToInstagram,
   InstagramApiError,
 } from "@/lib/marketing/instagram";
+import { tagOrganicPost } from "@/lib/marketing/creative-tagging";
 import { NextResponse } from "next/server";
 
 // Each carousel child container upload + status poll is a few seconds;
@@ -41,7 +42,7 @@ export async function POST(
 
   const { data: dist } = await service
     .from("galley_distributions")
-    .select("id, carousel_paths, caption_de, caption_en, ig_status, ig_post_id")
+    .select("id, carousel_paths, caption_de, caption_en, ig_status, ig_post_id, post_title")
     .eq("galley_id", run.published_galley_id)
     .maybeSingle();
   if (!dist) {
@@ -70,6 +71,18 @@ export async function POST(
       .from("galley_distributions")
       .update({ ig_post_id: igPostId, ig_status: "published", ig_error: null })
       .eq("id", dist.id);
+
+    // Tag the organic post for the learning loop (GAL-436). Best-effort: the
+    // default caption uses the comment → DM mechanic, so angle defaults to
+    // "comment" / cta "comment-dm". Never fails the post.
+    await tagOrganicPost({
+      igPostId,
+      distributionId: dist.id,
+      galleyId: run.published_galley_id,
+      language: locale,
+      mediaFormat: "carousel",
+      postTitle: dist.post_title,
+    }).catch(() => {});
 
     logger.info("campaign_studio.ig.post_succeeded", { runId: id, igPostId });
     return NextResponse.json({ ok: true, igPostId });

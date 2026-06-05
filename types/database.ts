@@ -169,7 +169,10 @@ export type Database = {
           caption_de: string | null
           caption_en: string | null
           carousel_paths: Json
+          comment_trigger: string | null
           created_at: string
+          dm_reply_de: string | null
+          dm_reply_en: string | null
           galley_id: string
           id: string
           ig_error: string | null
@@ -188,7 +191,10 @@ export type Database = {
           caption_de?: string | null
           caption_en?: string | null
           carousel_paths?: Json
+          comment_trigger?: string | null
           created_at?: string
+          dm_reply_de?: string | null
+          dm_reply_en?: string | null
           galley_id: string
           id?: string
           ig_error?: string | null
@@ -207,7 +213,10 @@ export type Database = {
           caption_de?: string | null
           caption_en?: string | null
           carousel_paths?: Json
+          comment_trigger?: string | null
           created_at?: string
+          dm_reply_de?: string | null
+          dm_reply_en?: string | null
           galley_id?: string
           id?: string
           ig_error?: string | null
@@ -234,6 +243,63 @@ export type Database = {
             columns: ["run_id"]
             isOneToOne: false
             referencedRelation: "galley_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organic_attributes: {
+        Row: {
+          angle: string
+          created_at: string
+          cta: string
+          distribution_id: string | null
+          galley_id: string | null
+          hook_type: string
+          ig_post_id: string
+          language: string
+          media_format: string
+          placement: string
+          post_title: string | null
+        }
+        Insert: {
+          angle: string
+          created_at?: string
+          cta: string
+          distribution_id?: string | null
+          galley_id?: string | null
+          hook_type: string
+          ig_post_id: string
+          language: string
+          media_format: string
+          placement?: string
+          post_title?: string | null
+        }
+        Update: {
+          angle?: string
+          created_at?: string
+          cta?: string
+          distribution_id?: string | null
+          galley_id?: string | null
+          hook_type?: string
+          ig_post_id?: string
+          language?: string
+          media_format?: string
+          placement?: string
+          post_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organic_attributes_distribution_id_fkey"
+            columns: ["distribution_id"]
+            isOneToOne: false
+            referencedRelation: "galley_distributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organic_attributes_galley_id_fkey"
+            columns: ["galley_id"]
+            isOneToOne: false
+            referencedRelation: "galleys"
             referencedColumns: ["id"]
           },
         ]
