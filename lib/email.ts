@@ -260,6 +260,11 @@ export function renderGrowthDailyReport({
         <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.25rem 0 0.75rem;">Recommendations</p>
         ${recs || `<p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0;">—</p>`}
 
+        ${
+          analysis.informedByLearnings?.length
+            ? `<p style="font-size: 0.6875rem; font-weight: 300; color: #474747; margin: 1.25rem 0 0;"><strong style="font-weight: 600;">Informed by:</strong> ${analysis.informedByLearnings.join("; ")}</p>`
+            : ""
+        }
         <p style="font-size: 0.6875rem; font-weight: 300; font-style: italic; color: #9a9a9a; margin: 1.5rem 0 0;">${analysis.dataQuality}</p>
       </div>`
           : `<p style="font-size: 0.8125rem; font-weight: 300; color: #9a9a9a; margin-top: 2rem;">AI analysis unavailable for this run.</p>`
@@ -320,6 +325,9 @@ export function renderGrowthDailyReport({
             : []),
           ...(analysis.recommendations.length
             ? ["", "Recommendations:", ...analysis.recommendations.map((r) => `  - [${r.confidence}] ${r.action} — ${r.rationale}`)]
+            : []),
+          ...(analysis.informedByLearnings?.length
+            ? ["", `Informed by: ${analysis.informedByLearnings.join("; ")}`]
             : []),
           "",
           analysis.dataQuality,

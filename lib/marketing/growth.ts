@@ -14,6 +14,7 @@ import { z } from "zod";
 import { getInsights, getAdInsights, type AdInsightRow } from "./meta-ads";
 import { getOrganicIgInsights, type IgOrganicInsights } from "./instagram";
 import { runAutoPause, type AutoAction } from "./autopause";
+import { deriveLearnings, getTopLearnings, type Learning } from "./learnings";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 
@@ -240,12 +241,19 @@ export const GrowthAnalysisSchema = z.object({
   dataQuality: z
     .string()
     .describe("One line on data sufficiency, e.g. 'Thin: <100 impressions, treat as noise.'"),
+  informedByLearnings: z
+    .array(z.string())
+    .default([])
+    .describe("Which of the provided learnings (verbatim or paraphrased) informed the recommendations. [] if none applied."),
 });
 
 export type GrowthAnalysis = z.infer<typeof GrowthAnalysisSchema>;
 
 /** Turn the day's metrics into a narrative + ranked recommendations (Gemini). */
-export async function analyzeGrowth(metrics: DailyMetrics): Promise<GrowthAnalysis> {
+export async function analyzeGrowth(
+  metrics: DailyMetrics,
+  learnings: Learning[] = [],
+): Promise<GrowthAnalysis> {
   const { object } = await generateObject({
     model: ANALYSIS_MODEL,
     schema: GrowthAnalysisSchema,
@@ -257,10 +265,15 @@ export async function analyzeGrowth(metrics: DailyMetrics): Promise<GrowthAnalys
       "Ad angles: 'problem' (pain-point hook) vs 'hero' (appetite hook). Note which performs better when data allows.",
       "Be ruthless about thin data: with low spend/impressions, say so and DO NOT over-react to noise — prefer 'keep observing' over premature pauses.",
       "Recommendations must be concrete and each cite the specific metric that justifies it.",
+      "You are given prior LEARNINGS (recency-weighted, evidence-backed). Use them to inform recommendations, and list the ones you actually used in informedByLearnings.",
     ].join(" "),
     prompt: [
       "Yesterday's metrics (JSON):",
       JSON.stringify(metrics, null, 2),
+      "",
+      learnings.length
+        ? `Prior learnings:\n${learnings.map((l) => `- ${l.statement} [${l.confidence}]`).join("\n")}`
+        : "Prior learnings: none yet (KB still warming up).",
       "",
       "Write the daily analysis. If there were no new users and no/low spend yet (e.g. ads still in review), say that plainly and keep recommendations minimal.",
     ].join("\n"),
@@ -279,9 +292,12 @@ export async function generateAndStoreDailyReport(): Promise<{
 }> {
   const metrics = await collectDailyMetrics();
 
+  // Feed the strongest prior learnings into the analysis (GAL-430).
+  const learnings = await getTopLearnings(6).catch(() => []);
+
   let analysis: GrowthAnalysis | null = null;
   try {
-    analysis = await analyzeGrowth(metrics);
+    analysis = await analyzeGrowth(metrics, learnings);
   } catch (e) {
     // Never let analysis failure drop the metrics snapshot.
     logger.error("growth.analysis_failed", { message: String(e) });
@@ -309,6 +325,12 @@ export async function generateAndStoreDailyReport(): Promise<{
     { onConflict: "report_date" },
   );
   if (error) throw new Error(`store daily report: ${error.message}`);
+
+  // Recompute the learnings KB now the day's report is stored, so it includes
+  // today and reinforces/retires as data accrues (GAL-430). Best-effort.
+  await deriveLearnings().catch((e) =>
+    logger.error("growth.learnings_derive_failed", { message: String(e) }),
+  );
 
   logger.info("growth.daily_report_stored", {
     reportDate: metrics.window.date,

@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { DailyMetrics, GrowthAnalysis } from "@/lib/marketing/growth";
 import type { AutoAction } from "@/lib/marketing/autopause";
+import { getTopLearnings } from "@/lib/marketing/learnings";
 import Link from "next/link";
 
 /**
@@ -84,6 +85,9 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
   const trend = [...history]
     .reverse()
     .map((h) => (h.metrics as DailyMetrics)?.newUsers?.total ?? 0);
+
+  // Learnings KB (GAL-430) — strongest active learnings.
+  const learnings = await getTopLearnings(8).catch(() => []);
 
   return (
     <section className="mb-10">
@@ -240,6 +244,12 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
             </>
           )}
 
+          {analysis.informedByLearnings && analysis.informedByLearnings.length > 0 && (
+            <p className="text-[11px] font-light text-on-surface-variant mt-4">
+              <span className="font-semibold">Informed by:</span> {analysis.informedByLearnings.join("; ")}
+            </p>
+          )}
+
           <p className="text-[11px] font-light italic text-on-surface-variant/70 mt-4">
             {analysis.dataQuality}
           </p>
@@ -247,6 +257,26 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
       ) : (
         <div className="bg-surface-low rounded-md p-4">
           <p className="text-xs font-light text-on-surface-variant">AI analysis unavailable for this run.</p>
+        </div>
+      )}
+
+      {learnings.length > 0 && (
+        <div className="mt-6">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Learnings KB
+          </p>
+          <div className="flex flex-col gap-2">
+            {learnings.map((l) => (
+              <div key={l.id} className="bg-white rounded-md p-3 shadow-ambient">
+                <p className="text-xs font-light text-anthracite">
+                  {l.statement}
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant ml-2">
+                    {l.confidence}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>
