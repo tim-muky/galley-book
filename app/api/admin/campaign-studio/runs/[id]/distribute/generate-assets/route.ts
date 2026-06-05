@@ -51,8 +51,14 @@ function buildCaption(
       ? ["mealprepdeutsch", "schnellerezepte", "familienrezepte", "wochenplan", "einfacherezepte"]
       : ["mealprepideas", "easyrecipes", "familymeals", "weeklymealplan", "quickrecipes"];
   const head = locale === "de" ? ["rezepte", "kochen", "mealprep"] : ["recipes", "cooking", "mealprep"];
+  // The galley's own tags are stored in English (the candidate generator forces
+  // English tags), so on a German post we must guarantee the locale's German
+  // hashtags survive. Cap the (English) galley tags so they can't crowd out the
+  // curated niche + head tags — otherwise a DE post ends up with zero German tags.
   const galleyTags = tags.map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase()).filter(Boolean);
-  const hashtags = Array.from(new Set(["galleybook", ...galleyTags, ...niche, ...head]))
+  const hashtags = Array.from(
+    new Set(["galleybook", ...galleyTags.slice(0, 5), ...niche.slice(0, 3), ...head]),
+  )
     .slice(0, 12)
     .map((t) => `#${t}`)
     .join(" ");
