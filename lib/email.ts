@@ -45,6 +45,40 @@ export async function sendGalleyInvite({
   });
 }
 
+// ---- Trial-ending nudge (day 3 of the 3-day premium trial) ------------------
+
+const APP_STORE_URL = "https://apps.apple.com/app/id6764606059";
+
+export async function sendTrialEndingEmail({ toEmail }: { toEmail: string }) {
+  await getResend().emails.send({
+    from: FROM,
+    to: toEmail,
+    replyTo: "contact@galleybook.com",
+    subject: "Your galleybook trial ends today",
+    html: `
+      <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; color: #252729;">
+        <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">Your free trial ends today.</p>
+        <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #474747;">
+          We hope galleybook earned a place in your kitchen. Keep every recipe
+          you've saved — plus the meal planner and your auto shopping list — for
+          <strong style="font-weight: 600;">€1.99/month</strong>. One subscription
+          covers iOS, Android and the web.
+        </p>
+        <a href="${APP_STORE_URL}"
+           style="display: inline-block; margin-top: 1.5rem; padding: 0.75rem 1.5rem;
+                  background: #252729; color: #fff; border-radius: 9999px;
+                  font-size: 0.875rem; font-weight: 300; text-decoration: none;">
+          Keep my premium
+        </a>
+        <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin-top: 2rem;">
+          Nothing happens automatically — your recipes stay saved either way. This
+          just keeps premium features on.
+        </p>
+      </div>
+    `,
+  });
+}
+
 // ---- Growth daily report (GAL-428) -----------------------------------------
 
 const eur = (n: number | null | undefined) =>

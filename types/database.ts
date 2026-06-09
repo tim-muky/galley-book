@@ -1125,6 +1125,27 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_nudge_log: {
+        Row: {
+          id: string
+          nudge_key: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          nudge_key: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          nudge_key?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           attribution_captured_at: string | null
