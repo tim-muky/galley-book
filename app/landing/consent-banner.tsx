@@ -35,12 +35,16 @@ export function ConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // First-party UTM capture is decoupled from cookie consent: it writes only
+    // our own gb_attr cookie (no third-party transfer) and is what powers the
+    // soft-launch attribution gate. Consent still gates the Meta Pixel below.
+    captureAttribution();
+
     const stored = localStorage.getItem(CONSENT_KEY);
     if (!stored) {
       setVisible(true);
     } else if (stored === "accepted") {
       initMetaPixel();
-      captureAttribution();
     }
   }, []);
 
@@ -50,7 +54,6 @@ export function ConsentBanner() {
     localStorage.setItem(CONSENT_KEY, "accepted");
     setVisible(false);
     initMetaPixel();
-    captureAttribution();
   }
 
   function decline() {
