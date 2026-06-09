@@ -509,35 +509,25 @@ function IconCheck() {
 }
 
 function SignInButtons({
-  ctaWeb,
   ctaApp,
   dark = false,
 }: {
-  ctaWeb: string;
   ctaApp: string;
   dark?: boolean;
 }) {
+  // iOS-first launch: the landing page promotes a single install CTA. The web
+  // app still exists (existing users sign in via the nav link), it's just no
+  // longer an acquisition path that splits the funnel.
   const primary = dark
     ? { backgroundColor: "#fff", color: "#252729", borderColor: "#fff" }
     : { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" };
-  const secondary = dark
-    ? { backgroundColor: "transparent", color: "#fff", borderColor: "#fff" }
-    : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-      <a
-        href={APP_URL}
-        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap"
-        style={primary}
-      >
-        <IconGlobe />
-        {ctaWeb}
-      </a>
+    <div className="flex w-full max-w-md">
       <a
         href={IOS_URL}
-        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap"
-        style={secondary}
+        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap w-full sm:w-auto"
+        style={primary}
       >
         <IconApple />
         {ctaApp}
@@ -633,7 +623,7 @@ export default function LandingPage() {
             {t.hero.sub}
           </p>
 
-          <SignInButtons ctaWeb={t.hero.ctaWeb} ctaApp={t.hero.ctaApp} />
+          <SignInButtons ctaApp={t.hero.ctaApp} />
           <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
         </div>
 
@@ -777,7 +767,7 @@ export default function LandingPage() {
             <p className="text-base font-light text-white/60 mb-8 leading-relaxed">
               {t.cta2.sub}
             </p>
-            <SignInButtons ctaWeb={t.cta2.ctaWeb} ctaApp={t.cta2.ctaApp} dark />
+            <SignInButtons ctaApp={t.cta2.ctaApp} dark />
           </div>
         </div>
       </section>
