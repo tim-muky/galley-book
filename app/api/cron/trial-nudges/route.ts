@@ -38,25 +38,25 @@ const PUSH: Record<string, PushPayload> = {
     eventType: "trial_nudge",
     title: "Your premium trial is live",
     body: "Save your first recipe — paste any link or snap a photo, and galleybook does the rest.",
-    data: { target: "import" },
+    data: { screen: "new_recipe" },
   },
   day1_reinforce: {
     eventType: "trial_nudge",
     title: "That recipe's safe forever",
     body: "Nice start. Add the rest of your collection while premium's on the house.",
-    data: { target: "library" },
+    data: { screen: "library" },
   },
   day2: {
     eventType: "trial_nudge",
     title: "Plan the week in a tap",
     body: "Turn your saved recipes into a meal plan and an auto shopping list. Try it before your trial ends.",
-    data: { target: "cooknext" },
+    data: { screen: "cook_next" },
   },
   day3: {
     eventType: "trial_nudge",
     title: "Your free trial ends today",
     body: "Keep every recipe, the planner and your shopping list for €1.99/month.",
-    data: { target: "paywall" },
+    data: { screen: "library" },
   },
 };
 
