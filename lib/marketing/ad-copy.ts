@@ -55,6 +55,7 @@ export async function generatePostTitle({
   recipeNames,
   locale = "de",
 }: GeneratePostTitleInput): Promise<string> {
+  const count = recipeNames.length;
   const { object } = await generateObject({
     model: COPY_MODEL,
     schema: PostTitleSchema,
@@ -62,13 +63,21 @@ export async function generatePostTitle({
       "You write scroll-stopping social post headlines for galleybook recipe collections.",
       "Make it concrete and appealing — lead with a number or a benefit when it fits",
       "(e.g. '5 high-protein dinners kids actually eat').",
+      // The model is shown only a sample of dish names and is a poor counter,
+      // so it must never infer the count — only ever use the exact figure given.
+      count
+        ? `This collection has exactly ${count} recipes. If the headline states a count of recipes/dishes/ways/ideas, it MUST be exactly ${count}. Do not state any other number, and do not count the dish names below.`
+        : "",
       "Under 55 characters. No hashtags, no emoji, no quotes.",
       "NEVER mention calendar weeks, 'KW', dates, or 'Galley of the Week'.",
       `Output language: ${locale === "de" ? "German" : "English"}.`,
-    ].join(" "),
+    ]
+      .filter(Boolean)
+      .join(" "),
     prompt: [
       `Theme: ${theme}`,
-      recipeNames.length ? `Dishes: ${recipeNames.slice(0, 6).join(", ")}` : "",
+      count ? `Exact recipe count: ${count}` : "",
+      count ? `Sample dish names (NOT the full list): ${recipeNames.slice(0, 6).join(", ")}` : "",
     ]
       .filter(Boolean)
       .join("\n"),
