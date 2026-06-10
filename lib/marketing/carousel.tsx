@@ -256,6 +256,11 @@ export interface RenderCarouselInput {
   recipes: CarouselRecipe[];
   /** Language for the CTA slide copy. Defaults to "de" (Germany-first). */
   locale?: "de" | "en";
+  /**
+   * Public URL of the galley's own header image. When present it's used as
+   * the cover-slide hero; otherwise the cover falls back to the first recipe.
+   */
+  headerImageUrl?: string | null;
 }
 
 /** Insert a mid-carousel CTA after this many recipe slides. */
@@ -271,12 +276,18 @@ export async function renderCarousel({
   title,
   recipes,
   locale = "de",
+  headerImageUrl,
 }: RenderCarouselInput): Promise<Buffer[]> {
   const fonts = await loadFonts();
   const logoUri = await loadLogoDataUri();
   const capped = recipes.slice(0, 7);
 
-  const heroUri = capped[0] ? await toEmbeddedDataUri(capped[0].imageUrl, { width: W, height: Math.round(H * 0.62) }) : null;
+  // Prefer the galley's own header as the cover hero; fall back to the first
+  // recipe image if there's no header (or it fails to embed).
+  const coverSource = headerImageUrl ?? capped[0]?.imageUrl ?? null;
+  const heroUri = coverSource
+    ? await toEmbeddedDataUri(coverSource, { width: W, height: Math.round(H * 0.62) })
+    : null;
 
   const recipeUris = await Promise.all(
     capped.map((r) => toEmbeddedDataUri(r.imageUrl, { width: W, height: Math.round(H * 0.68) })),

@@ -123,10 +123,21 @@ export async function POST(
     const postTitle =
       existing?.post_title || (await generatePostTitle({ theme, recipeNames, locale }));
 
-    // 1) Render carousel slides (cover uses the post title)
+    // The galley's own generated header becomes the carousel cover hero.
+    const { data: galley } = await service
+      .from("galleys")
+      .select("header_image_path")
+      .eq("id", galleyId)
+      .single();
+    const headerImageUrl = galley?.header_image_path
+      ? publicUrl(galley.header_image_path)
+      : null;
+
+    // 1) Render carousel slides (cover uses the post title + galley header)
     const slides = await renderCarousel({
       title: postTitle,
       locale,
+      headerImageUrl,
       recipes: kept.map((c) => ({
         name: c.name,
         oneLiner: c.oneLiner,
