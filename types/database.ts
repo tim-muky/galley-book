@@ -183,6 +183,9 @@ export type Database = {
           meta_status: Database["public"]["Enums"]["meta_push_status"]
           post_title: string | null
           run_id: string | null
+          tiktok_error: string | null
+          tiktok_post_id: string | null
+          tiktok_status: Database["public"]["Enums"]["ig_post_status"]
           updated_at: string
           video_path: string | null
         }
@@ -205,6 +208,9 @@ export type Database = {
           meta_status?: Database["public"]["Enums"]["meta_push_status"]
           post_title?: string | null
           run_id?: string | null
+          tiktok_error?: string | null
+          tiktok_post_id?: string | null
+          tiktok_status?: Database["public"]["Enums"]["ig_post_status"]
           updated_at?: string
           video_path?: string | null
         }
@@ -227,6 +233,9 @@ export type Database = {
           meta_status?: Database["public"]["Enums"]["meta_push_status"]
           post_title?: string | null
           run_id?: string | null
+          tiktok_error?: string | null
+          tiktok_post_id?: string | null
+          tiktok_status?: Database["public"]["Enums"]["ig_post_status"]
           updated_at?: string
           video_path?: string | null
         }

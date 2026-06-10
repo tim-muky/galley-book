@@ -28,6 +28,7 @@ export function DistributeClient({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [postingTikTok, setPostingTikTok] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState(initialDistribution?.post_title ?? "");
@@ -107,6 +108,26 @@ export function DistributeClient({
       setDist({ ...dist, ig_status: "published", ig_post_id: body.igPostId, ig_error: null });
     }
     setPosting(false);
+  }
+
+  async function postToTikTok() {
+    setPostingTikTok(true);
+    setError(null);
+    const res = await fetch(
+      `/api/admin/campaign-studio/runs/${runId}/distribute/tiktok`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: postLocale }),
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "Failed to post to TikTok");
+    } else if (dist) {
+      setDist({ ...dist, tiktok_status: "published", tiktok_post_id: body.publishId, tiktok_error: null });
+    }
+    setPostingTikTok(false);
   }
 
   async function generateScripts() {
@@ -303,6 +324,65 @@ export function DistributeClient({
               >
                 {posting ? "Posting to Instagram…" : "Post carousel to Instagram"}
               </button>
+            </div>
+          )}
+
+          {/* TikTok post — publishes the same carousel as a TikTok photo post. */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
+            TikTok
+          </p>
+          {dist.tiktok_status === "published" && dist.tiktok_post_id ? (
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              <p className="text-sm font-light text-anthracite mb-1">Published ✓</p>
+              <p className="text-xs font-light text-on-surface-variant mb-2">
+                Publish id <code className="text-[10px]">{dist.tiktok_post_id}</code>
+              </p>
+              <a
+                href="https://tiktok.com/@galleybook"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-light text-anthracite underline"
+              >
+                Open @galleybook →
+              </a>
+            </div>
+          ) : (
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              {dist.tiktok_status === "failed" && dist.tiktok_error && (
+                <p className="text-xs font-light text-red-600 mb-3">Last attempt failed: {dist.tiktok_error}</p>
+              )}
+              <div className="flex gap-2 mb-3">
+                {(["de", "en"] as const).map((loc) => {
+                  const active = postLocale === loc;
+                  return (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setPostLocale(loc)}
+                      className="border text-xs font-light py-2 px-4 rounded-full"
+                      style={{
+                        backgroundColor: active ? "#252729" : "#fff",
+                        color: active ? "#fff" : "#252729",
+                        borderColor: "#252729",
+                      }}
+                    >
+                      {loc.toUpperCase()} caption
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={postToTikTok}
+                disabled={postingTikTok || carouselPaths.length < 1}
+                className="w-full border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full disabled:opacity-40"
+              >
+                {postingTikTok ? "Posting to TikTok…" : "Post carousel to TikTok"}
+              </button>
+              <p className="text-[11px] font-light text-on-surface-variant mt-2">
+                Posts the slides as a TikTok photo post. Until the app passes TikTok&apos;s
+                Content Posting audit, posts publish privately (visible only to the account).
+              </p>
             </div>
           )}
 

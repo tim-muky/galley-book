@@ -93,6 +93,7 @@ export async function tagPushedCreatives(distributionId: string): Promise<number
  * the post.
  */
 export async function tagOrganicPost(params: {
+  /** Platform post/publish id — keyed into organic_attributes.ig_post_id. */
   igPostId: string;
   distributionId: string;
   galleyId: string;
@@ -100,6 +101,8 @@ export async function tagOrganicPost(params: {
   mediaFormat?: "carousel" | "video" | "single";
   angle?: "problem" | "hero" | "comment";
   postTitle?: string | null;
+  /** Channel, e.g. "organic-ig" (default) or "organic-tiktok". */
+  placement?: string;
 }): Promise<boolean> {
   const angle = params.angle ?? "comment";
   const service = createServiceClient();
@@ -113,7 +116,7 @@ export async function tagOrganicPost(params: {
       cta: CTA_BY_ANGLE[angle] ?? "save-to-galley",
       media_format: params.mediaFormat ?? "carousel",
       language: params.language,
-      placement: "organic-ig",
+      placement: params.placement ?? "organic-ig",
       post_title: params.postTitle ?? null,
     },
     { onConflict: "ig_post_id" },
