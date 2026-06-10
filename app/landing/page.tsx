@@ -18,7 +18,7 @@ const SOCIALS = {
 
 const copy = {
   en: {
-    nav: { signIn: "Sign in" },
+    nav: { goToApp: "Go to app" },
     hero: {
       tag: "AI-powered recipe saving",
       headline1: "Save recipes from",
@@ -80,7 +80,7 @@ const copy = {
     },
   },
   de: {
-    nav: { signIn: "Anmelden" },
+    nav: { goToApp: "Zur App" },
     hero: {
       tag: "KI-gestütztes Rezepte-Speichern",
       headline1: "Rezepte von",
@@ -141,7 +141,7 @@ const copy = {
     },
   },
   fr: {
-    nav: { signIn: "Se connecter" },
+    nav: { goToApp: "Ouvrir l'app" },
     hero: {
       tag: "Sauvegarde de recettes par IA",
       headline1: "Sauvegardez des recettes",
@@ -203,7 +203,7 @@ const copy = {
     },
   },
   es: {
-    nav: { signIn: "Iniciar sesión" },
+    nav: { goToApp: "Ir a la app" },
     hero: {
       tag: "Guardado de recetas con IA",
       headline1: "Guarda recetas de",
@@ -265,7 +265,7 @@ const copy = {
     },
   },
   it: {
-    nav: { signIn: "Accedi" },
+    nav: { goToApp: "Vai all'app" },
     hero: {
       tag: "Salvataggio ricette con IA",
       headline1: "Salva ricette da",
@@ -327,7 +327,7 @@ const copy = {
     },
   },
   pl: {
-    nav: { signIn: "Zaloguj się" },
+    nav: { goToApp: "Otwórz aplikację" },
     hero: {
       tag: "Zapisywanie przepisów z AI",
       headline1: "Zapisuj przepisy",
@@ -567,10 +567,10 @@ export default function LandingPage() {
         </a>
         <div className="flex items-center gap-3 flex-shrink-0">
           <a
-            href={APP_URL}
+            href={IOS_URL}
             className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70 border-anthracite text-anthracite whitespace-nowrap"
           >
-            {t.nav.signIn}
+            {t.nav.goToApp}
           </a>
           <div className="flex items-center gap-1 border border-anthracite rounded-full px-1 py-1">
             {(["en", "de", "fr", "es", "it", "pl"] as Lang[]).map((l) => (
