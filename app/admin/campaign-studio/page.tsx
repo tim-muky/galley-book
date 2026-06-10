@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { TakeOfflineButton } from "./take-offline-button";
+import { VeggieOfTheWeekButton } from "./veggie-of-the-week-button";
+import { getCurrentVeggie } from "@/lib/marketing/veggie-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function CampaignStudioPage() {
   await requireAdmin();
   const service = createServiceClient();
+
+  const { week, veggie } = getCurrentVeggie();
 
   const { data: runs } = await service
     .from("galley_runs")
@@ -39,6 +43,7 @@ export default async function CampaignStudioPage() {
         >
           + New Galley of the Week
         </Link>
+        <VeggieOfTheWeekButton week={week} veggie={veggie} />
         <Link
           href="/admin/campaign-studio/import"
           className="border border-anthracite bg-white text-anthracite rounded-full px-5 py-3 text-sm font-light text-center"
