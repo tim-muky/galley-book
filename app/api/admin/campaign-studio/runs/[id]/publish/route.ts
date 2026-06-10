@@ -1,9 +1,10 @@
 import { requireAdminApi } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
-import { expandRecipe } from "@/lib/marketing/generate-recipes";
+import { expandRecipe, generateGalleyCoverImage } from "@/lib/marketing/generate-recipes";
 import type { RunCandidateWithImage } from "@/app/admin/campaign-studio/runs/[id]/curate-images/curate-images-client";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 // Expansion is ~3-5s per recipe; ~7-10 in parallel still bounded by
 // model rate limits. Same long budget as image gen.
@@ -96,6 +97,35 @@ export async function POST(
       .single();
     if (galleyErr || !galley) throw new Error(`galley create: ${galleyErr?.message}`);
 
+    // 1a) Generate the galley's own cover, in parallel with recipe expansion.
+    // Best-effort: a cover failure must never sink the publish — the recipes
+    // are the deliverable. Cropped to the 1200×400 header banner convention
+    // (galley-headers/{id}.jpg) shared with the manual upload route.
+    const coverDone = (async () => {
+      try {
+        const cover = await generateGalleyCoverImage(galleyName);
+        const jpeg = await sharp(Buffer.from(cover.base64, "base64"))
+          .resize(1200, 400, { fit: "cover", position: "center" })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        const coverPath = `galley-headers/${galley.id}.jpg`;
+        const { error: coverErr } = await service.storage
+          .from(BUCKET)
+          .upload(coverPath, jpeg, { contentType: "image/jpeg", upsert: true });
+        if (coverErr) throw new Error(coverErr.message);
+        await service
+          .from("galleys")
+          .update({ header_image_path: coverPath })
+          .eq("id", galley.id);
+      } catch (coverErr) {
+        logger.error("campaign_studio.cover_failed", {
+          runId: id,
+          galleyId: galley.id,
+          message: coverErr instanceof Error ? coverErr.message : String(coverErr),
+        });
+      }
+    })();
+
     // 2) Expand + insert each recipe in parallel
     const created = await Promise.allSettled(
       ready.map(async (c) => {
@@ -179,6 +209,10 @@ export async function POST(
         `All recipes failed: ${failed.map((f) => (f as PromiseRejectedResult).reason).join("; ")}`,
       );
     }
+
+    // Settle the cover before publishing so header_image_path is in place
+    // when the galley first goes live. (Self-contained — never throws.)
+    await coverDone;
 
     await service
       .from("galley_runs")

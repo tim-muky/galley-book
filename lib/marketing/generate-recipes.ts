@@ -18,6 +18,7 @@ import {
   WATERCOLOR_DEFAULT_MODEL,
   WATERCOLOR_FALLBACK_MODEL,
   type AspectRatio,
+  type WatercolorPrompt,
 } from "./watercolor-style";
 
 const CANDIDATE_MODEL = "google/gemini-3.5-flash";
@@ -141,16 +142,7 @@ export interface GeneratedImage {
   prompt: string;
 }
 
-export async function generateRecipeImage(
-  candidate: Pick<RecipeCandidate, "name" | "oneLiner">,
-  options: { aspect?: AspectRatio } = {},
-): Promise<GeneratedImage> {
-  const built = buildWatercolorPrompt({
-    subject: `${candidate.name} — ${candidate.oneLiner}`,
-    composition: "single dish centered, top-down or three-quarter view, props minimal",
-    aspect: options.aspect ?? "1:1",
-  });
-
+async function renderWatercolor(built: WatercolorPrompt): Promise<GeneratedImage> {
   try {
     const { image } = await generateImage({
       model: built.model,
@@ -171,6 +163,35 @@ export async function generateRecipeImage(
     }
     throw primaryError;
   }
+}
+
+export async function generateRecipeImage(
+  candidate: Pick<RecipeCandidate, "name" | "oneLiner">,
+  options: { aspect?: AspectRatio } = {},
+): Promise<GeneratedImage> {
+  const built = buildWatercolorPrompt({
+    subject: `${candidate.name} — ${candidate.oneLiner}`,
+    composition: "single dish centered, top-down or three-quarter view, props minimal",
+    aspect: options.aspect ?? "1:1",
+  });
+  return renderWatercolor(built);
+}
+
+/**
+ * One wide watercolor cover for a galley, themed on the collection name.
+ * Rendered at 16:9 — the publish step crops it to the 1200×400 header banner.
+ */
+export async function generateGalleyCoverImage(
+  theme: string,
+  options: { aspect?: AspectRatio } = {},
+): Promise<GeneratedImage> {
+  const built = buildWatercolorPrompt({
+    subject: `Cookbook cover artwork for a recipe collection titled "${theme}"`,
+    composition:
+      "a loose still-life of the collection's hero ingredients spread across a wide horizontal banner, generous negative space, no text or lettering",
+    aspect: options.aspect ?? "16:9",
+  });
+  return renderWatercolor(built);
 }
 
 // ---- 3) Full expansion -----------------------------------------------------
