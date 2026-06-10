@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ReactElement } from "react";
+import { useState, useEffect, ReactElement } from "react";
 import Image from "next/image";
 import { ConsentBanner } from "./consent-banner";
 
@@ -392,6 +392,18 @@ const copy = {
 
 type Lang = "en" | "de" | "fr" | "es" | "it" | "pl";
 
+// Android isn't on the Play Store yet (closed testing — see /android + GAL-443).
+// On Android the install CTAs route to /android instead of the App Store, with
+// a neutral "early access" label in place of the iOS wording.
+const CTA_ANDROID: Record<Lang, string> = {
+  en: "Get early access",
+  de: "Frühen Zugang sichern",
+  fr: "Obtenir un accès anticipé",
+  es: "Conseguir acceso anticipado",
+  it: "Ottieni l'accesso anticipato",
+  pl: "Uzyskaj wczesny dostęp",
+};
+
 function IconLink() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -510,14 +522,19 @@ function IconCheck() {
 
 function SignInButtons({
   ctaApp,
+  href = IOS_URL,
+  android = false,
   dark = false,
 }: {
   ctaApp: string;
+  href?: string;
+  android?: boolean;
   dark?: boolean;
 }) {
   // iOS-first launch: the landing page promotes a single install CTA. The web
   // app still exists (existing users sign in via the nav link), it's just no
-  // longer an acquisition path that splits the funnel.
+  // longer an acquisition path that splits the funnel. On Android the CTA points
+  // to /android (closed-testing flow) instead of the App Store.
   const primary = dark
     ? { backgroundColor: "#fff", color: "#252729", borderColor: "#fff" }
     : { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" };
@@ -525,20 +542,38 @@ function SignInButtons({
   return (
     <div className="flex w-full max-w-md">
       <a
-        href={IOS_URL}
+        href={href}
         className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap w-full sm:w-auto"
         style={primary}
       >
-        <IconApple />
+        {android ? <IconAndroid /> : <IconApple />}
         {ctaApp}
       </a>
     </div>
   );
 }
 
+function IconAndroid() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 9v8a1 1 0 0 0 1 1h1v3a1 1 0 0 0 2 0v-3h4v3a1 1 0 0 0 2 0v-3h1a1 1 0 0 0 1-1V9H6zM4.5 9A1.5 1.5 0 0 0 3 10.5v4a1.5 1.5 0 0 0 3 0v-4A1.5 1.5 0 0 0 4.5 9zm15 0a1.5 1.5 0 0 0-1.5 1.5v4a1.5 1.5 0 0 0 3 0v-4A1.5 1.5 0 0 0 19.5 9zM15.6 3.2l1.1-1.6a.3.3 0 0 0-.5-.34l-1.2 1.7a6.5 6.5 0 0 0-5 0L8.8 1.26a.3.3 0 0 0-.5.34l1.1 1.6A5.7 5.7 0 0 0 6 8h12a5.7 5.7 0 0 0-2.4-4.8zM9.5 6.2a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4zm5 0a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4z" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   const [lang, setLang] = useState<Lang>("en");
+  const [isAndroid, setIsAndroid] = useState(false);
   const t = copy[lang];
+
+  useEffect(() => {
+    if (/android/i.test(navigator.userAgent)) setIsAndroid(true);
+  }, []);
+
+  // Android → closed-testing flow at /android; everyone else → iOS App Store.
+  const appHref = isAndroid ? `/android?lang=${lang}` : IOS_URL;
+  const appLabelHero = isAndroid ? CTA_ANDROID[lang] : t.hero.ctaApp;
+  const appLabelCta2 = isAndroid ? CTA_ANDROID[lang] : t.cta2.ctaApp;
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans overflow-x-hidden relative">
@@ -567,7 +602,7 @@ export default function LandingPage() {
         </a>
         <div className="flex items-center gap-3 flex-shrink-0">
           <a
-            href={IOS_URL}
+            href={appHref}
             className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70 border-anthracite text-anthracite whitespace-nowrap"
           >
             {t.nav.goToApp}
@@ -623,8 +658,10 @@ export default function LandingPage() {
             {t.hero.sub}
           </p>
 
-          <SignInButtons ctaApp={t.hero.ctaApp} />
-          <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
+          <SignInButtons ctaApp={appLabelHero} href={appHref} android={isAndroid} />
+          {!isAndroid && (
+            <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
+          )}
         </div>
 
         <div className="relative max-w-5xl mx-auto mt-20 md:mt-28">
@@ -767,7 +804,7 @@ export default function LandingPage() {
             <p className="text-base font-light text-white/60 mb-8 leading-relaxed">
               {t.cta2.sub}
             </p>
-            <SignInButtons ctaApp={t.cta2.ctaApp} dark />
+            <SignInButtons ctaApp={appLabelCta2} href={appHref} android={isAndroid} dark />
           </div>
         </div>
       </section>
