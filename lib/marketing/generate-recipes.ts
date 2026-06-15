@@ -143,11 +143,18 @@ export interface GeneratedImage {
 }
 
 async function renderWatercolor(built: WatercolorPrompt): Promise<GeneratedImage> {
+  // Imagen rejects an explicit pixel `size` and applies the negative prompt only
+  // via providerOptions, so we pass aspectRatio + negativePrompt there; the
+  // OpenAI fallback honours `size` and ignores the google options.
+  const googleOptions = {
+    google: { aspectRatio: built.aspectRatio, negativePrompt: built.negativePrompt },
+  };
   try {
     const { image } = await generateImage({
       model: built.model,
       prompt: built.prompt,
       size: `${built.width}x${built.height}` as const,
+      providerOptions: googleOptions,
     });
     return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt };
   } catch (primaryError) {

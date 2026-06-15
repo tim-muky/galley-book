@@ -38,13 +38,13 @@ export const WATERCOLOR_STYLE_ANCHORS = [
  * Concrete nouns ("hand-painted edges", "muted palette") beat adjectives ("nice").
  */
 export const WATERCOLOR_STYLE_PROMPT = [
-  "hyperrealistic watercolor and colored-pencil painting of food",
-  "photoreal detail with true-to-life natural colors and crisp focus",
-  "soft diffused studio light, gentle realistic cast shadow, delicate specular highlights",
-  "viewed from directly overhead (top-down flat lay) or a slight three-quarter angle",
-  "a single hero dish plated simply on a clean plate, tray or paper plate",
-  "pure white background, generous negative space, isolated subject, no clutter",
-  "painted on lightly textured white watercolor paper, museum-quality still life",
+  "hyperrealistic, highly detailed watercolor and colored-pencil painting of food",
+  "lifelike photoreal rendering, true-to-life natural colors, crisp sharp detail and realistic textures",
+  "soft diffused studio light, one gentle soft cast shadow on the white surface, delicate specular highlights",
+  "viewed from directly overhead, top-down flat lay",
+  "a single hero dish served on one simple plate and nothing else",
+  "pure seamless white background, lots of empty white space, isolated subject",
+  "fine subtle paper-grain texture, museum-quality realism",
 ].join(", ");
 
 /**
@@ -65,6 +65,17 @@ export const WATERCOLOR_NEGATIVE_PROMPT = [
   "busy background",
   "clutter",
   "table setting props",
+  "serving tray",
+  "placemat",
+  "table runner",
+  "cutlery",
+  "fork",
+  "spoon",
+  "knife",
+  "second plate",
+  "framed picture",
+  "paper sheet with deckle edge",
+  "drop-shadow border",
   "text overlay",
   "watermark",
   "signature",
@@ -97,6 +108,8 @@ export interface BuildWatercolorPromptInput {
 export interface WatercolorPrompt {
   prompt: string;
   negativePrompt: string;
+  /** The aspect ratio string Imagen expects (it rejects an explicit pixel `size`). */
+  aspectRatio: AspectRatio;
   width: number;
   height: number;
   model: string;
@@ -125,6 +138,7 @@ export function buildWatercolorPrompt({
   return {
     prompt: parts.join(". "),
     negativePrompt: WATERCOLOR_NEGATIVE_PROMPT,
+    aspectRatio: aspect,
     width,
     height,
     model: WATERCOLOR_DEFAULT_MODEL,
