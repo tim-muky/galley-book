@@ -2,7 +2,7 @@
  * Recipe content generation for the Galley of the Week pipeline.
  *
  * Three layers, called in order by the workflow:
- *   1. generateRecipeCandidates(brief) → 10 lightweight name + one-liner + tags
+ *   1. generateRecipeCandidates(brief) → 6 lightweight name + one-liner + tags
  *   2. generateRecipeImage(candidate)  → one watercolor image per survivor
  *   3. expandRecipe(candidate)         → full ingredients + steps for survivors
  *
@@ -23,7 +23,7 @@ import {
 
 const CANDIDATE_MODEL = "google/gemini-3.5-flash";
 const EXPANSION_MODEL = "google/gemini-3.5-flash";
-const CANDIDATE_COUNT = 10;
+const CANDIDATE_COUNT = 6;
 
 // ---- Schemas ---------------------------------------------------------------
 
@@ -106,16 +106,16 @@ export async function generateRecipeCandidates(brief: GalleyBrief): Promise<Reci
         `Generate exactly ${CANDIDATE_COUNT} recipe ideas that hang together as one coherent collection.`,
         "Names must be specific and evocative — never generic like 'Pasta with sauce'.",
         "Avoid near-duplicates within the set (no two pasta dishes unless the brief is pasta-only).",
-        "Mix complexity: ~3 quick weeknight, ~5 main centerpiece, ~2 ambitious or showpiece.",
+        "Mix complexity: ~2 quick weeknight, ~3 main centerpiece, ~1 ambitious or showpiece.",
         `Output language for name + one-liner: ${locale === "de" ? "German" : "English"}.`,
         "Tags are always lowercase English regardless of locale.",
       ].join(" "),
       prompt: `Brief:\n${buildBriefPrompt(brief)}`,
     });
 
-    // Trim to spec — models often return 9 or 11. We accept ≥6 as success.
+    // Trim to spec — models drift by ±1 on exact counts. We accept ≥4 as success.
     const candidates = object.candidates.slice(0, CANDIDATE_COUNT);
-    if (candidates.length < 6) {
+    if (candidates.length < 4) {
       throw new Error(`Model returned only ${candidates.length} candidates`);
     }
     return candidates;

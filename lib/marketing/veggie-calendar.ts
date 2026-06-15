@@ -122,7 +122,7 @@ function capitalize(s: string): string {
 /**
  * Build the run brief for a veggie-of-the-week galley. Mirrors the manual
  * "New Galley of the Week" brief so the rest of the pipeline is unchanged —
- * the hero vegetable is pushed into both theme and notes so all 10
+ * the hero vegetable is pushed into both theme and notes so all 6
  * candidates center on it. Output language follows `locale` (defaults to
  * German, galleybook's primary market).
  */
@@ -138,13 +138,13 @@ export function buildVeggieBrief(
   if (locale === "en") {
     return {
       theme: `${capitalize(veggie.en)} — Veggie of the Week (Week ${week})`,
-      notes: `Every one of the 10 recipes puts ${veggie.en} front and centre as the clear hero ingredient — in season in ${SEASON_EN[veggie.season]}. A mix of quick weeknight dishes, mains, and one or two showpieces. Varied techniques, no near-duplicates.`,
+      notes: `Every one of the 6 recipes puts ${veggie.en} front and centre as the clear hero ingredient — in season in ${SEASON_EN[veggie.season]}. A mix of quick weeknight dishes, mains, and one showpiece. Varied techniques, no near-duplicates.`,
       locale: "en",
     };
   }
   return {
     theme: `${veggie.de} — Gemüse der Woche (KW ${week})`,
-    notes: `Jedes der 10 Rezepte stellt ${veggie.de} (${veggie.en}) als klare Hauptzutat in den Mittelpunkt — saisonal passend im ${veggie.season}. Mischung aus schnellen Alltagsgerichten, Hauptgerichten und ein bis zwei Highlights. Abwechslungsreiche Zubereitungen, keine Dopplungen.`,
+    notes: `Jedes der 6 Rezepte stellt ${veggie.de} (${veggie.en}) als klare Hauptzutat in den Mittelpunkt — saisonal passend im ${veggie.season}. Mischung aus schnellen Alltagsgerichten, Hauptgerichten und einem Highlight. Abwechslungsreiche Zubereitungen, keine Dopplungen.`,
     locale: "de",
   };
 }

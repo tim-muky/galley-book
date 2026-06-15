@@ -18,6 +18,7 @@ import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ASPECT_DIMENSIONS } from "./watercolor-style";
+import { overlayLogo } from "./logo-overlay";
 
 const { width: W, height: H } = ASPECT_DIMENSIONS["4:5"]; // 1080 × 1350
 
@@ -293,33 +294,47 @@ export async function renderCarousel({
     capped.map((r) => toEmbeddedDataUri(r.imageUrl, { width: W, height: Math.round(H * 0.68) })),
   );
 
-  const slides: React.ReactElement[] = [
-    <CoverSlide key="cover" title={title} heroUri={heroUri} />,
+  // Track each slide's kind so we only stamp the corner logo on the cover +
+  // recipe slides (GAL-448). CTA slides already carry the logo, centered.
+  const slides: { el: React.ReactElement; isCta: boolean }[] = [
+    { el: <CoverSlide key="cover" title={title} heroUri={heroUri} />, isCta: false },
   ];
   capped.forEach((r, i) => {
-    slides.push(
-      <RecipeSlide
-        key={`recipe-${i}`}
-        name={r.name}
-        oneLiner={r.oneLiner}
-        imageUri={recipeUris[i]}
-        index={i + 1}
-        total={capped.length}
-      />,
-    );
+    slides.push({
+      el: (
+        <RecipeSlide
+          key={`recipe-${i}`}
+          name={r.name}
+          oneLiner={r.oneLiner}
+          imageUri={recipeUris[i]}
+          index={i + 1}
+          total={capped.length}
+        />
+      ),
+      isCta: false,
+    });
     // Mid-carousel CTA after the 3rd recipe — only when more recipes follow,
     // so it never lands right before the closing CTA.
     if (i + 1 === MID_CTA_AFTER && capped.length > MID_CTA_AFTER) {
-      slides.push(<CtaSlide key="cta-mid" logoUri={logoUri} variant="mid" locale={locale} />);
+      slides.push({
+        el: <CtaSlide key="cta-mid" logoUri={logoUri} variant="mid" locale={locale} />,
+        isCta: true,
+      });
     }
   });
-  slides.push(<CtaSlide key="cta-end" logoUri={logoUri} variant="end" locale={locale} />);
+  slides.push({
+    el: <CtaSlide key="cta-end" logoUri={logoUri} variant="end" locale={locale} />,
+    isCta: true,
+  });
 
   // Render sequentially — each ImageResponse is CPU-heavy (Satori + Resvg);
-  // parallelizing risks OOM in a serverless function.
+  // parallelizing risks OOM in a serverless function. Content slides get the
+  // bottom-right logo stamped onto the finished JPEG (after the cover-crop, so
+  // it can't be clipped); CTA slides keep their own centered logo.
   const buffers: Buffer[] = [];
-  for (const slide of slides) {
-    buffers.push(await renderToJpeg(slide, fonts));
+  for (const { el, isCta } of slides) {
+    const jpeg = await renderToJpeg(el, fonts);
+    buffers.push(isCta ? jpeg : await overlayLogo(jpeg));
   }
   return buffers;
 }

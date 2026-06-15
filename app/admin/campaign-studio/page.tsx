@@ -3,7 +3,9 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { TakeOfflineButton } from "./take-offline-button";
 import { VeggieOfTheWeekButton } from "./veggie-of-the-week-button";
+import { RegionOfTheWeekButton } from "./region-of-the-week-button";
 import { getCurrentVeggie } from "@/lib/marketing/veggie-calendar";
+import { getCurrentRegion } from "@/lib/marketing/region-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export default async function CampaignStudioPage() {
   const service = createServiceClient();
 
   const { week, veggie } = getCurrentVeggie();
+  const { week: regionWeek, region } = getCurrentRegion();
 
   const { data: runs } = await service
     .from("galley_runs")
@@ -44,6 +47,7 @@ export default async function CampaignStudioPage() {
           + New Galley of the Week
         </Link>
         <VeggieOfTheWeekButton week={week} veggie={veggie} />
+        <RegionOfTheWeekButton week={regionWeek} region={region} />
         <Link
           href="/admin/campaign-studio/import"
           className="border border-anthracite bg-white text-anthracite rounded-full px-5 py-3 text-sm font-light text-center"

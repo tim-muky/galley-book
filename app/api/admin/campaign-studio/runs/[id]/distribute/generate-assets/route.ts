@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { renderCarousel } from "@/lib/marketing/carousel";
 import { generateAdCopy, generatePostTitle } from "@/lib/marketing/ad-copy";
+import { generateHashtags, formatHashtags, type ContentType } from "@/lib/marketing/hashtags";
 import type { RunCandidateWithImage } from "@/app/admin/campaign-studio/runs/[id]/curate-images/curate-images-client";
 import { NextResponse } from "next/server";
 
@@ -28,41 +29,27 @@ function dmReply(locale: "de" | "en", galleyUrl: string): string {
     : `Here's your recipe 👉 ${galleyUrl}\n\nIn galleybook you save any recipe in one tap – on iPhone, Android and the web. €1.99/month.`;
 }
 
+/** Map the run theme to a content type so hashtags can be tailored per post (GAL-449). */
+function detectContentType(theme: string): ContentType {
+  if (/gemüse der woche|veggie of the week/i.test(theme)) return "veggie";
+  if (/beste gerichte aus|best dishes from/i.test(theme)) return "region";
+  return "galley";
+}
+
 /**
- * Compose a default IG caption + hashtags. The CTA is the comment → DM mechanic
- * (GAL-433): viewers comment the trigger word and an auto-reply DMs them the
- * recipe link — this out-converts "link in bio" and lifts reach via comments.
+ * Compose a default IG caption. The CTA is the comment → DM mechanic (GAL-433):
+ * viewers comment the trigger word and an auto-reply DMs them the recipe link —
+ * this out-converts "link in bio" and lifts reach via comments. `hashtags` is a
+ * pre-formatted "#a #b" string built per-post by the AI hashtag generator
+ * (GAL-449), with the long-tail-first static lists as fallback.
  */
 function buildCaption(
   title: string,
   recipeNames: string[],
-  tags: string[],
+  hashtags: string,
   locale: "de" | "en",
   trigger: string,
 ): string {
-  // Long-tail-first, mirroring the ASO strategy: a new, low-authority account
-  // can't surface on saturated head hashtags. Lead with the galley's own
-  // (already topical) tags + broadly-safe niche/occasion tags; keep only a few
-  // head terms, last, so they drop first when we hit the 12-tag cap. Niche tags
-  // are occasion/use-case (safe on any galley) — diet specificity comes from the
-  // galley's own tags, so we never put #vegan on a steak galley.
-  const niche =
-    locale === "de"
-      ? ["mealprepdeutsch", "schnellerezepte", "familienrezepte", "wochenplan", "einfacherezepte"]
-      : ["mealprepideas", "easyrecipes", "familymeals", "weeklymealplan", "quickrecipes"];
-  const head = locale === "de" ? ["rezepte", "kochen", "mealprep"] : ["recipes", "cooking", "mealprep"];
-  // The galley's own tags are stored in English (the candidate generator forces
-  // English tags), so on a German post we must guarantee the locale's German
-  // hashtags survive. Cap the (English) galley tags so they can't crowd out the
-  // curated niche + head tags — otherwise a DE post ends up with zero German tags.
-  const galleyTags = tags.map((t) => t.replace(/[^a-z0-9]/gi, "").toLowerCase()).filter(Boolean);
-  const hashtags = Array.from(
-    new Set(["galleybook", ...galleyTags.slice(0, 5), ...niche.slice(0, 3), ...head]),
-  )
-    .slice(0, 12)
-    .map((t) => `#${t}`)
-    .join(" ");
-
   const intro =
     locale === "de"
       ? `${title} 🍳\n\nKommentiere ${trigger} und ich schicke dir das ganze Rezept per DM. 💌 Alle Rezepte in deiner eigenen galleybook-Sammlung – auf jedem Gerät.`
@@ -159,12 +146,19 @@ export async function POST(
     // 3) Generate ad-copy variants (quick single call)
     const adVariants = await generateAdCopy({ theme, recipeNames, locale });
 
-    // 4) Default captions (DE + EN) with the comment → DM mechanic (GAL-433)
+    // 4) Default captions (DE + EN) with the comment → DM mechanic (GAL-433).
+    //    Hashtags are tailored to this post by the AI generator (GAL-449), with
+    //    the galley's own tags as the static fallback seed.
     const allTags = Array.from(new Set(kept.flatMap((c) => c.tags ?? [])));
+    const contentType = detectContentType(theme);
+    const [hashtagsDe, hashtagsEn] = await Promise.all([
+      generateHashtags({ theme, recipeNames, contentType, locale: "de" }, allTags),
+      generateHashtags({ theme, recipeNames, contentType, locale: "en" }, allTags),
+    ]);
     const triggerDe = commentTrigger("de");
     const triggerEn = commentTrigger("en");
-    const captionDe = buildCaption(postTitle, recipeNames, allTags, "de", triggerDe);
-    const captionEn = buildCaption(postTitle, recipeNames, allTags, "en", triggerEn);
+    const captionDe = buildCaption(postTitle, recipeNames, formatHashtags(hashtagsDe), "de", triggerDe);
+    const captionEn = buildCaption(postTitle, recipeNames, formatHashtags(hashtagsEn), "en", triggerEn);
     const galleyUrl = `https://galleybook.com/galley/${galleyId}?utm_source=instagram&utm_medium=organic&utm_campaign=gotw`;
 
     // 5) Upsert the distribution row (one per galley)
