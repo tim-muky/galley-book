@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { DeleteRunButton } from "./delete-run-button";
+import { DistributeChannelPicker } from "./distribute-channel-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -81,12 +82,7 @@ export default async function RunDetailPage({
           >
             Open public landing page →
           </Link>
-          <Link
-            href={`/admin/campaign-studio/runs/${id}/distribute`}
-            className="block border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full text-center mb-6"
-          >
-            Distribute → IG + Ads
-          </Link>
+          <DistributeChannelPicker runId={id} />
         </>
       )}
 

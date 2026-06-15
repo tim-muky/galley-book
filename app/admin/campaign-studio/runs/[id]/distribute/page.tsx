@@ -7,11 +7,18 @@ export const dynamic = "force-dynamic";
 
 export default async function DistributePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ channels?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
+  const { channels } = await searchParams;
+  // Channels chosen on the published-run screen (GAL-456). Empty/absent → show all.
+  const selectedChannels = channels
+    ? channels.split(",").map((c) => c.trim()).filter(Boolean)
+    : null;
 
   const service = createServiceClient();
   const { data: run } = await service
@@ -41,6 +48,7 @@ export default async function DistributePage({
       galleyId={run.published_galley_id}
       galleyName={(galley?.name as string) ?? ""}
       initialDistribution={distribution}
+      channels={selectedChannels}
     />
   );
 }

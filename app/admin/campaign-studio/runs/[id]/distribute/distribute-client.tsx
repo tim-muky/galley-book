@@ -18,12 +18,21 @@ export function DistributeClient({
   galleyId,
   galleyName,
   initialDistribution,
+  channels,
 }: {
   runId: string;
   galleyId: string;
   galleyName: string;
   initialDistribution: Distribution | null;
+  /** Channels chosen on the run screen (GAL-456). null/empty → show all. */
+  channels?: string[] | null;
 }) {
+  // Which channel sections to render. With no selection (e.g. direct nav) we
+  // fall back to showing every channel, so the screen is never empty.
+  const showAll = !channels || channels.length === 0;
+  const showIg = showAll || channels.includes("instagram");
+  const showTikTok = showAll || channels.includes("tiktok");
+  const showMeta = showAll || channels.includes("meta");
   const [dist, setDist] = useState<Distribution | null>(initialDistribution);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -273,6 +282,8 @@ export function DistributeClient({
           )}
 
           {/* Instagram post */}
+          {showIg && (
+          <>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
             Instagram
           </p>
@@ -327,7 +338,12 @@ export function DistributeClient({
             </div>
           )}
 
+          </>
+          )}
+
           {/* TikTok post — publishes the same carousel as a TikTok photo post. */}
+          {showTikTok && (
+          <>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
             TikTok
           </p>
@@ -386,8 +402,11 @@ export function DistributeClient({
             </div>
           )}
 
+          </>
+          )}
+
           {/* Ad creative variants (Meta push lands with GAL-391) */}
-          {adVariants.length > 0 && (
+          {showMeta && adVariants.length > 0 && (
             <>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
                 Ad creative ({adVariants.length} variants)
