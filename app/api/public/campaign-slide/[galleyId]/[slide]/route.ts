@@ -61,7 +61,7 @@ export async function GET(
   }
 
   const raw = Buffer.from(await data.arrayBuffer());
-  let body = raw;
+  let body: Buffer = raw;
   try {
     body = await padTo916(raw);
   } catch (err) {
@@ -73,7 +73,7 @@ export async function GET(
     });
   }
 
-  return new NextResponse(body, {
+  return new NextResponse(new Uint8Array(body), {
     status: 200,
     headers: {
       "Content-Type": "image/jpeg",
