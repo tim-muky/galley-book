@@ -2,11 +2,19 @@
  * Watercolor brand style anchor for AI-generated imagery.
  *
  * Used by Campaign Studio (Galley of the Week pipeline) and any other
- * generated marketing assets. The look matches existing app assets —
- * see `public/onboarding/*.png` for the canonical veggie illustrations.
+ * generated marketing assets.
  *
- * Anchor images for image-to-image conditioning live at
- * `public/admin/style-anchors/`.
+ * Style direction (refreshed 2026-06-15, GAL-450): hyperrealistic watercolor +
+ * colored-pencil painting of food — true-to-life natural colors, crisp photoreal
+ * detail, soft diffused studio light with delicate specular highlights, a single
+ * hero dish plated simply, shot top-down on a pure-white watercolor-paper
+ * background. This replaces the earlier loose / muted-palette illustration look.
+ *
+ * The reference paintings live in `public/admin/style-anchors/`. NOTE: the
+ * legacy anchor PNGs listed below are the OLD loose veggie illustrations and no
+ * longer match this direction — replace them with the new reference images. The
+ * generation step currently conditions on the text prompt only (anchors are not
+ * passed to `generateImage`), so the prompt below is the active style lever.
  */
 
 export type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";
@@ -30,13 +38,13 @@ export const WATERCOLOR_STYLE_ANCHORS = [
  * Concrete nouns ("hand-painted edges", "muted palette") beat adjectives ("nice").
  */
 export const WATERCOLOR_STYLE_PROMPT = [
-  "soft watercolor illustration",
-  "hand-painted with visible brushstrokes and gentle bleed edges",
-  "warm muted palette: ochre, sage, terracotta, dusty rose, parchment",
-  "white or off-white background, isolated subject, no scene clutter",
-  "loose organic linework, slight irregularity, paper grain visible",
-  "editorial cookbook aesthetic, food-as-still-life",
-  "no photorealism, no 3D render, no cartoon, no glossy digital painting",
+  "hyperrealistic watercolor and colored-pencil painting of food",
+  "photoreal detail with true-to-life natural colors and crisp focus",
+  "soft diffused studio light, gentle realistic cast shadow, delicate specular highlights",
+  "viewed from directly overhead (top-down flat lay) or a slight three-quarter angle",
+  "a single hero dish plated simply on a clean plate, tray or paper plate",
+  "pure white background, generous negative space, isolated subject, no clutter",
+  "painted on lightly textured white watercolor paper, museum-quality still life",
 ].join(", ");
 
 /**
@@ -44,20 +52,26 @@ export const WATERCOLOR_STYLE_PROMPT = [
  * negative prompts ignore this; we still include it in the request when supported.
  */
 export const WATERCOLOR_NEGATIVE_PROMPT = [
-  "photograph",
-  "photorealistic",
-  "3D render",
-  "CGI",
   "cartoon",
   "anime",
+  "cel shading",
   "vector flat illustration",
+  "loose abstract brushstrokes",
+  "muted desaturated palette",
   "neon",
-  "high saturation",
+  "oversaturated",
   "harsh shadows",
+  "dramatic lighting",
   "busy background",
+  "clutter",
+  "table setting props",
   "text overlay",
   "watermark",
   "signature",
+  "border frame",
+  "3D render",
+  "CGI",
+  "plastic look",
 ].join(", ");
 
 /**
