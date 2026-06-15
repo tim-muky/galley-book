@@ -61,7 +61,7 @@ export async function GET(
   }
 
   const raw = Buffer.from(await data.arrayBuffer());
-  let body: Buffer = raw;
+  let body: Uint8Array = raw;
   try {
     body = await padTo916(raw);
   } catch (err) {
