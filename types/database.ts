@@ -173,6 +173,9 @@ export type Database = {
           created_at: string
           dm_reply_de: string | null
           dm_reply_en: string | null
+          fb_error: string | null
+          fb_post_id: string | null
+          fb_status: Database["public"]["Enums"]["ig_post_status"]
           galley_id: string
           id: string
           ig_error: string | null
@@ -198,6 +201,9 @@ export type Database = {
           created_at?: string
           dm_reply_de?: string | null
           dm_reply_en?: string | null
+          fb_error?: string | null
+          fb_post_id?: string | null
+          fb_status?: Database["public"]["Enums"]["ig_post_status"]
           galley_id: string
           id?: string
           ig_error?: string | null
@@ -223,6 +229,9 @@ export type Database = {
           created_at?: string
           dm_reply_de?: string | null
           dm_reply_en?: string | null
+          fb_error?: string | null
+          fb_post_id?: string | null
+          fb_status?: Database["public"]["Enums"]["ig_post_status"]
           galley_id?: string
           id?: string
           ig_error?: string | null

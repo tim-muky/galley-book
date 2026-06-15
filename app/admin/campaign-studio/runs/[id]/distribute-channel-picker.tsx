@@ -9,13 +9,11 @@ import { useRouter } from "next/navigation";
  * selection is carried as a `?channels=` query param and the Distribute screen
  * renders only those sections.
  *
- * Facebook is listed but disabled until the FB publishing channel ships
- * (GAL-453) — shown so the set of channels is obvious, not actionable yet.
  */
 const CHANNELS = [
   { key: "instagram", label: "Instagram", enabled: true },
   { key: "tiktok", label: "TikTok", enabled: true },
-  { key: "facebook", label: "Facebook", enabled: false, note: "soon" },
+  { key: "facebook", label: "Facebook", enabled: true },
   { key: "meta", label: "Meta Ads", enabled: true },
 ] as const;
 
@@ -59,9 +57,9 @@ export function DistributeChannelPicker({ runId }: { runId: string }) {
                 className="w-4 h-4 accent-[#252729] disabled:opacity-40"
               />
               {c.label}
-              {!c.enabled && c.note ? (
+              {!c.enabled ? (
                 <span className="text-[10px] uppercase tracking-widest text-on-surface-variant/60">
-                  {c.note}
+                  soon
                 </span>
               ) : null}
             </label>

@@ -32,12 +32,14 @@ export function DistributeClient({
   const showAll = !channels || channels.length === 0;
   const showIg = showAll || channels.includes("instagram");
   const showTikTok = showAll || channels.includes("tiktok");
+  const showFb = showAll || channels.includes("facebook");
   const showMeta = showAll || channels.includes("meta");
   const [dist, setDist] = useState<Distribution | null>(initialDistribution);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
   const [postingTikTok, setPostingTikTok] = useState(false);
+  const [postingFb, setPostingFb] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState(initialDistribution?.post_title ?? "");
@@ -137,6 +139,26 @@ export function DistributeClient({
       setDist({ ...dist, tiktok_status: "published", tiktok_post_id: body.publishId, tiktok_error: null });
     }
     setPostingTikTok(false);
+  }
+
+  async function postToFacebook() {
+    setPostingFb(true);
+    setError(null);
+    const res = await fetch(
+      `/api/admin/campaign-studio/runs/${runId}/distribute/facebook`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: postLocale }),
+      },
+    );
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "Failed to post to Facebook");
+    } else if (dist) {
+      setDist({ ...dist, fb_status: "published", fb_post_id: body.postId, fb_error: null });
+    }
+    setPostingFb(false);
   }
 
   async function generateScripts() {
@@ -402,6 +424,68 @@ export function DistributeClient({
             </div>
           )}
 
+          </>
+          )}
+
+          {/* Facebook Page post — publishes the same carousel as a multi-photo post. */}
+          {showFb && (
+          <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
+            Facebook
+          </p>
+          {dist.fb_status === "published" && dist.fb_post_id ? (
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              <p className="text-sm font-light text-anthracite mb-1">Published ✓</p>
+              <p className="text-xs font-light text-on-surface-variant mb-2">
+                Post id <code className="text-[10px]">{dist.fb_post_id}</code>
+              </p>
+              <a
+                href="https://facebook.com/galleybook"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-light text-anthracite underline"
+              >
+                Open galleybook on Facebook →
+              </a>
+            </div>
+          ) : (
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              {dist.fb_status === "failed" && dist.fb_error && (
+                <p className="text-xs font-light text-red-600 mb-3">Last attempt failed: {dist.fb_error}</p>
+              )}
+              <div className="flex gap-2 mb-3">
+                {(["de", "en"] as const).map((loc) => {
+                  const active = postLocale === loc;
+                  return (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setPostLocale(loc)}
+                      className="border text-xs font-light py-2 px-4 rounded-full"
+                      style={{
+                        backgroundColor: active ? "#252729" : "#fff",
+                        color: active ? "#fff" : "#252729",
+                        borderColor: "#252729",
+                      }}
+                    >
+                      {loc.toUpperCase()} caption
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={postToFacebook}
+                disabled={postingFb || carouselPaths.length < 1}
+                className="w-full border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full disabled:opacity-40"
+              >
+                {postingFb ? "Posting to Facebook…" : "Post carousel to Facebook"}
+              </button>
+              <p className="text-[11px] font-light text-on-surface-variant mt-2">
+                Posts the slides as a multi-photo update to the galleybook Facebook Page.
+              </p>
+            </div>
+          )}
           </>
           )}
 
