@@ -40,6 +40,13 @@ export function DistributeClient({
   const [posting, setPosting] = useState(false);
   const [postingTikTok, setPostingTikTok] = useState(false);
   const [postingFb, setPostingFb] = useState(false);
+  const [renderingReel, setRenderingReel] = useState(false);
+  const [postingReel, setPostingReel] = useState(false);
+  const [reelUrl, setReelUrl] = useState<string | null>(
+    initialDistribution?.video_path
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos/${initialDistribution.video_path}`
+      : null,
+  );
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState(initialDistribution?.post_title ?? "");
@@ -159,6 +166,37 @@ export function DistributeClient({
       setDist({ ...dist, fb_status: "published", fb_post_id: body.postId, fb_error: null });
     }
     setPostingFb(false);
+  }
+
+  async function renderReel() {
+    setRenderingReel(true);
+    setError(null);
+    const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/distribute/reel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "render" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) setError(body.error ?? "Failed to render reel");
+    else setReelUrl(`${body.videoUrl}?t=${Date.now()}`);
+    setRenderingReel(false);
+  }
+
+  async function postReel() {
+    setPostingReel(true);
+    setError(null);
+    const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/distribute/reel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "publish", locale: postLocale }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "Failed to post reel");
+    } else if (dist) {
+      setDist({ ...dist, reel_status: "published", reel_post_id: body.igPostId, reel_error: null });
+    }
+    setPostingReel(false);
   }
 
   async function generateScripts() {
@@ -360,6 +398,57 @@ export function DistributeClient({
             </div>
           )}
 
+          </>
+          )}
+
+          {/* Reel (Instagram) — slides + music slideshow video (GAL-452). */}
+          {showIg && (
+          <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
+            Reel (Instagram)
+          </p>
+          <div className="bg-white rounded-md p-4 shadow-ambient">
+            {dist.reel_status === "failed" && dist.reel_error && (
+              <p className="text-xs font-light text-red-600 mb-3">Last attempt failed: {dist.reel_error}</p>
+            )}
+            <button
+              type="button"
+              onClick={renderReel}
+              disabled={renderingReel || carouselPaths.length < 1}
+              className="border border-anthracite bg-white text-anthracite text-[11px] font-light py-1.5 px-4 rounded-full disabled:opacity-40 mb-3"
+            >
+              {renderingReel ? "Rendering reel…" : reelUrl ? "Re-render reel" : "Generate reel"}
+            </button>
+            {reelUrl && (
+              <video
+                src={reelUrl}
+                controls
+                className="w-40 rounded-md mb-3 bg-surface-low"
+                style={{ aspectRatio: "9 / 16" }}
+              />
+            )}
+            {dist.reel_status === "published" && dist.reel_post_id ? (
+              <div>
+                <p className="text-sm font-light text-anthracite mb-1">Reel published ✓</p>
+                <p className="text-xs font-light text-on-surface-variant">
+                  Media id <code className="text-[10px]">{dist.reel_post_id}</code>
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={postReel}
+                disabled={postingReel || !reelUrl}
+                className="w-full border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full disabled:opacity-40"
+              >
+                {postingReel ? "Posting reel…" : "Post reel to Instagram"}
+              </button>
+            )}
+            <p className="text-[11px] font-light text-on-surface-variant mt-2">
+              A 9:16 slideshow of the carousel slides (CTA included) with background music from
+              <code className="text-[10px]"> public/audio</code>. Silent if no track is present.
+            </p>
+          </div>
           </>
           )}
 

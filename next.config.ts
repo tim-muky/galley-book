@@ -13,7 +13,14 @@ const nextConfig: NextConfig = {
     // GAL-390 — carousel renderer reads Inter ttf via fs.readFile (string arg),
     // which the tracer doesn't follow, so force-include the fonts in the
     // Campaign Studio distribution function.
-    "/api/admin/campaign-studio/**/*": ["./assets/fonts/*.ttf"],
+    // GAL-452 — the reel renderer spawns the static ffmpeg binary and reads
+    // background-music files; force-include both (the tracer can't see the
+    // spawned binary, and public/* isn't on the function fs by default).
+    "/api/admin/campaign-studio/**/*": [
+      "./assets/fonts/*.ttf",
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./public/audio/*.mp3",
+    ],
   },
   images: {
     formats: ["image/avif", "image/webp"],

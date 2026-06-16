@@ -176,6 +176,9 @@ export type Database = {
           fb_error: string | null
           fb_post_id: string | null
           fb_status: Database["public"]["Enums"]["ig_post_status"]
+          reel_error: string | null
+          reel_post_id: string | null
+          reel_status: Database["public"]["Enums"]["ig_post_status"]
           galley_id: string
           id: string
           ig_error: string | null
@@ -204,6 +207,9 @@ export type Database = {
           fb_error?: string | null
           fb_post_id?: string | null
           fb_status?: Database["public"]["Enums"]["ig_post_status"]
+          reel_error?: string | null
+          reel_post_id?: string | null
+          reel_status?: Database["public"]["Enums"]["ig_post_status"]
           galley_id: string
           id?: string
           ig_error?: string | null
@@ -232,6 +238,9 @@ export type Database = {
           fb_error?: string | null
           fb_post_id?: string | null
           fb_status?: Database["public"]["Enums"]["ig_post_status"]
+          reel_error?: string | null
+          reel_post_id?: string | null
+          reel_status?: Database["public"]["Enums"]["ig_post_status"]
           galley_id?: string
           id?: string
           ig_error?: string | null

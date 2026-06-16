@@ -188,6 +188,56 @@ export async function postCarouselToInstagram({
   return { igPostId };
 }
 
+// ---- Reels (GAL-452) ------------------------------------------------------
+
+export interface PostReelInput {
+  /** Public URL of the rendered MP4 (H.264/AAC, 9:16). */
+  videoUrl: string;
+  /** Full caption (already includes hashtags). */
+  caption: string;
+}
+
+export interface PostReelResult {
+  igPostId: string;
+}
+
+/**
+ * Publish a Reel to the galleybook IG business account. Same 3-step flow as a
+ * carousel but media_type=REELS with a video_url. Reels transcode server-side,
+ * so the container can take 30–60s+ to reach FINISHED — we poll longer.
+ */
+export async function postReelToInstagram({
+  videoUrl,
+  caption,
+}: PostReelInput): Promise<PostReelResult> {
+  const igUserId = META.igUserId;
+  const token = await getPageAccessToken();
+
+  // 1) Create the REELS container.
+  const { id: creationId } = await metaFetch<{ id: string }>(`${GRAPH}/${igUserId}/media`, {
+    method: "POST",
+    params: {
+      media_type: "REELS",
+      video_url: videoUrl,
+      caption,
+      share_to_feed: "true",
+      access_token: token,
+    },
+  });
+
+  // 2) Wait for the async transcode (longer budget than images).
+  await waitForContainer(creationId, token, { tries: 30, delayMs: 5000 });
+
+  // 3) Publish.
+  const { id: igPostId } = await metaFetch<{ id: string }>(
+    `${GRAPH}/${igUserId}/media_publish`,
+    { method: "POST", params: { creation_id: creationId, access_token: token } },
+  );
+
+  logger.info("campaign_studio.ig.reel_published", { igPostId });
+  return { igPostId };
+}
+
 // ---- Organic insights (GAL-425) -------------------------------------------
 
 export interface IgPostEngagement {
