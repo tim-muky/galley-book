@@ -10,7 +10,8 @@ export type FollowCandidate = {
   region: string | null;
   note: string | null;
   follower_tier: string | null;
-  status: "suggested" | "followed" | "skipped";
+  status: "suggested" | "followed" | "skipped" | "invalid";
+  needs_verify: boolean;
 };
 
 export function SocialMediaClient({ initial }: { initial: FollowCandidate[] }) {
@@ -22,7 +23,7 @@ export function SocialMediaClient({ initial }: { initial: FollowCandidate[] }) {
   const followed = items.filter((i) => i.status === "followed").length;
   const skipped = items.filter((i) => i.status === "skipped").length;
 
-  async function mark(id: string, status: "followed" | "skipped") {
+  async function mark(id: string, status: "followed" | "skipped" | "invalid") {
     setBusy(id);
     setError(null);
     const res = await fetch("/api/admin/social-media/candidates", {
@@ -105,6 +106,11 @@ export function SocialMediaClient({ initial }: { initial: FollowCandidate[] }) {
                 {c.category ? ` · ${c.category}` : ""}
                 {c.region ? ` · ${c.region}` : ""}
               </p>
+              {c.needs_verify && (
+                <p className="text-[11px] font-light text-amber-700 mb-1">
+                  ⚠️ Handle unverified — check the profile opens to the right account before following.
+                </p>
+              )}
               {c.note && (
                 <p className="text-xs font-light text-on-surface-variant/80 mb-3">{c.note}</p>
               )}
@@ -132,6 +138,15 @@ export function SocialMediaClient({ initial }: { initial: FollowCandidate[] }) {
                   className="border border-anthracite bg-white text-on-surface-variant text-xs font-light py-2 px-4 rounded-full disabled:opacity-40"
                 >
                   Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mark(c.id, "invalid")}
+                  disabled={busy === c.id}
+                  className="border border-red-300 bg-white text-red-600 text-xs font-light py-2 px-4 rounded-full disabled:opacity-40"
+                  title="Wrong account / dead handle — remove from the queue"
+                >
+                  🚩 Wrong
                 </button>
               </div>
             </div>

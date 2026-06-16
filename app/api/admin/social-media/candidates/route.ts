@@ -9,9 +9,15 @@ export async function PATCH(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const id = typeof body?.id === "string" ? body.id : null;
-  const status = body?.status === "followed" || body?.status === "skipped" ? body.status : null;
+  const status =
+    body?.status === "followed" || body?.status === "skipped" || body?.status === "invalid"
+      ? body.status
+      : null;
   if (!id || !status) {
-    return NextResponse.json({ error: "id and status (followed|skipped) required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "id and status (followed|skipped|invalid) required" },
+      { status: 400 },
+    );
   }
 
   const service = createServiceClient();

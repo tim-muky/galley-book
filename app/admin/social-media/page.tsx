@@ -10,7 +10,8 @@ export default async function SocialMediaPage() {
 
   const { data } = await service
     .from("ig_follow_candidates")
-    .select("id, handle, display_name, category, region, note, follower_tier, status")
+    .select("id, handle, display_name, category, region, note, follower_tier, status, needs_verify")
+    .order("needs_verify", { ascending: true })
     .order("follower_tier", { ascending: false })
     .order("region", { ascending: true });
 
