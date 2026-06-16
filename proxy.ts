@@ -60,6 +60,10 @@ export async function proxy(request: NextRequest) {
       // GAL-351: premium-invite landing page — shared from native app, must
       // resolve on the landing host so invitees can open the link directly.
       pathname.startsWith("/invite/") ||
+      // /app — smart "get the app" redirect (route handler at app/app/route.ts).
+      // The Instagram bio links here; must resolve on the marketing host
+      // without the /landing/ rewrite.
+      pathname === "/app" ||
       // Public Galley of the Week landing pages — Campaign Studio publishes
       // here, and paid ads / IG posts deep-link here. Must resolve on the
       // marketing host without the /landing/ rewrite.
@@ -88,6 +92,8 @@ export async function proxy(request: NextRequest) {
     pathname === "/auth/callback" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/admin") ||
+    // /app — top-level get-the-app redirect, no locale prefix.
+    pathname === "/app" ||
     pathname.startsWith("/share") ||
     pathname.startsWith("/r/") ||
     // /galley/<id> is anonymous + locale-agnostic — no intl routing,
