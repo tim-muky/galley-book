@@ -15,8 +15,6 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import {
   buildWatercolorPrompt,
-  WATERCOLOR_DEFAULT_MODEL,
-  WATERCOLOR_FALLBACK_MODEL,
   type AspectRatio,
   type WatercolorPrompt,
 } from "./watercolor-style";
@@ -142,30 +140,54 @@ export interface GeneratedImage {
   prompt: string;
 }
 
-async function renderWatercolor(built: WatercolorPrompt): Promise<GeneratedImage> {
-  // Imagen rejects an explicit pixel `size` and applies the negative prompt only
-  // via providerOptions, so we pass aspectRatio + negativePrompt there; the
-  // OpenAI fallback honours `size` and ignores the google options.
-  const googleOptions = {
-    google: { aspectRatio: built.aspectRatio, negativePrompt: built.negativePrompt },
+/** gpt-image-2 supports a small fixed set of sizes — map our aspect onto the nearest. */
+function openaiSize(aspect: AspectRatio): `${number}x${number}` {
+  switch (aspect) {
+    case "16:9":
+      return "1536x1024";
+    case "9:16":
+    case "4:5":
+      return "1024x1536";
+    default:
+      return "1024x1024";
+  }
+}
+
+/**
+ * Build the generateImage params for a given model. The two providers take
+ * different shapes: OpenAI (gpt-image) uses `size` and ignores Google's negative
+ * prompt — so we fold the key "don't" constraints into the prompt — while Imagen
+ * rejects an explicit pixel `size` and reads the negative prompt + aspect only
+ * from providerOptions.google.
+ */
+function imageParams(model: string, built: WatercolorPrompt) {
+  if (model.startsWith("openai/")) {
+    return {
+      model,
+      prompt: `${built.prompt}. No text, lettering, watermarks, or extra props.`,
+      size: openaiSize(built.aspectRatio),
+    };
+  }
+  return {
+    model,
+    prompt: built.prompt,
+    size: `${built.width}x${built.height}` as `${number}x${number}`,
+    providerOptions: {
+      google: { aspectRatio: built.aspectRatio, negativePrompt: built.negativePrompt },
+    },
   };
+}
+
+async function renderWatercolor(built: WatercolorPrompt): Promise<GeneratedImage> {
   try {
-    const { image } = await generateImage({
-      model: built.model,
-      prompt: built.prompt,
-      size: `${built.width}x${built.height}` as const,
-      providerOptions: googleOptions,
-    });
+    const { image } = await generateImage(imageParams(built.model, built));
     return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt };
   } catch (primaryError) {
-    // One retry on the fallback model. Image gen rate-limits are common
-    // and Imagen specifically rejects some prompts the OpenAI model accepts.
-    if (built.model === WATERCOLOR_DEFAULT_MODEL) {
-      const { image } = await generateImage({
-        model: WATERCOLOR_FALLBACK_MODEL,
-        prompt: built.prompt,
-        size: `${built.width}x${built.height}` as const,
-      });
+    // One retry on the fallback model (different provider) — image gen
+    // rate-limits are common, and each model rejects some prompts the other
+    // accepts. imageParams sends the right param shape for whichever model.
+    if (built.fallbackModel && built.fallbackModel !== built.model) {
+      const { image } = await generateImage(imageParams(built.fallbackModel, built));
       return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt };
     }
     throw primaryError;

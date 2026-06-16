@@ -89,12 +89,17 @@ export const WATERCOLOR_NEGATIVE_PROMPT = [
  * Default model for watercolor generation. Routed through the Vercel AI Gateway
  * so we can swap providers without touching call sites.
  *
- * Imagen 4 Fast produces clean watercolor textures in ~5s; gpt-image-2 is
- * the fallback if Imagen is unavailable. (The non-fast imagen-4.0-generate-001
- * is currently unprovisioned on the gateway and times out — do not use it.)
+ * gpt-image-2 best matches the hyperrealistic reference style (GAL-450) — true
+ * photoreal detail on the plated dish. Imagen 4 Fast is the fallback: cheaper
+ * and ~5s, but leans soft/illustrative. (The non-fast imagen-4.0-generate-001
+ * is unprovisioned on the gateway and times out — do not use it.)
+ *
+ * Provider note: gpt-image takes `size` (not aspectRatio) and ignores the
+ * Google-specific negative prompt — renderWatercolor sends the right params per
+ * provider, so either model can be the default or fallback.
  */
-export const WATERCOLOR_DEFAULT_MODEL = "google/imagen-4.0-fast-generate-001";
-export const WATERCOLOR_FALLBACK_MODEL = "openai/gpt-image-2";
+export const WATERCOLOR_DEFAULT_MODEL = "openai/gpt-image-2";
+export const WATERCOLOR_FALLBACK_MODEL = "google/imagen-4.0-fast-generate-001";
 
 export interface BuildWatercolorPromptInput {
   /** Free-form subject — e.g. recipe name + one-liner, or campaign concept */
