@@ -160,12 +160,16 @@ function openaiSize(aspect: AspectRatio): `${number}x${number}` {
  * rejects an explicit pixel `size` and reads the negative prompt + aspect only
  * from providerOptions.google.
  */
-function imageParams(model: string, built: WatercolorPrompt) {
+function imageParams(model: string, built: WatercolorPrompt): Parameters<typeof generateImage>[0] {
   if (model.startsWith("openai/")) {
+    // Pin quality to "medium" so per-image cost is predictable rather than
+    // relying on the provider default (which trends to high/auto). Medium keeps
+    // the photoreal look at a fraction of high-tier cost.
     return {
       model,
       prompt: `${built.prompt}. No text, lettering, watermarks, or extra props.`,
       size: openaiSize(built.aspectRatio),
+      providerOptions: { openai: { quality: "medium" } },
     };
   }
   return {
