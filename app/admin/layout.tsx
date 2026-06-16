@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/admin/parse-logs", label: "Parse Logs" },
   { href: "/admin/comp", label: "Comp" },
   { href: "/admin/campaign-studio", label: "Campaign Studio" },
+  { href: "/admin/social-media", label: "Social Media Management" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
