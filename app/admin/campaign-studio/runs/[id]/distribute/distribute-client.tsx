@@ -148,6 +148,23 @@ export function DistributeClient({
     setPostingTikTok(false);
   }
 
+  async function postReelToTikTok() {
+    setPostingTikTok(true);
+    setError(null);
+    const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/distribute/tiktok`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: postLocale, action: "video" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(body.error ?? "Failed to post reel to TikTok");
+    } else if (dist) {
+      setDist({ ...dist, tiktok_status: "published", tiktok_post_id: body.publishId, tiktok_error: null });
+    }
+    setPostingTikTok(false);
+  }
+
   async function postToFacebook() {
     setPostingFb(true);
     setError(null);
@@ -498,16 +515,28 @@ export function DistributeClient({
                   );
                 })}
               </div>
-              <button
-                type="button"
-                onClick={postToTikTok}
-                disabled={postingTikTok || carouselPaths.length < 1}
-                className="w-full border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full disabled:opacity-40"
-              >
-                {postingTikTok ? "Posting to TikTok…" : "Post carousel to TikTok"}
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={postToTikTok}
+                  disabled={postingTikTok || carouselPaths.length < 1}
+                  className="w-full border border-anthracite bg-anthracite text-white text-sm font-light py-3 rounded-full disabled:opacity-40"
+                >
+                  {postingTikTok ? "Posting to TikTok…" : "Post carousel to TikTok (photo)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={postReelToTikTok}
+                  disabled={postingTikTok || !reelUrl}
+                  className="w-full border border-anthracite bg-white text-anthracite text-sm font-light py-3 rounded-full disabled:opacity-40"
+                  title={reelUrl ? undefined : "Render the reel first in the Reel section"}
+                >
+                  {postingTikTok ? "Posting…" : "Post reel to TikTok (video)"}
+                </button>
+              </div>
               <p className="text-[11px] font-light text-on-surface-variant mt-2">
-                Posts the slides as a TikTok photo post. Until the app passes TikTok&apos;s
+                Photo = the carousel slides; video = the rendered reel (TikTok&apos;s native
+                format — render it in the Reel section first). Until the app passes TikTok&apos;s
                 Content Posting audit, posts publish privately (visible only to the account).
               </p>
             </div>

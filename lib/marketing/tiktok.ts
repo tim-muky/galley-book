@@ -248,3 +248,55 @@ export async function postPhotosToTikTok({
   });
   return { publishId: publish_id, status, privacy };
 }
+
+// ---- Video (reel) ----------------------------------------------------------
+
+export interface PostVideoInput {
+  /** Public MP4 URL on a TikTok-verified domain (the reel proxy). */
+  videoUrl: string;
+  /** Caption (TikTok video title; caps at 2200 runes; already includes hashtags). */
+  caption: string;
+}
+
+/**
+ * Publish the rendered reel MP4 to the galleybook TikTok account as a video —
+ * TikTok's native format. Same content/init → status flow as the photo post,
+ * with media_type VIDEO + a PULL_FROM_URL video_url.
+ *
+ * NOTE: untested end-to-end until TIKTOK_* env is set and the app passes
+ * TikTok's audit — re-verify the post_info/source_info shape against current
+ * TikTok Content Posting docs before going public.
+ */
+export async function postVideoToTikTok({
+  videoUrl,
+  caption,
+}: PostVideoInput): Promise<PostPhotosResult> {
+  const token = await getTikTokAccessToken();
+  const { privacy } = await resolvePrivacy(token);
+  const postMode = process.env.TIKTOK_POST_MODE === "MEDIA_UPLOAD" ? "MEDIA_UPLOAD" : "DIRECT_POST";
+
+  const { publish_id } = await tiktokPost<{ publish_id: string }>(
+    "/v2/post/publish/content/init/",
+    token,
+    {
+      media_type: "VIDEO",
+      post_mode: postMode,
+      post_info: {
+        title: caption.slice(0, 2200),
+        privacy_level: privacy,
+        disable_comment: false,
+        disable_duet: false,
+        disable_stitch: false,
+      },
+      source_info: {
+        source: "PULL_FROM_URL",
+        video_url: videoUrl,
+      },
+    },
+  );
+
+  const status = await waitForPublish(publish_id, token);
+
+  logger.info("campaign_studio.tiktok.reel_published", { publishId: publish_id, privacy, postMode, status });
+  return { publishId: publish_id, status, privacy };
+}
