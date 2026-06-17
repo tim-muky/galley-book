@@ -48,6 +48,11 @@ export function DistributeClient({
       : null,
   );
   const [pushing, setPushing] = useState(false);
+  const [proofing, setProofing] = useState(false);
+  const [proof, setProof] = useState<{
+    ok: boolean;
+    issues: { severity: "error" | "warning"; area: string; slide: number | null; detail: string }[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState(initialDistribution?.post_title ?? "");
   const [captionDe, setCaptionDe] = useState(initialDistribution?.caption_de ?? "");
@@ -216,6 +221,21 @@ export function DistributeClient({
     setPostingReel(false);
   }
 
+  async function runProofread() {
+    setProofing(true);
+    setError(null);
+    setProof(null);
+    const res = await fetch(`/api/admin/campaign-studio/runs/${runId}/distribute/proofread`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: postLocale }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) setError(body.error ?? "Proofread failed");
+    else setProof(body);
+    setProofing(false);
+  }
+
   async function generateScripts() {
     setScripting(true);
     setError(null);
@@ -357,6 +377,48 @@ export function DistributeClient({
               </p>
             </div>
           )}
+
+          {/* Proofread before posting (GAL-457) */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mt-6 mb-2">
+            Proofread before posting
+          </p>
+          <div className="bg-white rounded-md p-4 shadow-ambient mb-6">
+            <button
+              type="button"
+              onClick={runProofread}
+              disabled={proofing || carouselPaths.length < 1}
+              className="border border-anthracite bg-white text-anthracite text-[11px] font-light py-1.5 px-4 rounded-full disabled:opacity-40"
+            >
+              {proofing ? "Proofreading…" : `Proofread ${postLocale.toUpperCase()} (slides + caption)`}
+            </button>
+            {proof &&
+              (proof.ok && proof.issues.length === 0 ? (
+                <p className="text-xs font-light text-green-700 mt-3">
+                  ✓ Looks clean — no issues found.
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-1.5">
+                  {!proof.ok && (
+                    <p className="text-xs font-light text-red-600">
+                      ⚠ Issues found — review before posting.
+                    </p>
+                  )}
+                  {proof.issues.map((iss, i) => (
+                    <p key={i} className="text-xs font-light">
+                      <span className={iss.severity === "error" ? "text-red-600" : "text-amber-700"}>
+                        {iss.severity === "error" ? "✗" : "⚠"} {iss.area}
+                        {iss.slide != null ? ` · slide ${iss.slide}` : " · caption"}:
+                      </span>{" "}
+                      <span className="text-on-surface-variant">{iss.detail}</span>
+                    </p>
+                  ))}
+                </div>
+              ))}
+            <p className="text-[11px] font-light text-on-surface-variant mt-2">
+              AI vision check of the rendered slides + caption (typos, garbled or clipped text,
+              wrong language). Advisory — you decide whether to post.
+            </p>
+          </div>
 
           {/* Instagram post */}
           {showIg && (

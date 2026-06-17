@@ -139,7 +139,7 @@ function CoverSlide({ title, heroUri }: { title: string; heroUri: string | null 
           Galley of the Week
         </div>
         <div style={{ display: "flex", fontSize: 76, fontWeight: 300, color: ANTHRACITE, lineHeight: 1.05 }}>
-          {title}
+          {title.normalize("NFC")}
         </div>
       </div>
     </div>
@@ -174,10 +174,10 @@ function RecipeSlide({
           {String(index).padStart(2, "0")} / {String(total).padStart(2, "0")}
         </div>
         <div style={{ display: "flex", fontSize: 56, fontWeight: 600, color: ANTHRACITE, lineHeight: 1.08, marginBottom: 16 }}>
-          {name}
+          {name.normalize("NFC")}
         </div>
         <div style={{ display: "flex", fontSize: 32, fontWeight: 300, color: BODY, lineHeight: 1.3 }}>
-          {oneLiner}
+          {oneLiner.normalize("NFC")}
         </div>
       </div>
     </div>
