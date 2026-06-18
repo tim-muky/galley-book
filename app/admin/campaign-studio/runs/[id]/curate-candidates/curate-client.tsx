@@ -7,6 +7,7 @@ export interface RunCandidate {
   name: string;
   oneLiner: string;
   tags: string[];
+  course?: string;
   keep: boolean;
 }
 
@@ -132,6 +133,11 @@ function CandidateRow({
           Keep
         </label>
         <div className="flex-1 flex flex-col gap-2">
+          {candidate.course && (
+            <span className="self-start text-[10px] font-semibold uppercase tracking-widest text-anthracite bg-surface-low rounded-full px-2 py-0.5">
+              {candidate.course}
+            </span>
+          )}
           <input
             value={candidate.name}
             onChange={(e) => onUpdate({ name: e.target.value })}

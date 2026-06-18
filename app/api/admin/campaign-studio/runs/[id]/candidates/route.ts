@@ -8,6 +8,7 @@ const CandidateSchema = z.object({
   name: z.string(),
   oneLiner: z.string(),
   tags: z.array(z.string()),
+  course: z.string().optional(),
   keep: z.boolean(),
   imagePath: z.string().optional(),
   imagePrompt: z.string().optional(),

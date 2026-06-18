@@ -36,6 +36,12 @@ export const RecipeCandidateSchema = z.object({
   tags: z
     .array(z.string())
     .describe("2-5 lowercase tags: cuisine, technique, occasion, dietary"),
+  course: z
+    .string()
+    .optional()
+    .describe(
+      "Course label, lowercase English: starter | main | dessert | side | breakfast | snack | drink. Required if the brief specifies a course split.",
+    ),
 });
 
 export const RecipeCandidatesSchema = z.object({
@@ -104,7 +110,7 @@ export async function generateRecipeCandidates(brief: GalleyBrief): Promise<Reci
         `Generate exactly ${CANDIDATE_COUNT} recipe ideas that hang together as one coherent collection.`,
         "Names must be specific and evocative — never generic like 'Pasta with sauce'.",
         "Avoid near-duplicates within the set (no two pasta dishes unless the brief is pasta-only).",
-        "Mix complexity: ~2 quick weeknight, ~3 main centerpiece, ~1 ambitious or showpiece.",
+        "If the brief specifies an exact course split (e.g. '2 starters, 3 mains, 1 dessert'), follow it precisely and set `course` on every candidate to one of: starter | main | dessert | side | breakfast | snack | drink. Otherwise mix complexity ~2 quick weeknight / ~3 main centerpiece / ~1 ambitious showpiece and `course` is optional.",
         `Output language for name + one-liner: ${locale === "de" ? "German" : "English"}.`,
         "Tags are always lowercase English regardless of locale.",
       ].join(" "),

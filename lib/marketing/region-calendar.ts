@@ -142,13 +142,13 @@ export function buildRegionBrief(
   if (locale === "en") {
     return {
       theme: `Best dishes from ${region.region}, ${region.country} (Week ${week})`,
-      notes: `Each of the 6 recipes is a genuinely iconic, recognisable classic of ${region.region} (${region.country}) — the dishes a local would name first, not fusion or invented dishes. The 6 must follow this exact course split: 2 starters, 3 main courses, 1 dessert. Authentic ingredients and techniques; keep the dish names in their original language where that is how they are known.`,
+      notes: `Each of the 6 recipes is a genuinely iconic, recognisable classic of ${region.region} (${region.country}) — the dishes a local would name first, not fusion or invented dishes. The 6 must follow this EXACT course split, no exceptions: 2 starters, 3 main courses, 1 dessert. Set the \`course\` field on every candidate (starter | main | dessert). Authentic ingredients and techniques; keep the dish names in their original language where that is how they are known.`,
       locale: "en",
     };
   }
   return {
     theme: `Beste Gerichte aus ${region.region}, ${region.country} (KW ${week})`,
-    notes: `Jedes der 6 Rezepte ist ein echtes, wiedererkennbares Klassiker-Gericht aus ${region.region} (${region.de}) — die Gerichte, die Einheimische zuerst nennen würden, keine Fusion- oder erfundenen Gerichte. Die 6 müssen exakt dieser Gangfolge entsprechen: 2 Vorspeisen, 3 Hauptgerichte, 1 Dessert. Authentische Zutaten und Zubereitung; Gerichtnamen in der Originalsprache belassen, wo sie so bekannt sind.`,
+    notes: `Jedes der 6 Rezepte ist ein echtes, wiedererkennbares Klassiker-Gericht aus ${region.region} (${region.de}) — die Gerichte, die Einheimische zuerst nennen würden, keine Fusion- oder erfundenen Gerichte. Die 6 müssen EXAKT dieser Gangfolge entsprechen, ohne Ausnahme: 2 Vorspeisen, 3 Hauptgerichte, 1 Dessert. Setze das \`course\`-Feld bei jedem Kandidaten (starter | main | dessert). Authentische Zutaten und Zubereitung; Gerichtnamen in der Originalsprache belassen, wo sie so bekannt sind.`,
     locale: "de",
   };
 }
