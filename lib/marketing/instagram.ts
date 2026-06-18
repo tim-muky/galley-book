@@ -153,7 +153,12 @@ export async function postCarouselToInstagram({
     imageUrls.map(async (image_url) => {
       const { id } = await metaFetch<{ id: string }>(`${GRAPH}/${igUserId}/media`, {
         method: "POST",
-        params: { image_url, is_carousel_item: "true", access_token: token },
+        params: {
+          image_url,
+          media_type: "IMAGE",
+          is_carousel_item: "true",
+          access_token: token,
+        },
       });
       await waitForContainer(id, token);
       return id;
