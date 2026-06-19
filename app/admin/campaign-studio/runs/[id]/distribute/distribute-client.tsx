@@ -501,7 +501,10 @@ export function DistributeClient({
             {reelUrl && (
               <video
                 src={reelUrl}
+                poster={carouselPaths[0] ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/recipe-photos/${carouselPaths[0]}` : undefined}
                 controls
+                preload="metadata"
+                playsInline
                 className="w-40 rounded-md mb-3 bg-surface-low"
                 style={{ aspectRatio: "9 / 16" }}
               />
