@@ -5,6 +5,9 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // Keep ffmpeg-static out of the JS bundle so `__dirname` resolves to the real
+  // node_modules path at runtime (required for the binary lookup in index.js).
+  serverExternalPackages: ["ffmpeg-static"],
   // GAL-188 + GAL-189 — Next.js's tracer doesn't follow `fs.readFileSync`
   // string args, so the Apple root .cer files used by lib/iap/verifier.ts
   // wouldn't otherwise be bundled into the serverless function.
@@ -18,7 +21,7 @@ const nextConfig: NextConfig = {
     // spawned binary, and public/* isn't on the function fs by default).
     "/api/admin/campaign-studio/**/*": [
       "./assets/fonts/*.ttf",
-      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
       "./public/audio/*.mp3",
     ],
   },
