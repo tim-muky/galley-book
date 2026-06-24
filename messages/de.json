@@ -281,6 +281,17 @@
     "appStoreCta": "Im App Store öffnen"
   },
   "paywall": {
-    "tagline": "… for the love of cooking"
+    "title": "galleybook Premium",
+    "tagline": "… for the love of cooking",
+    "featureUnlimited": "Unbegrenzt Rezepte und Mitglieder",
+    "featureAi": "KI-Rezeptimport und Übersetzung",
+    "featureRecommendations": "KI-Empfehlungen aus deinen Quellen",
+    "featureFamily": "Mit dem ganzen Haushalt teilen",
+    "trialHeadline": "Starte mit 3 Tagen gratis",
+    "trialSub": "Danach 1,99 €/Monat. Jederzeit in den Einstellungen kündbar.",
+    "startTrial": "Im App Store öffnen",
+    "legal": "Nach der 3-tägigen kostenlosen Testphase verlängert sich dein Abo automatisch monatlich zum angezeigten Preis, sofern es nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt wird. Verwalte oder kündige es jederzeit unter Einstellungen → Apple-ID → Abonnements.",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutzerklärung"
   }
 }

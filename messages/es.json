@@ -281,6 +281,17 @@
     "appStoreCta": "Abrir en la App Store"
   },
   "paywall": {
-    "tagline": "… for the love of cooking"
+    "title": "galleybook Premium",
+    "tagline": "… for the love of cooking",
+    "featureUnlimited": "Recetas y miembros ilimitados",
+    "featureAi": "Importación y traducción de recetas con IA",
+    "featureRecommendations": "Recomendaciones con IA a partir de tus fuentes",
+    "featureFamily": "Comparte con todo tu hogar",
+    "trialHeadline": "Empieza con 3 días gratis",
+    "trialSub": "Luego 1,99 €/mes. Cancela cuando quieras en Ajustes.",
+    "startTrial": "Abrir en el App Store",
+    "legal": "Tras la prueba gratuita de 3 días, tu suscripción se renueva automáticamente cada mes al precio indicado, salvo que se cancele al menos 24 horas antes del final del periodo actual. Gestiona o cancela cuando quieras en Ajustes → ID de Apple → Suscripciones.",
+    "terms": "Términos de servicio",
+    "privacy": "Política de privacidad"
   }
 }
