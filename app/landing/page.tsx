@@ -9,6 +9,11 @@ const IOS_URL = "https://apps.apple.com/app/id6764606059";
 
 const TAGLINE = "… for the love of cooking";
 
+// GAL-476: real social proof only — populate with genuine user quotes (no
+// fabricated reviews). Empty by default, so the section renders nothing until
+// real testimonials are added.
+const TESTIMONIALS: { quote: string; name: string }[] = [];
+
 const SOCIALS = {
   instagram: "#", // TODO
   facebook: "#",  // TODO
@@ -753,6 +758,29 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Testimonials (GAL-476) — renders only when real quotes exist ── */}
+      {TESTIMONIALS.length > 0 && (
+        <section className="px-6 md:px-16 py-24 md:py-32">
+          <div className="max-w-5xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-widest text-anthracite/40 mb-4">
+              Loved by home cooks
+            </p>
+            <div className="grid md:grid-cols-2 gap-8">
+              {TESTIMONIALS.map((tm) => (
+                <figure key={tm.name} className="bg-white rounded-md p-8 shadow-ambient">
+                  <blockquote className="text-lg font-thin text-anthracite leading-relaxed mb-4">
+                    “{tm.quote}”
+                  </blockquote>
+                  <figcaption className="text-sm font-light text-on-surface-variant">
+                    {tm.name}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Pricing ── */}
       <section className="px-6 md:px-16 py-24 md:py-32 bg-[#F9F9F9]">

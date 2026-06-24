@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logAIUsage } from "@/lib/ai-logger";
 import { checkParseImageLimit } from "@/lib/rate-limit";
-import { getGalleyPlan } from "@/lib/subscription";
+import { getGalleyPlan, freeImportAllowed } from "@/lib/subscription";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { normalizeRecipeTags } from "@/lib/recipe-prompts";
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (galleyId) {
     const plan = await getGalleyPlan(supabase, galleyId, user.id, user.created_at);
-    if (plan !== "premium") {
+    if (plan !== "premium" && !(await freeImportAllowed(user.id))) {
       return NextResponse.json(
         { error: "AI recipe import is a premium feature.", upgrade: true },
         { status: 403 },

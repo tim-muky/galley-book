@@ -16,7 +16,7 @@ import { buildRecipePrompt, normalizeRecipeTags } from "@/lib/recipe-prompts";
 import { fetchPageContent, fetchInlineImage, cacheInstagramImage, isInstagramUrl } from "@/lib/parsers";
 import type { FetchResult } from "@/lib/parsers";
 import { logParseQuality, detectMissingFields } from "@/lib/parse-quality-logger";
-import { getGalleyPlan } from "@/lib/subscription";
+import { getGalleyPlan, freeImportAllowed } from "@/lib/subscription";
 import { resolveActiveGalleyId } from "@/lib/active-galley";
 import { z } from "zod";
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   const galleyId = await resolveActiveGalleyId(supabase, user.id);
   if (galleyId) {
     const plan = await getGalleyPlan(supabase, galleyId, user.id, user.created_at);
-    if (plan !== "premium") {
+    if (plan !== "premium" && !(await freeImportAllowed(user.id))) {
       return NextResponse.json(
         { error: "AI recipe import is a premium feature.", upgrade: true },
         { status: 403 },
