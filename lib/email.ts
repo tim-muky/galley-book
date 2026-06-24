@@ -49,30 +49,51 @@ export async function sendGalleyInvite({
 
 const APP_STORE_URL = "https://apps.apple.com/app/id6764606059";
 
-export async function sendTrialEndingEmail({ toEmail }: { toEmail: string }) {
+export async function sendTrialEndingEmail({
+  toEmail,
+  lang = "en",
+}: {
+  toEmail: string;
+  lang?: "de" | "en";
+}) {
+  const content =
+    lang === "de"
+      ? {
+          subject: "Dein galleybook-Test endet bald",
+          heading: "Dein Gratis-Test endet bald.",
+          body: `Wir hoffen, galleybook hat sich einen Platz in deiner Küche verdient. Behalte jedes gespeicherte Rezept — plus Wochenplaner und automatische Einkaufsliste — für <strong style="font-weight: 600;">1,99 €/Monat</strong>. Ein Abo für iOS, Android und Web.`,
+          cta: "Premium behalten",
+          footer:
+            "Es passiert nichts automatisch — deine Rezepte bleiben so oder so gespeichert. Das hält nur die Premium-Funktionen aktiv.",
+        }
+      : {
+          subject: "Your galleybook trial ends soon",
+          heading: "Your free trial ends soon.",
+          body: `We hope galleybook earned a place in your kitchen. Keep every recipe you've saved — plus the meal planner and your auto shopping list — for <strong style="font-weight: 600;">€1.99/month</strong>. One subscription covers iOS, Android and the web.`,
+          cta: "Keep my premium",
+          footer:
+            "Nothing happens automatically — your recipes stay saved either way. This just keeps premium features on.",
+        };
+
   await getResend().emails.send({
     from: FROM,
     to: toEmail,
     replyTo: "contact@galleybook.com",
-    subject: "Your galleybook trial ends today",
+    subject: content.subject,
     html: `
       <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; color: #252729;">
-        <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">Your free trial ends today.</p>
+        <p style="font-size: 1.75rem; font-weight: 300; margin-bottom: 1rem;">${content.heading}</p>
         <p style="font-size: 0.875rem; font-weight: 300; line-height: 1.6; color: #474747;">
-          We hope galleybook earned a place in your kitchen. Keep every recipe
-          you've saved — plus the meal planner and your auto shopping list — for
-          <strong style="font-weight: 600;">€1.99/month</strong>. One subscription
-          covers iOS, Android and the web.
+          ${content.body}
         </p>
         <a href="${APP_STORE_URL}"
            style="display: inline-block; margin-top: 1.5rem; padding: 0.75rem 1.5rem;
                   background: #252729; color: #fff; border-radius: 9999px;
                   font-size: 0.875rem; font-weight: 300; text-decoration: none;">
-          Keep my premium
+          ${content.cta}
         </a>
         <p style="font-size: 0.75rem; font-weight: 300; color: #474747; margin-top: 2rem;">
-          Nothing happens automatically — your recipes stay saved either way. This
-          just keeps premium features on.
+          ${content.footer}
         </p>
       </div>
     `,

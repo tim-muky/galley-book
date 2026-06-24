@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/admin";
 import { generateAndStoreDailyReport } from "@/lib/marketing/growth";
 import { sendGrowthDailyReport } from "@/lib/email";
+import { runTrialNudges } from "@/lib/trial-nudges/run";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 120;
@@ -29,6 +30,24 @@ export async function GET(request: Request) {
 
   const emailRequested = new URL(request.url).searchParams.get("email") === "1";
 
+  // GAL-469: the trial-nudge sequence piggybacks on this daily cron — Hobby has
+  // no spare cron slot for a dedicated one. Runs only on the scheduled cron (not
+  // manual admin hits), independent of the growth report's success, and is
+  // itself a no-op dry run until TRIAL_NUDGES_ENABLED === "true".
+  const runNudges = async () => {
+    if (!isCron) return;
+    try {
+      const res = await runTrialNudges({
+        enabled: process.env.TRIAL_NUDGES_ENABLED === "true",
+      });
+      logger.info("trial_nudges.piggyback", { enabled: res.enabled, plan: res.plan });
+    } catch (e) {
+      logger.error("trial_nudges.piggyback_failed", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
+
   try {
     const result = await generateAndStoreDailyReport();
 
@@ -43,8 +62,11 @@ export async function GET(request: Request) {
       }
     }
 
+    await runNudges();
     return NextResponse.json({ ok: true, emailed, ...result });
   } catch (err) {
+    // Nudges are independent of the report — still run them if the report threw.
+    await runNudges();
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("growth.daily_report_cron_failed", { message });
     return NextResponse.json({ error: message }, { status: 500 });
