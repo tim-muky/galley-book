@@ -10,7 +10,10 @@ export const maxDuration = 60;
 const BriefSchema = z.object({
   theme: z.string().min(1).max(200),
   notes: z.string().max(500).optional(),
-  locale: z.enum(["en", "de"]).optional(),
+  // DACH-first: campaigns are German unless an English run is explicitly
+  // requested (IE/DK probe). Keeps recipe names, title, slides + caption all
+  // in one language instead of English content with a German CTA (GAL-464).
+  locale: z.enum(["en", "de"]).default("de"),
 });
 
 export async function POST(request: Request) {
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const candidates = await generateRecipeCandidates(brief);
+    const candidates = await generateRecipeCandidates(brief, { userId: user.id });
 
     const { error: updateErr } = await service
       .from("galley_runs")

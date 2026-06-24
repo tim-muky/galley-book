@@ -15,6 +15,7 @@ export async function POST(
 ) {
   const guard = await requireAdminApi();
   if ("response" in guard) return guard.response;
+  const adminUser = guard.user;
 
   const { id } = await params;
   const service = createServiceClient();
@@ -42,7 +43,7 @@ export async function POST(
   const recipeNames = candidates.filter((c) => c.keep && c.name.trim()).map((c) => c.name);
 
   try {
-    const scripts = await generateReelScripts({ theme, recipeNames, locale });
+    const scripts = await generateReelScripts({ theme, recipeNames, locale, userId: adminUser.id });
     return NextResponse.json({ ok: true, scripts });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

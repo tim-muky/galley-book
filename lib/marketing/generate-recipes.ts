@@ -13,6 +13,7 @@
 import { generateObject, generateImage, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { logAIUsage, logAIImageUsage } from "@/lib/ai-logger";
 import {
   buildWatercolorPrompt,
   type AspectRatio,
@@ -71,7 +72,7 @@ export interface GalleyBrief {
   theme?: string;
   /** Optional extra direction */
   notes?: string;
-  /** Output locale for names + one-liners. Defaults to "en" */
+  /** Output locale for names + one-liners. Defaults to "de" (DACH-first). */
   locale?: "en" | "de";
 
   // Legacy fields — older runs persisted these. Still respected if present,
@@ -98,11 +99,16 @@ function buildBriefPrompt(brief: GalleyBrief): string {
 
 // ---- 1) Candidates ---------------------------------------------------------
 
-export async function generateRecipeCandidates(brief: GalleyBrief): Promise<RecipeCandidate[]> {
-  const locale = brief.locale ?? "en";
+export async function generateRecipeCandidates(
+  brief: GalleyBrief,
+  options: { userId?: string | null } = {},
+): Promise<RecipeCandidate[]> {
+  const locale = brief.locale ?? "de";
+  const userId = options.userId ?? null;
+  const startedAt = Date.now();
 
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: CANDIDATE_MODEL,
       schema: RecipeCandidatesSchema,
       system: [
@@ -117,6 +123,15 @@ export async function generateRecipeCandidates(brief: GalleyBrief): Promise<Reci
       prompt: `Brief:\n${buildBriefPrompt(brief)}`,
     });
 
+    await logAIUsage({
+      userId,
+      operation: "campaign_candidates",
+      model: CANDIDATE_MODEL,
+      inputTokens: usage?.inputTokens ?? null,
+      outputTokens: usage?.outputTokens ?? null,
+      durationMs: Date.now() - startedAt,
+      success: true,
+    });
     // Trim to spec — models drift by ±1 on exact counts. We accept ≥4 as success.
     const candidates = object.candidates.slice(0, CANDIDATE_COUNT);
     if (candidates.length < 4) {
@@ -124,6 +139,15 @@ export async function generateRecipeCandidates(brief: GalleyBrief): Promise<Reci
     }
     return candidates;
   } catch (err) {
+    await logAIUsage({
+      userId,
+      operation: "campaign_candidates",
+      model: CANDIDATE_MODEL,
+      inputTokens: null,
+      outputTokens: null,
+      durationMs: Date.now() - startedAt,
+      success: false,
+    });
     if (NoObjectGeneratedError.isInstance(err)) {
       logger.error("campaign_studio.candidates.no_object", {
         cause: err.cause instanceof Error ? err.cause.message : String(err.cause),
@@ -188,32 +212,64 @@ function imageParams(model: string, built: WatercolorPrompt): Parameters<typeof 
   };
 }
 
-async function renderWatercolor(built: WatercolorPrompt): Promise<GeneratedImage> {
+async function renderWatercolor(
+  built: WatercolorPrompt,
+): Promise<GeneratedImage & { modelUsed: string }> {
   try {
     const { image } = await generateImage(imageParams(built.model, built));
-    return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt };
+    return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt, modelUsed: built.model };
   } catch (primaryError) {
     // One retry on the fallback model (different provider) — image gen
     // rate-limits are common, and each model rejects some prompts the other
     // accepts. imageParams sends the right param shape for whichever model.
     if (built.fallbackModel && built.fallbackModel !== built.model) {
       const { image } = await generateImage(imageParams(built.fallbackModel, built));
-      return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt };
+      return { base64: image.base64, mediaType: image.mediaType, prompt: built.prompt, modelUsed: built.fallbackModel };
     }
     throw primaryError;
   }
 }
 
+async function renderAndLog(
+  built: WatercolorPrompt,
+  operation: "campaign_recipe_image" | "campaign_galley_cover",
+  userId: string | null,
+): Promise<GeneratedImage> {
+  const startedAt = Date.now();
+  try {
+    const result = await renderWatercolor(built);
+    await logAIImageUsage({
+      userId,
+      operation,
+      model: result.modelUsed,
+      imageCount: 1,
+      durationMs: Date.now() - startedAt,
+      success: true,
+    });
+    return { base64: result.base64, mediaType: result.mediaType, prompt: result.prompt };
+  } catch (err) {
+    await logAIImageUsage({
+      userId,
+      operation,
+      model: built.model,
+      imageCount: 0,
+      durationMs: Date.now() - startedAt,
+      success: false,
+    });
+    throw err;
+  }
+}
+
 export async function generateRecipeImage(
   candidate: Pick<RecipeCandidate, "name" | "oneLiner">,
-  options: { aspect?: AspectRatio } = {},
+  options: { aspect?: AspectRatio; userId?: string | null } = {},
 ): Promise<GeneratedImage> {
   const built = buildWatercolorPrompt({
     subject: `${candidate.name} — ${candidate.oneLiner}`,
     composition: "single dish centered, top-down or three-quarter view, props minimal",
     aspect: options.aspect ?? "1:1",
   });
-  return renderWatercolor(built);
+  return renderAndLog(built, "campaign_recipe_image", options.userId ?? null);
 }
 
 /**
@@ -222,7 +278,7 @@ export async function generateRecipeImage(
  */
 export async function generateGalleyCoverImage(
   theme: string,
-  options: { aspect?: AspectRatio } = {},
+  options: { aspect?: AspectRatio; userId?: string | null } = {},
 ): Promise<GeneratedImage> {
   const built = buildWatercolorPrompt({
     subject: `Cookbook cover artwork for a recipe collection titled "${theme}"`,
@@ -230,18 +286,20 @@ export async function generateGalleyCoverImage(
       "a loose still-life of the collection's hero ingredients spread across a wide horizontal banner, generous negative space, no text or lettering",
     aspect: options.aspect ?? "16:9",
   });
-  return renderWatercolor(built);
+  return renderAndLog(built, "campaign_galley_cover", options.userId ?? null);
 }
 
 // ---- 3) Full expansion -----------------------------------------------------
 
 export async function expandRecipe(
   candidate: Pick<RecipeCandidate, "name" | "oneLiner">,
-  options: { locale?: "en" | "de" } = {},
+  options: { locale?: "en" | "de"; userId?: string | null } = {},
 ): Promise<FullRecipe> {
-  const locale = options.locale ?? "en";
+  const locale = options.locale ?? "de";
+  const userId = options.userId ?? null;
+  const startedAt = Date.now();
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: EXPANSION_MODEL,
     schema: FullRecipeSchema,
     system: [
@@ -255,5 +313,14 @@ export async function expandRecipe(
     prompt: `Write the full recipe for:\n\nName: ${candidate.name}\nConcept: ${candidate.oneLiner}`,
   });
 
+  await logAIUsage({
+    userId,
+    operation: "campaign_expansion",
+    model: EXPANSION_MODEL,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    durationMs: Date.now() - startedAt,
+    success: true,
+  });
   return object;
 }

@@ -12,6 +12,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { logAIUsage } from "@/lib/ai-logger";
 import { getTopLearnings } from "./learnings";
 
 const COPY_MODEL = "google/gemini-3.5-flash";
@@ -43,6 +44,7 @@ export interface GeneratePostTitleInput {
   theme: string;
   recipeNames: string[];
   locale?: "en" | "de";
+  userId?: string | null;
 }
 
 /**
@@ -54,9 +56,11 @@ export async function generatePostTitle({
   theme,
   recipeNames,
   locale = "de",
+  userId = null,
 }: GeneratePostTitleInput): Promise<string> {
   const count = recipeNames.length;
-  const { object } = await generateObject({
+  const startedAt = Date.now();
+  const { object, usage } = await generateObject({
     model: COPY_MODEL,
     schema: PostTitleSchema,
     system: [
@@ -82,6 +86,15 @@ export async function generatePostTitle({
       .filter(Boolean)
       .join("\n"),
   });
+  await logAIUsage({
+    userId,
+    operation: "campaign_post_title",
+    model: COPY_MODEL,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    durationMs: Date.now() - startedAt,
+    success: true,
+  });
   return object.title.trim();
 }
 
@@ -92,6 +105,7 @@ export interface GenerateAdCopyInput {
   recipeNames: string[];
   /** Output language. Defaults to "de" — softlaunch is Germany-first. */
   locale?: "en" | "de";
+  userId?: string | null;
 }
 
 const VARIANTS_PER_FORMAT = 3;
@@ -100,7 +114,9 @@ export async function generateAdCopy({
   theme,
   recipeNames,
   locale = "de",
+  userId = null,
 }: GenerateAdCopyInput): Promise<AdVariant[]> {
+  const startedAt = Date.now();
   // Bias new copy toward what's working (GAL-430 learning loop) — best-effort.
   const learnings = await getTopLearnings(6).catch(() => []);
   const learningsLine = learnings.length
@@ -109,7 +125,7 @@ export async function generateAdCopy({
         .join("\n")}`
     : "";
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: COPY_MODEL,
     schema: AdVariantsSchema,
     system: [
@@ -140,6 +156,15 @@ export async function generateAdCopy({
   }
   const result = [...byFormat.problem, ...byFormat.hero];
 
+  await logAIUsage({
+    userId,
+    operation: "campaign_ad_copy",
+    model: COPY_MODEL,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    durationMs: Date.now() - startedAt,
+    success: true,
+  });
   logger.info("campaign_studio.ad_copy.generated", {
     theme,
     problem: byFormat.problem.length,

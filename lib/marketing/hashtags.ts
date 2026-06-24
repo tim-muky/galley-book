@@ -20,6 +20,7 @@
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const HASHTAG_MODEL = "google/gemini-3.5-flash";
 const MAX_HASHTAGS = 12;
@@ -34,6 +35,7 @@ export interface HashtagInput {
   /** Drives the hint about what the post is about */
   contentType?: ContentType;
   locale: "de" | "en";
+  userId?: string | null;
 }
 
 const HashtagSchema = z.object({
@@ -85,8 +87,9 @@ export async function generateHashtags(
   input: HashtagInput,
   fallbackTags: string[] = [],
 ): Promise<string[]> {
-  const { theme, recipeNames, contentType = "galley", locale } = input;
+  const { theme, recipeNames, contentType = "galley", locale, userId = null } = input;
   const langName = locale === "de" ? "German" : "English";
+  const startedAt = Date.now();
   const typeHint =
     contentType === "veggie"
       ? "a seasonal vegetable-of-the-week post"
@@ -95,7 +98,7 @@ export async function generateHashtags(
         : "a themed recipe collection (galley of the week)";
 
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: HASHTAG_MODEL,
       schema: HashtagSchema,
       system: [
@@ -110,6 +113,15 @@ export async function generateHashtags(
       prompt: `Theme: ${theme}\nRecipes in the post:\n${recipeNames.map((n) => `- ${n}`).join("\n")}`,
     });
 
+    await logAIUsage({
+      userId,
+      operation: "campaign_hashtags",
+      model: HASHTAG_MODEL,
+      inputTokens: usage?.inputTokens ?? null,
+      outputTokens: usage?.outputTokens ?? null,
+      durationMs: Date.now() - startedAt,
+      success: true,
+    });
     const words = dedupeCap(object.hashtags);
     // If the model returned almost nothing usable, prefer the richer fallback.
     if (words.length < 5) {
@@ -117,6 +129,15 @@ export async function generateHashtags(
     }
     return words;
   } catch (err) {
+    await logAIUsage({
+      userId,
+      operation: "campaign_hashtags",
+      model: HASHTAG_MODEL,
+      inputTokens: null,
+      outputTokens: null,
+      durationMs: Date.now() - startedAt,
+      success: false,
+    });
     if (NoObjectGeneratedError.isInstance(err)) {
       logger.error("campaign_studio.hashtags.no_object", {
         cause: err.cause instanceof Error ? err.cause.message : String(err.cause),

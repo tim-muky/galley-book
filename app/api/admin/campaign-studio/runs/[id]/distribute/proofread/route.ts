@@ -19,6 +19,7 @@ export async function POST(
 ) {
   const guard = await requireAdminApi();
   if ("response" in guard) return guard.response;
+  const adminUser = guard.user;
 
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
@@ -53,6 +54,7 @@ export async function POST(
     slideUrls: paths.map(publicUrl),
     caption,
     locale,
+    userId: adminUser.id,
   });
 
   logger.info("campaign_studio.proofread.ran", {

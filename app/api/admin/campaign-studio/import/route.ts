@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       if (existingPhoto) {
         imagePath = existingPhoto;
       } else {
-        const img = await generateRecipeImage({ name: r.name, oneLiner });
+        const img = await generateRecipeImage({ name: r.name, oneLiner }, { userId: adminUser.id });
         const path = `campaign-assets/import/${galleyId}/${r.id}.png`;
         const buf = Buffer.from(img.base64, "base64");
         const { error: upErr } = await service.storage

@@ -103,7 +103,7 @@ export async function POST(
     // (galley-headers/{id}.jpg) shared with the manual upload route.
     const coverDone = (async () => {
       try {
-        const cover = await generateGalleyCoverImage(galleyName);
+        const cover = await generateGalleyCoverImage(galleyName, { userId: adminUser.id });
         const jpeg = await sharp(Buffer.from(cover.base64, "base64"))
           .resize(1200, 400, { fit: "cover", position: "center" })
           .jpeg({ quality: 85 })
@@ -131,7 +131,7 @@ export async function POST(
       ready.map(async (c) => {
         const full = await expandRecipe(
           { name: c.name, oneLiner: c.oneLiner },
-          { locale: brief.locale ?? "en" },
+          { locale: brief.locale ?? "de", userId: adminUser.id },
         );
 
         const { data: recipe, error: recipeErr } = await service

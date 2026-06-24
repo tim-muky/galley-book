@@ -13,6 +13,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const SCRIPT_MODEL = "google/gemini-3.5-flash";
 
@@ -54,6 +55,7 @@ export interface GenerateReelScriptsInput {
   locale?: "en" | "de";
   /** How many scripts to generate (default 3, one per angle). */
   count?: number;
+  userId?: string | null;
 }
 
 export async function generateReelScripts({
@@ -61,8 +63,10 @@ export async function generateReelScripts({
   recipeNames,
   locale = "de",
   count = 3,
+  userId = null,
 }: GenerateReelScriptsInput): Promise<ReelScript[]> {
-  const { object } = await generateObject({
+  const startedAt = Date.now();
+  const { object, usage } = await generateObject({
     model: SCRIPT_MODEL,
     schema: ReelScriptsSchema,
     system: [
@@ -88,6 +92,15 @@ export async function generateReelScripts({
   });
 
   const scripts = object.scripts.slice(0, count);
+  await logAIUsage({
+    userId,
+    operation: "campaign_reel_scripts",
+    model: SCRIPT_MODEL,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    durationMs: Date.now() - startedAt,
+    success: true,
+  });
   logger.info("campaign_studio.reel_scripts.generated", {
     theme,
     count: scripts.length,

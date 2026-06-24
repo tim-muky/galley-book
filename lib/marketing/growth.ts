@@ -17,6 +17,7 @@ import { runAutoPause, type AutoAction } from "./autopause";
 import { deriveLearnings, getTopLearnings, type Learning } from "./learnings";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const ANALYSIS_MODEL = "google/gemini-3.5-flash";
 
@@ -254,7 +255,8 @@ export async function analyzeGrowth(
   metrics: DailyMetrics,
   learnings: Learning[] = [],
 ): Promise<GrowthAnalysis> {
-  const { object } = await generateObject({
+  const startedAt = Date.now();
+  const { object, usage } = await generateObject({
     model: ANALYSIS_MODEL,
     schema: GrowthAnalysisSchema,
     system: [
@@ -277,6 +279,15 @@ export async function analyzeGrowth(
       "",
       "Write the daily analysis. If there were no new users and no/low spend yet (e.g. ads still in review), say that plainly and keep recommendations minimal.",
     ].join("\n"),
+  });
+  await logAIUsage({
+    userId: null,
+    operation: "campaign_growth_analysis",
+    model: ANALYSIS_MODEL,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    durationMs: Date.now() - startedAt,
+    success: true,
   });
   return object;
 }

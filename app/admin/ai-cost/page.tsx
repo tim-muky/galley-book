@@ -51,22 +51,23 @@ export default async function AICostPage() {
   );
 
   // Build 30-day chart buckets
-  type DayCosts = { parse_link: number; parse_image: number; recommendation: number };
+  type DayCosts = { parse_link: number; parse_image: number; recommendation: number; campaign: number };
   const days: Record<string, DayCosts> = {};
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    days[d.toISOString().slice(0, 10)] = { parse_link: 0, parse_image: 0, recommendation: 0 };
+    days[d.toISOString().slice(0, 10)] = { parse_link: 0, parse_image: 0, recommendation: 0, campaign: 0 };
   }
   for (const log of logs) {
     const day = log.created_at.slice(0, 10);
-    if (day in days) {
-      const op = log.operation as keyof DayCosts;
-      if (op in days[day]) days[day][op] += log.cost_usd ?? 0;
-    }
+    if (!(day in days)) continue;
+    const bucket: keyof DayCosts = log.operation.startsWith("campaign_")
+      ? "campaign"
+      : (log.operation as keyof DayCosts);
+    if (bucket in days[day]) days[day][bucket] += log.cost_usd ?? 0;
   }
   const chartDays = Object.entries(days);
   const maxDayCost = Math.max(
-    ...chartDays.map(([, v]) => v.parse_link + v.parse_image + v.recommendation),
+    ...chartDays.map(([, v]) => v.parse_link + v.parse_image + v.recommendation + v.campaign),
     0.000001
   );
 
@@ -141,7 +142,7 @@ export default async function AICostPage() {
         </p>
         <div className="flex items-end gap-[3px]" style={{ height: "80px" }}>
           {chartDays.map(([day, costs]) => {
-            const total = costs.parse_link + costs.parse_image + costs.recommendation;
+            const total = costs.parse_link + costs.parse_image + costs.recommendation + costs.campaign;
             const barPx = total > 0 ? Math.max((total / maxDayCost) * 80, 3) : 0;
             return (
               <div
@@ -150,6 +151,15 @@ export default async function AICostPage() {
                 style={{ height: `${barPx}px` }}
                 title={`${day}\n$${total.toFixed(6)}`}
               >
+                {costs.campaign > 0 && (
+                  <div
+                    className="flex-shrink-0"
+                    style={{
+                      height: `${(costs.campaign / total) * 100}%`,
+                      backgroundColor: "#F4A261",
+                    }}
+                  />
+                )}
                 {costs.recommendation > 0 && (
                   <div
                     className="flex-shrink-0"
@@ -187,6 +197,7 @@ export default async function AICostPage() {
             { color: "#7FB76C", label: "Link parse" },
             { color: "#D54CB1", label: "Image parse" },
             { color: "#DFB3EA", label: "Recommend" },
+            { color: "#F4A261", label: "Campaign" },
           ].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />

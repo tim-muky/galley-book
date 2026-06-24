@@ -22,6 +22,7 @@ export async function POST(
 ) {
   const guard = await requireAdminApi();
   if ("response" in guard) return guard.response;
+  const adminUser = guard.user;
 
   const { id } = await params;
   const service = createServiceClient();
@@ -52,7 +53,7 @@ export async function POST(
 
   const results = await Promise.allSettled(
     targets.map(async ({ c, idx }) => {
-      const img = await generateRecipeImage({ name: c.name, oneLiner: c.oneLiner });
+      const img = await generateRecipeImage({ name: c.name, oneLiner: c.oneLiner }, { userId: adminUser.id });
       const path = `galley-runs/${id}/${idx}-${Date.now()}.png`;
       const buffer = Buffer.from(img.base64, "base64");
       const { error: upErr } = await service.storage

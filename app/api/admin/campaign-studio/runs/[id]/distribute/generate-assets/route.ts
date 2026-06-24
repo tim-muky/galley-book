@@ -65,6 +65,7 @@ export async function POST(
 ) {
   const guard = await requireAdminApi();
   if ("response" in guard) return guard.response;
+  const adminUser = guard.user;
 
   const { id } = await params;
   const service = createServiceClient();
@@ -108,7 +109,7 @@ export async function POST(
       .eq("galley_id", galleyId)
       .maybeSingle();
     const postTitle =
-      existing?.post_title || (await generatePostTitle({ theme, recipeNames, locale }));
+      existing?.post_title || (await generatePostTitle({ theme, recipeNames, locale, userId: adminUser.id }));
 
     // The galley's own generated header becomes the carousel cover hero.
     const { data: galley } = await service
@@ -144,7 +145,7 @@ export async function POST(
     }
 
     // 3) Generate ad-copy variants (quick single call)
-    const adVariants = await generateAdCopy({ theme, recipeNames, locale });
+    const adVariants = await generateAdCopy({ theme, recipeNames, locale, userId: adminUser.id });
 
     // 4) Default captions (DE + EN) with the comment → DM mechanic (GAL-433).
     //    Hashtags are tailored to this post by the AI generator (GAL-449), with
@@ -152,8 +153,8 @@ export async function POST(
     const allTags = Array.from(new Set(kept.flatMap((c) => c.tags ?? [])));
     const contentType = detectContentType(theme);
     const [hashtagsDe, hashtagsEn] = await Promise.all([
-      generateHashtags({ theme, recipeNames, contentType, locale: "de" }, allTags),
-      generateHashtags({ theme, recipeNames, contentType, locale: "en" }, allTags),
+      generateHashtags({ theme, recipeNames, contentType, locale: "de", userId: adminUser.id }, allTags),
+      generateHashtags({ theme, recipeNames, contentType, locale: "en", userId: adminUser.id }, allTags),
     ]);
     const triggerDe = commentTrigger("de");
     const triggerEn = commentTrigger("en");

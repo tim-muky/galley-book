@@ -12,6 +12,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { logAIUsage } from "@/lib/ai-logger";
 
 const PROOFREAD_MODEL = "google/gemini-3.5-flash";
 
@@ -42,6 +43,7 @@ export interface ProofreadInput {
   caption: string;
   /** Expected post language. */
   locale: "de" | "en";
+  userId?: string | null;
 }
 
 async function fetchImage(url: string): Promise<Uint8Array | null> {
@@ -63,9 +65,11 @@ export async function proofreadDistribution({
   slideUrls,
   caption,
   locale,
+  userId = null,
 }: ProofreadInput): Promise<ProofreadResult> {
   const langName = locale === "de" ? "German" : "English";
   const images = await Promise.all(slideUrls.slice(0, 10).map(fetchImage));
+  const startedAt = Date.now();
 
   const content: Array<
     { type: "text"; text: string } | { type: "image"; image: Uint8Array }
@@ -95,14 +99,32 @@ export async function proofreadDistribution({
   });
 
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: PROOFREAD_MODEL,
       schema: ProofreadSchema,
       messages: [{ role: "user", content }],
     });
+    await logAIUsage({
+      userId,
+      operation: "campaign_proofread",
+      model: PROOFREAD_MODEL,
+      inputTokens: usage?.inputTokens ?? null,
+      outputTokens: usage?.outputTokens ?? null,
+      durationMs: Date.now() - startedAt,
+      success: true,
+    });
     const issues = object.issues ?? [];
     return { ok: !issues.some((i) => i.severity === "error"), issues };
   } catch (err) {
+    await logAIUsage({
+      userId,
+      operation: "campaign_proofread",
+      model: PROOFREAD_MODEL,
+      inputTokens: null,
+      outputTokens: null,
+      durationMs: Date.now() - startedAt,
+      success: false,
+    });
     logger.error("campaign_studio.proofread.failed", { message: String(err) });
     return { ok: true, issues: [] };
   }
