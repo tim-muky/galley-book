@@ -1,6 +1,7 @@
 import { requireAdminApi } from "@/lib/auth/admin";
 import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
+import { sendPushToUsers } from "@/lib/push/send";
 import { expandRecipe, generateGalleyCoverImage } from "@/lib/marketing/generate-recipes";
 import type { RunCandidateWithImage } from "@/app/admin/campaign-studio/runs/[id]/curate-images/curate-images-client";
 import { NextResponse } from "next/server";
@@ -77,6 +78,12 @@ export async function POST(
     brief.theme ||
     [brief.country, brief.style].filter(Boolean).join(" · ") ||
     `Galley of the Week ${weekStamp}`;
+  // The stored, user-visible name: auto-generated names get the ISO week
+  // appended to stay distinct; an explicit override is trusted as-is. Reused
+  // for the "new public galley" push so the copy matches what users see.
+  const galleyDisplayName = galleyNameOverride
+    ? galleyName
+    : `${galleyName} — KW ${weekStamp}`;
 
   try {
     // 1) Create the public galley
@@ -85,9 +92,7 @@ export async function POST(
       .insert({
         // If the admin gave an explicit name we trust it as-is; otherwise
         // append the ISO week so auto-generated names stay distinct.
-        name: galleyNameOverride
-          ? galleyName
-          : `${galleyName} — KW ${weekStamp}`,
+        name: galleyDisplayName,
         owner_id: run.created_by,
         is_public: true,
         is_system: false,
@@ -228,6 +233,73 @@ export async function POST(
       recipeCount: succeeded,
       failedCount: failed.length,
     });
+
+    // Notify the whole user base that a fresh public galley is live. Campaign
+    // Studio is the only path that reaches this route, so the push is inherently
+    // scoped to studio galleys — a user flipping their own galley public from
+    // Settings never lands here. Localized DE/EN by the recipient's
+    // preferred_language; opt-outs + dead-token pruning are handled inside
+    // sendPushToUsers. Awaited (unlike the user-facing routes' fire-and-forget):
+    // the publish is already a long admin operation, so we'd rather guarantee
+    // delivery than save a few hundred ms. A push failure is logged and never
+    // fails the publish — the galley is already live at this point.
+    try {
+      const { data: deviceRows } = await service
+        .from("user_devices")
+        .select("user_id");
+      const userIds = Array.from(
+        new Set((deviceRows ?? []).map((d) => d.user_id)),
+      ).filter((uid) => uid !== adminUser.id);
+
+      if (userIds.length > 0) {
+        const { data: userRows } = await service
+          .from("users")
+          .select("id, preferred_language")
+          .in("id", userIds);
+        const prefersDe = new Map(
+          (userRows ?? []).map((u) => [
+            u.id,
+            (u.preferred_language ?? "").toLowerCase().startsWith("de"),
+          ]),
+        );
+
+        const buckets: Record<"de" | "en", string[]> = { de: [], en: [] };
+        for (const uid of userIds) {
+          buckets[prefersDe.get(uid) ? "de" : "en"].push(uid);
+        }
+
+        const copy = {
+          en: {
+            title: "A new galley just dropped",
+            body: `${galleyDisplayName} is live — tap to explore this week's recipes.`,
+          },
+          de: {
+            title: "Neue Galley ist da",
+            body: `${galleyDisplayName} ist online — tipp rein und entdecke die Rezepte der Woche.`,
+          },
+        } as const;
+
+        for (const lang of ["de", "en"] as const) {
+          if (buckets[lang].length === 0) continue;
+          await sendPushToUsers(buckets[lang], {
+            eventType: "public_galley_published",
+            title: copy[lang].title,
+            body: copy[lang].body,
+            data: {
+              screen: "public_galley",
+              galleyId: galley.id,
+              galleyName: galleyDisplayName,
+            },
+          });
+        }
+      }
+    } catch (pushErr) {
+      logger.error("campaign_studio.public_galley_push_failed", {
+        runId: id,
+        galleyId: galley.id,
+        message: pushErr instanceof Error ? pushErr.message : String(pushErr),
+      });
+    }
 
     return NextResponse.json({
       ok: true,
