@@ -140,6 +140,7 @@ export async function runTrialNudges({
       .from("recipes")
       .select("created_by")
       .in("created_by", candidateIds)
+      .eq("is_seeded", false)
       .is("deleted_at", null),
   ]);
 

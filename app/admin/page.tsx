@@ -20,10 +20,10 @@ export default async function AdminOverviewPage() {
     { data: aiAllTime },
   ] = await Promise.all([
     service.from("users").select("*", { count: "exact", head: true }),
-    service.from("recipes").select("created_by").gte("created_at", weekAgo).not("created_by", "is", null),
+    service.from("recipes").select("created_by").eq("is_seeded", false).gte("created_at", weekAgo).not("created_by", "is", null),
     service.from("votes").select("user_id").gte("created_at", weekAgo),
-    service.from("recipes").select("*", { count: "exact", head: true }).is("deleted_at", null),
-    service.from("recipes").select("*", { count: "exact", head: true }).is("deleted_at", null).gte("created_at", weekAgo),
+    service.from("recipes").select("*", { count: "exact", head: true }).eq("is_seeded", false).is("deleted_at", null),
+    service.from("recipes").select("*", { count: "exact", head: true }).eq("is_seeded", false).is("deleted_at", null).gte("created_at", weekAgo),
     service.from("ai_usage_logs").select("cost_usd, operation").gte("created_at", monthStart),
     service.from("ai_usage_logs").select("cost_usd"),
   ]);

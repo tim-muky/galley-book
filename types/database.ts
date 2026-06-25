@@ -1022,6 +1022,7 @@ export type Database = {
           description: string | null
           galley_id: string
           id: string
+          is_seeded: boolean
           name: string
           prep_time: number | null
           season: Database["public"]["Enums"]["recipe_season"] | null
@@ -1038,6 +1039,7 @@ export type Database = {
           description?: string | null
           galley_id: string
           id?: string
+          is_seeded?: boolean
           name: string
           prep_time?: number | null
           season?: Database["public"]["Enums"]["recipe_season"] | null
@@ -1054,6 +1056,7 @@ export type Database = {
           description?: string | null
           galley_id?: string
           id?: string
+          is_seeded?: boolean
           name?: string
           prep_time?: number | null
           season?: Database["public"]["Enums"]["recipe_season"] | null
