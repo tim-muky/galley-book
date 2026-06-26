@@ -2,7 +2,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { DailyMetrics, GrowthAnalysis } from "@/lib/marketing/growth";
 import type { AutoAction } from "@/lib/marketing/autopause";
 import { getTopLearnings } from "@/lib/marketing/learnings";
-import Link from "next/link";
+import { DateSelect } from "./date-select";
 
 /**
  * Daily Report view (GAL-429) — renders the same content as the daily email
@@ -107,26 +107,9 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
     <section className="mb-10">
       <Heading />
 
-      {/* Date-chip history picker */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-        {dates.map((d) => {
-          const isActive = d === active;
-          return (
-            <Link
-              key={d}
-              href={`${BASE}?report=${d}`}
-              scroll={false}
-              className="shrink-0 border rounded-full px-3 py-1.5 text-xs font-light"
-              style={
-                isActive
-                  ? { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" }
-                  : { backgroundColor: "#fff", color: "#252729", borderColor: "#252729" }
-              }
-            >
-              {d.slice(5)}
-            </Link>
-          );
-        })}
+      {/* Date picker */}
+      <div className="mb-4">
+        <DateSelect dates={dates} active={active} base={BASE} />
       </div>
 
       {/* Headline + channel split */}

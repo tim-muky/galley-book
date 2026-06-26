@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NavTab } from "./nav-tab";
+import { AdminNav } from "./nav-tab";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/admin/parse-logs", label: "Parse Logs" },
   { href: "/admin/comp", label: "Comp" },
   { href: "/admin/campaign-studio", label: "Campaign Studio" },
+  { href: "/admin/campaign-studio/dashboard", label: "Attribution" },
   { href: "/admin/social-media", label: "Social Media Management" },
 ];
 
@@ -35,11 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         {/* Nav tabs */}
-        <div className="max-w-4xl mx-auto flex gap-5 overflow-x-auto pb-0 scrollbar-hide">
-          {NAV_LINKS.map(({ href, label }) => (
-            <NavTab key={href} href={href} label={label} />
-          ))}
-        </div>
+        <AdminNav links={NAV_LINKS} />
       </header>
 
       <main className="max-w-4xl mx-auto px-5 py-6">{children}</main>
