@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AttributionCapture } from "./attribution-capture";
 import "./globals.css";
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="min-h-full bg-surface antialiased">
         {children}
         <AttributionCapture />
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
