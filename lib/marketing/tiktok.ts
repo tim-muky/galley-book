@@ -23,6 +23,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const API = "https://open.tiktokapis.com";
 const MAX_PHOTOS = 35;
@@ -76,47 +77,99 @@ async function tiktokPost<T>(path: string, token: string, body: unknown): Promis
 let cachedToken: { token: string; at: number } | null = null;
 const TOKEN_TTL_MS = 20 * 60 * 1000; // refresh well inside the 24h access-token life
 
-/** A current user access token — refreshed from the long-lived refresh token. */
+interface TikTokTokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  refresh_expires_in?: number;
+  error?: string;
+  error_description?: string;
+}
+
+/** Exchange a refresh token for a fresh access token (TikTok rotates the refresh token too). */
+async function refreshAccessToken(
+  refreshToken: string,
+  clientKey: string,
+  clientSecret: string,
+): Promise<Required<Pick<TikTokTokenResponse, "access_token">> & TikTokTokenResponse> {
+  const res = await fetch(`${API}/v2/oauth/token/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_key: clientKey,
+      client_secret: clientSecret,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as TikTokTokenResponse;
+  if (!res.ok || !json.access_token) {
+    throw new TikTokApiError(
+      json.error_description || json.error || "TikTok token refresh failed",
+      json.error,
+    );
+  }
+  return { ...json, access_token: json.access_token };
+}
+
+/**
+ * A current user access token. Prefers the OAuth connection stored via the admin
+ * "Connect TikTok" flow (tiktok_oauth singleton, refresh token rotated on each
+ * use); falls back to the TIKTOK_REFRESH_TOKEN / TIKTOK_ACCESS_TOKEN env vars when
+ * no connection row exists.
+ */
 export async function getTikTokAccessToken(): Promise<string> {
   if (cachedToken && Date.now() - cachedToken.at < TOKEN_TTL_MS) {
     return cachedToken.token;
   }
 
-  const refreshToken = process.env.TIKTOK_REFRESH_TOKEN;
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
 
-  if (refreshToken && clientKey && clientSecret) {
-    const res = await fetch(`${API}/v2/oauth/token/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_key: clientKey,
-        client_secret: clientSecret,
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }),
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      access_token?: string;
-      error?: string;
-      error_description?: string;
-    };
-    if (!res.ok || !json.access_token) {
-      throw new TikTokApiError(
-        json.error_description || json.error || "TikTok token refresh failed",
-        json.error,
-      );
+  // 1. Connection stored by the admin OAuth flow.
+  if (clientKey && clientSecret) {
+    const service = createServiceClient();
+    const { data: stored } = await service
+      .from("tiktok_oauth")
+      .select("refresh_token")
+      .eq("id", 1)
+      .maybeSingle();
+    if (stored?.refresh_token) {
+      const json = await refreshAccessToken(stored.refresh_token, clientKey, clientSecret);
+      const now = Date.now();
+      await service
+        .from("tiktok_oauth")
+        .update({
+          access_token: json.access_token,
+          refresh_token: json.refresh_token ?? stored.refresh_token,
+          access_token_expires_at: json.expires_in
+            ? new Date(now + json.expires_in * 1000).toISOString()
+            : null,
+          refresh_token_expires_at: json.refresh_expires_in
+            ? new Date(now + json.refresh_expires_in * 1000).toISOString()
+            : null,
+          updated_at: new Date(now).toISOString(),
+        })
+        .eq("id", 1);
+      cachedToken = { token: json.access_token, at: now };
+      return json.access_token;
     }
+  }
+
+  // 2. Env refresh token (legacy / pre-connection fallback).
+  const refreshToken = process.env.TIKTOK_REFRESH_TOKEN;
+  if (refreshToken && clientKey && clientSecret) {
+    const json = await refreshAccessToken(refreshToken, clientKey, clientSecret);
     cachedToken = { token: json.access_token, at: Date.now() };
     return json.access_token;
   }
 
+  // 3. Direct access token (quick testing).
   const direct = process.env.TIKTOK_ACCESS_TOKEN;
   if (direct) return direct;
 
   throw new TikTokApiError(
-    "TikTok not configured — set TIKTOK_REFRESH_TOKEN + TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET (or TIKTOK_ACCESS_TOKEN)",
+    "TikTok not connected — connect the account in Admin → Social Media, or set TIKTOK_REFRESH_TOKEN + TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET (or TIKTOK_ACCESS_TOKEN)",
   );
 }
 
