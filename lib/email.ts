@@ -238,6 +238,17 @@ export function renderGrowthDailyReport({
 }): { subject: string; html: string; text: string } {
   const { newUsers, paid, kpis, last7d } = metrics;
   const ch = newUsers.byChannel;
+  const asa = metrics.asa ?? { signups: 0, byGeo: {}, byCampaign: {} };
+  const landing = metrics.landing ?? {
+    visits: 0, sessions: 0, byCountry: {}, bySource: {}, topPaths: {}, visitToSignup: null,
+  };
+  const funnel = metrics.funnel ?? {
+    visits: 0, signups: newUsers.total, cohort7d: { signups: 0, activated: 0, paying: 0 },
+  };
+  const asaGeo = Object.entries(asa.byGeo)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${k} ${v}`)
+    .join(" · ");
   const p = prev ?? null;
 
   const subject = `galleybook growth — ${reportDate} · ${newUsers.total} new ${
@@ -266,10 +277,22 @@ export function renderGrowthDailyReport({
         newUsers.total === 1 ? "user" : "users"
       }</p>
       <p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0;">
-        ${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct
+        ${ch.asa ?? 0} ASA · ${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct
       </p>
 
-      <table style="margin-top: 1.5rem; border-collapse: collapse; width: 100%;">
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.5rem 0 0.4rem;">Funnel · landing → paid</p>
+      <table style="border-collapse: collapse; width: 100%;">
+        <tr>${stat("Visits", num(landing.visits), "")}${stat("Signups", num(funnel.signups), "")}${stat("Visit→signup", pct(landing.visitToSignup), "")}</tr>
+        <tr>${stat("Activated 7d", num(funnel.cohort7d.activated), "")}${stat("Paying 7d", num(funnel.cohort7d.paying), "")}${stat("7d cohort", num(funnel.cohort7d.signups), "")}</tr>
+      </table>
+      ${
+        asa.signups > 0
+          ? `<p style="font-size: 0.8125rem; font-weight: 300; color: #474747; margin: 0.75rem 0 0;"><strong style="font-weight: 600;">ASA</strong> — ${asa.signups} ad-attributed signups${asaGeo ? ` · ${asaGeo}` : ""}</p>`
+          : ""
+      }
+
+      <p style="font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #474747; margin: 1.5rem 0 0.4rem;">Meta · paused</p>
+      <table style="border-collapse: collapse; width: 100%;">
         <tr>${stat("Spend", eur(paid.spend), delta(paid.spend, p?.paid.spend, eur))}${stat(
           "CPS (paid)",
           eur(kpis.cpsPaid),
@@ -328,9 +351,12 @@ export function renderGrowthDailyReport({
 
   const text = [
     `galleybook growth — ${reportDate}`,
-    `${newUsers.total} new users (${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct)`,
+    `${newUsers.total} new users (${ch.asa ?? 0} ASA · ${ch.paid} paid · ${ch.organic} organic · ${ch.direct} direct)`,
+    `Funnel — ${landing.visits} visits · ${funnel.signups} signups · visit→signup ${pct(landing.visitToSignup)}`,
+    `7d cohort — ${funnel.cohort7d.signups} signups · ${funnel.cohort7d.activated} activated · ${funnel.cohort7d.paying} paying`,
+    ...(asa.signups > 0 ? [`ASA — ${asa.signups} ad-attributed${asaGeo ? ` (${asaGeo})` : ""}`] : []),
     "",
-    `Spend ${eur(paid.spend)} · CPS paid ${eur(kpis.cpsPaid)} · Blended CPS ${eur(kpis.blendedCps)}`,
+    `Meta (paused) — spend ${eur(paid.spend)} · CPS paid ${eur(kpis.cpsPaid)} · Blended CPS ${eur(kpis.blendedCps)}`,
     `Impressions ${num(paid.impressions)} · CTR ${pct(paid.ctr)} · CPC ${eur(paid.cpc)}`,
     `Last 7 days — ${last7d.newUsers} new users · ${eur(last7d.spend)} spend`,
     ...(metrics.perCreative.length

@@ -18,6 +18,12 @@ const BASE = "/admin/campaign-studio/dashboard";
 const eur = (n: number | null | undefined) => (n == null ? "—" : `€${n.toFixed(2)}`);
 const pct = (n: number | null | undefined) => (n == null ? "—" : `${(n * 100).toFixed(1)}%`);
 const numOrDash = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("en-US"));
+const ratio = (n: number, d: number): number | null => (d > 0 ? n / d : null);
+function topEntries(rec: Record<string, number>, n: number): [string, number][] {
+  return Object.entries(rec)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n);
+}
 
 interface ReportRow {
   report_date: string;
@@ -74,6 +80,14 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
   const autoActions = report.auto_actions ?? [];
   const { newUsers, paid, kpis, last7d } = metrics;
   const ch = newUsers.byChannel;
+  // Reports stored before GAL-483 lack asa/landing/funnel.
+  const asa = metrics.asa ?? { signups: 0, byGeo: {}, byCampaign: {} };
+  const landing = metrics.landing ?? {
+    visits: 0, sessions: 0, byCountry: {}, bySource: {}, topPaths: {}, visitToSignup: null,
+  };
+  const funnel = metrics.funnel ?? {
+    visits: 0, signups: newUsers.total, cohort7d: { signups: 0, activated: 0, paying: 0 },
+  };
   // Reports stored before GAL-425 have no `organic` field.
   const organic = metrics.organic ?? {
     account: { reach: null, profileViews: null, websiteClicks: null },
@@ -122,9 +136,79 @@ export async function DailyReportSection({ selectedDate }: { selectedDate?: stri
         </p>
         <p className="text-4xl font-thin text-anthracite leading-none">{newUsers.total}</p>
         <p className="text-xs font-light text-on-surface-variant mt-2">
-          {ch.paid} paid · {ch.organic} organic · {ch.direct} direct
+          {ch.asa ?? 0} ASA · {ch.paid} paid · {ch.organic} organic · {ch.direct} direct
         </p>
       </div>
+
+      {/* Funnel: visits → signups → activation → paid */}
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+        Funnel · yesterday flow + 7-day cohort conversion
+      </p>
+      <div className="bg-white rounded-md p-4 shadow-ambient mb-3">
+        <div className="grid grid-cols-4 gap-2">
+          <FunnelStage label="Visits" value={funnel.visits} />
+          <FunnelStage
+            label="Signups"
+            value={funnel.signups}
+            sub={landing.visitToSignup != null ? `${pct(landing.visitToSignup)} of visits` : undefined}
+          />
+          <FunnelStage
+            label="Activated"
+            value={funnel.cohort7d.activated}
+            sub={`${pct(ratio(funnel.cohort7d.activated, funnel.cohort7d.signups))} of 7d`}
+          />
+          <FunnelStage
+            label="Paying"
+            value={funnel.cohort7d.paying}
+            sub={`${pct(ratio(funnel.cohort7d.paying, funnel.cohort7d.signups))} of 7d`}
+          />
+        </div>
+        <p className="text-[11px] font-light text-on-surface-variant mt-3">
+          Activated = first self-saved recipe (seeded demos excluded) · 7-day cohort = {funnel.cohort7d.signups} signups
+        </p>
+      </div>
+
+      {/* Landing traffic (GAL-483) */}
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+        Landing traffic
+      </p>
+      <div className="grid grid-cols-3 gap-3 mb-2">
+        <Tile label="Visits" value={landing.visits.toLocaleString("en-US")} />
+        <Tile label="Sessions" value={landing.sessions.toLocaleString("en-US")} />
+        <Tile label="Visit→signup" value={pct(landing.visitToSignup)} />
+      </div>
+      {Object.keys(landing.bySource).length > 0 && (
+        <div className="bg-white rounded-md p-4 shadow-ambient mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Top sources · by referrer
+          </p>
+          <Breakdown rows={topEntries(landing.bySource, 6)} />
+        </div>
+      )}
+
+      {/* ASA by geo / campaign (GAL-463) */}
+      {asa.signups > 0 && (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+            Apple Search Ads · {asa.signups} ad-attributed signup{asa.signups === 1 ? "" : "s"}
+          </p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">By geo</p>
+              <Breakdown rows={topEntries(asa.byGeo, 6)} />
+            </div>
+            <div className="bg-white rounded-md p-4 shadow-ambient">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">By campaign</p>
+              <Breakdown rows={topEntries(asa.byCampaign, 6)} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Meta (paused) — kept for when/if it resumes */}
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">
+        Meta · paused
+      </p>
 
       {/* KPI tiles */}
       <div className="grid grid-cols-3 gap-3 mb-3">
@@ -298,6 +382,36 @@ function Tile({ label, value }: { label: string; value: string }) {
     <div className="bg-white rounded-md p-4 shadow-ambient">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1">{label}</p>
       <p className="text-2xl font-thin text-anthracite">{value}</p>
+    </div>
+  );
+}
+
+function FunnelStage({ label, value, sub }: { label: string; value: number; sub?: string }) {
+  return (
+    <div className="text-center">
+      <p className="text-2xl font-thin text-anthracite">{value.toLocaleString("en-US")}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">{label}</p>
+      {sub && <p className="text-[10px] font-light text-on-surface-variant mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function Breakdown({ rows }: { rows: [string, number][] }) {
+  if (rows.length === 0) return <p className="text-xs font-light text-on-surface-variant">—</p>;
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-center gap-2">
+          <span className="text-xs font-light text-anthracite w-28 truncate" title={k}>
+            {k}
+          </span>
+          <div className="flex-1 h-2 bg-surface-low rounded-full overflow-hidden">
+            <div className="h-full bg-anthracite rounded-full" style={{ width: `${(v / max) * 100}%` }} />
+          </div>
+          <span className="text-xs font-light text-on-surface-variant w-8 text-right">{v}</span>
+        </div>
+      ))}
     </div>
   );
 }

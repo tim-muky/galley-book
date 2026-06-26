@@ -6,6 +6,8 @@ const PARSE_LIMIT = parseInt(process.env.RATE_LIMIT_PARSE ?? "10", 10);
 const PARSE_IMAGE_LIMIT = parseInt(process.env.RATE_LIMIT_PARSE_IMAGE ?? "5", 10);
 const RECS_LIMIT = parseInt(process.env.RATE_LIMIT_RECS ?? "20", 10);
 const TRANSLATE_LIMIT = parseInt(process.env.RATE_LIMIT_TRANSLATE ?? "30", 10);
+// Pageviews are frequent + per-IP (anonymous) — generous cap, just abuse control.
+const PAGEVIEW_LIMIT = parseInt(process.env.RATE_LIMIT_PAGEVIEW ?? "120", 10);
 const WINDOW = "1 h" as const;
 
 function makeRatelimiter(limit: number) {
@@ -24,6 +26,7 @@ let parseLimiter: Ratelimit | null | undefined;
 let parseImageLimiter: Ratelimit | null | undefined;
 let recsLimiter: Ratelimit | null | undefined;
 let translateLimiter: Ratelimit | null | undefined;
+let pageviewLimiter: Ratelimit | null | undefined;
 
 export type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
@@ -56,4 +59,9 @@ export function checkRecsLimit(userId: string) {
 export function checkTranslateLimit(userId: string) {
   if (translateLimiter === undefined) translateLimiter = makeRatelimiter(TRANSLATE_LIMIT);
   return check(() => translateLimiter ?? null, `translate:${userId}`);
+}
+
+export function checkPageviewLimit(ip: string) {
+  if (pageviewLimiter === undefined) pageviewLimiter = makeRatelimiter(PAGEVIEW_LIMIT);
+  return check(() => pageviewLimiter ?? null, `pageview:${ip}`);
 }
