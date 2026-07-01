@@ -243,6 +243,48 @@ export async function postReelToInstagram({
   return { igPostId };
 }
 
+// ---- Comment → DM private reply (GAL-433) ---------------------------------
+
+export interface PrivateReplyResult {
+  recipientId?: string;
+  messageId?: string;
+}
+
+/**
+ * Send a private reply (DM) in response to a comment on one of our media. This
+ * is the delivery half of the comment → DM mechanic: the `comments` webhook
+ * (app/api/webhooks/instagram) matches the trigger word, then calls this to DM
+ * the recipe link.
+ *
+ * Uses the Instagram Messaging endpoint `POST /{ig}/messages` with a
+ * `recipient.comment_id` target — Meta routes the message to whoever left that
+ * comment. Requires the `instagram_manage_messages` permission (App Review) and
+ * must be sent within Meta's 7-day private-reply window; only one private reply
+ * per comment is allowed.
+ */
+export async function sendCommentPrivateReply(
+  commentId: string,
+  text: string,
+): Promise<PrivateReplyResult> {
+  const token = await getPageAccessToken();
+  const res = await metaFetch<{ recipient_id?: string; message_id?: string }>(
+    `${GRAPH}/${META.igUserId}/messages`,
+    {
+      method: "POST",
+      params: {
+        recipient: JSON.stringify({ comment_id: commentId }),
+        message: JSON.stringify({ text }),
+        access_token: token,
+      },
+    },
+  );
+  logger.info("campaign_studio.ig.private_reply_sent", {
+    commentId,
+    messageId: res.message_id,
+  });
+  return { recipientId: res.recipient_id, messageId: res.message_id };
+}
+
 // ---- Organic insights (GAL-425) -------------------------------------------
 
 export interface IgPostEngagement {

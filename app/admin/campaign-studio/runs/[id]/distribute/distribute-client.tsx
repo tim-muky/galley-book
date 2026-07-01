@@ -372,8 +372,10 @@ export function DistributeClient({
                 </p>
               )}
               <p className="text-[11px] font-light text-on-surface-variant">
-                Wire the trigger word → this DM once in ManyChat or IG auto-reply. Posting the comment
-                CTA without the automation set up sends nobody the recipe.
+                Native automation: when someone comments the trigger word on the posted carousel,
+                galleybook auto-DMs this reply (comment → DM webhook). Goes live once Meta approves
+                the messaging permission — until then it only replies to comments from accounts with
+                a role on the app, so use your own account to test.
               </p>
             </div>
           )}

@@ -163,6 +163,53 @@ export type Database = {
           },
         ]
       }
+      comment_dm_log: {
+        Row: {
+          comment_id: string
+          commenter_id: string | null
+          commenter_username: string | null
+          created_at: string
+          distribution_id: string | null
+          error: string | null
+          galley_id: string | null
+          locale: string | null
+          media_id: string | null
+          status: string
+        }
+        Insert: {
+          comment_id: string
+          commenter_id?: string | null
+          commenter_username?: string | null
+          created_at?: string
+          distribution_id?: string | null
+          error?: string | null
+          galley_id?: string | null
+          locale?: string | null
+          media_id?: string | null
+          status?: string
+        }
+        Update: {
+          comment_id?: string
+          commenter_id?: string | null
+          commenter_username?: string | null
+          created_at?: string
+          distribution_id?: string | null
+          error?: string | null
+          galley_id?: string | null
+          locale?: string | null
+          media_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_dm_log_distribution_id_fkey"
+            columns: ["distribution_id"]
+            isOneToOne: false
+            referencedRelation: "galley_distributions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       galley_distributions: {
         Row: {
           ad_variants: Json
@@ -183,6 +230,7 @@ export type Database = {
           id: string
           ig_error: string | null
           ig_post_id: string | null
+          ig_posted_locale: string | null
           ig_status: Database["public"]["Enums"]["ig_post_status"]
           meta_creative_ids: Json
           meta_error: string | null
@@ -214,6 +262,7 @@ export type Database = {
           id?: string
           ig_error?: string | null
           ig_post_id?: string | null
+          ig_posted_locale?: string | null
           ig_status?: Database["public"]["Enums"]["ig_post_status"]
           meta_creative_ids?: Json
           meta_error?: string | null
@@ -245,6 +294,7 @@ export type Database = {
           id?: string
           ig_error?: string | null
           ig_post_id?: string | null
+          ig_posted_locale?: string | null
           ig_status?: Database["public"]["Enums"]["ig_post_status"]
           meta_creative_ids?: Json
           meta_error?: string | null

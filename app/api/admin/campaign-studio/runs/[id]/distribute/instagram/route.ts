@@ -69,7 +69,14 @@ export async function POST(
 
     await service
       .from("galley_distributions")
-      .update({ ig_post_id: igPostId, ig_status: "published", ig_error: null })
+      .update({
+        ig_post_id: igPostId,
+        ig_status: "published",
+        ig_error: null,
+        // Remember which caption language we posted so the comment → DM webhook
+        // (app/api/webhooks/instagram) replies in the matching language.
+        ig_posted_locale: locale,
+      })
       .eq("id", dist.id);
 
     // Tag the organic post for the learning loop (GAL-436). Best-effort: the
