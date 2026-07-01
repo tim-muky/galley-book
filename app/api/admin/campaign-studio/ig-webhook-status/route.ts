@@ -25,23 +25,47 @@ export async function GET(request: Request) {
   }
 
   const appSecret = process.env.META_APP_SECRET;
-  const doSubscribe = url.searchParams.get("subscribe") === "1";
+  const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
+  const callbackUrl = "https://www.galleybook.com/api/webhooks/instagram";
+  // `?fix=1` registers both subscriptions; `?subscribe=1` = page link only.
+  const doFix = url.searchParams.get("fix") === "1";
+  const doSubscribe = doFix || url.searchParams.get("subscribe") === "1";
 
   const out: Record<string, unknown> = {
-    callbackExpected: "https://www.galleybook.com/api/webhooks/instagram",
+    callbackExpected: callbackUrl,
     appId: META.appId,
     pageId: META.pageId,
     igUserId: META.igUserId,
     envAppSecretPresent: Boolean(appSecret),
-    envVerifyTokenPresent: Boolean(process.env.META_WEBHOOK_VERIFY_TOKEN),
+    envVerifyTokenPresent: Boolean(verifyToken),
   };
 
-  // 1) App-level webhook subscription (Instagram object + fields + callback).
-  //    Needs an app access token, which is literally "{app-id}|{app-secret}".
+  // 1) App-level webhook subscription (Instagram object + `comments` field +
+  //    callback). `?fix=1` creates it via POST /{app-id}/subscriptions using the
+  //    app access token ("{app-id}|{app-secret}"). Meta re-verifies the callback
+  //    with our verify_token during the POST — must match META_WEBHOOK_VERIFY_TOKEN.
   if (appSecret) {
+    const appToken = `${META.appId}|${appSecret}`;
+    if (doFix && verifyToken) {
+      try {
+        const res = await fetch(`${GRAPH}/${META.appId}/subscriptions`, {
+          method: "POST",
+          body: new URLSearchParams({
+            object: "instagram",
+            callback_url: callbackUrl,
+            fields: "comments",
+            verify_token: verifyToken,
+            access_token: appToken,
+          }),
+        });
+        out.appSubscribeResult = await res.json();
+      } catch (e) {
+        out.appSubscribeError = String(e);
+      }
+    }
     try {
       const res = await fetch(
-        `${GRAPH}/${META.appId}/subscriptions?access_token=${encodeURIComponent(`${META.appId}|${appSecret}`)}`,
+        `${GRAPH}/${META.appId}/subscriptions?access_token=${encodeURIComponent(appToken)}`,
       );
       out.appSubscriptions = await res.json();
     } catch (e) {
