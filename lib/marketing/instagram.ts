@@ -17,6 +17,7 @@
 
 import { logger } from "@/lib/logger";
 import { META } from "./meta-config";
+import { getInstagramUserToken } from "./instagram-auth";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const MAX_CAROUSEL_ITEMS = 10;
@@ -256,33 +257,49 @@ export interface PrivateReplyResult {
  * (app/api/webhooks/instagram) matches the trigger word, then calls this to DM
  * the recipe link.
  *
- * Uses the Instagram Messaging endpoint `POST /{ig}/messages` with a
- * `recipient.comment_id` target — Meta routes the message to whoever left that
- * comment. Requires the `instagram_manage_messages` permission (App Review) and
- * must be sent within Meta's 7-day private-reply window; only one private reply
- * per comment is allowed.
+ * Runs on the Instagram API with Instagram Login — `POST /{ig}/messages` on
+ * graph.instagram.com with an *Instagram User* access token (from the admin
+ * Connect-Instagram OAuth, lib/marketing/instagram-auth.ts), NOT the Facebook
+ * Page token used for publishing. `recipient.comment_id` routes the message to
+ * whoever left that comment. Requires `instagram_business_manage_messages`
+ * (App Review for public use); must be sent within Meta's 7-day private-reply
+ * window; only one private reply per comment.
  */
 export async function sendCommentPrivateReply(
   commentId: string,
   text: string,
 ): Promise<PrivateReplyResult> {
-  const token = await getPageAccessToken();
-  const res = await metaFetch<{ recipient_id?: string; message_id?: string }>(
-    `${GRAPH}/${META.igUserId}/messages`,
-    {
-      method: "POST",
-      params: {
-        recipient: JSON.stringify({ comment_id: commentId }),
-        message: JSON.stringify({ text }),
-        access_token: token,
-      },
+  const { igUserId, token } = await getInstagramUserToken();
+  const node = igUserId || "me";
+
+  const res = await fetch(`https://graph.instagram.com/v23.0/${node}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-  );
+    body: JSON.stringify({
+      recipient: { comment_id: commentId },
+      message: { text },
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    recipient_id?: string;
+    message_id?: string;
+    error?: { message?: string; code?: number; error_subcode?: number };
+  };
+  if (!res.ok || json.error) {
+    throw new InstagramApiError(
+      json.error?.message ?? `Instagram messages API ${res.status}`,
+      json.error,
+    );
+  }
+
   logger.info("campaign_studio.ig.private_reply_sent", {
     commentId,
-    messageId: res.message_id,
+    messageId: json.message_id,
   });
-  return { recipientId: res.recipient_id, messageId: res.message_id };
+  return { recipientId: json.recipient_id, messageId: json.message_id };
 }
 
 // ---- Organic insights (GAL-425) -------------------------------------------
