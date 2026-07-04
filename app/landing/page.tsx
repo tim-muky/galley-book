@@ -6,6 +6,7 @@ import { ConsentBanner } from "./consent-banner";
 
 const APP_URL = "https://app.galleybook.com/auth/login";
 const IOS_URL = "https://apps.apple.com/app/id6764606059";
+const PLAY_URL = "https://play.google.com/store/apps/details?id=com.galleyworks.galleybook";
 
 const TAGLINE = "… for the love of cooking";
 
@@ -397,16 +398,15 @@ const copy = {
 
 type Lang = "en" | "de" | "fr" | "es" | "it" | "pl";
 
-// Android isn't on the Play Store yet (closed testing — see /android + GAL-443).
-// On Android the install CTAs route to /android instead of the App Store, with
-// a neutral "early access" label in place of the iOS wording.
+// Android install CTAs point straight at the Google Play listing (GAL-443).
+// The label mirrors the iOS wording ("Get the iOS app") for the other platform.
 const CTA_ANDROID: Record<Lang, string> = {
-  en: "Get early access",
-  de: "Frühen Zugang sichern",
-  fr: "Obtenir un accès anticipé",
-  es: "Conseguir acceso anticipado",
-  it: "Ottieni l'accesso anticipato",
-  pl: "Uzyskaj wczesny dostęp",
+  en: "Get the Android app",
+  de: "Android-App holen",
+  fr: "Télécharger sur Android",
+  es: "Descargar para Android",
+  it: "Scarica per Android",
+  pl: "Pobierz na Androida",
 };
 
 function IconLink() {
@@ -536,10 +536,10 @@ function SignInButtons({
   android?: boolean;
   dark?: boolean;
 }) {
-  // iOS-first launch: the landing page promotes a single install CTA. The web
-  // app still exists (existing users sign in via the nav link), it's just no
-  // longer an acquisition path that splits the funnel. On Android the CTA points
-  // to /android (closed-testing flow) instead of the App Store.
+  // The landing page promotes a single install CTA per platform. The web app
+  // still exists (existing users sign in via the nav link), it's just no longer
+  // an acquisition path that splits the funnel. On Android the CTA points to the
+  // Google Play listing instead of the App Store.
   const primary = dark
     ? { backgroundColor: "#fff", color: "#252729", borderColor: "#fff" }
     : { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" };
@@ -575,8 +575,8 @@ export default function LandingPage() {
     if (/android/i.test(navigator.userAgent)) setIsAndroid(true);
   }, []);
 
-  // Android → closed-testing flow at /android; everyone else → iOS App Store.
-  const appHref = isAndroid ? `/android?lang=${lang}` : IOS_URL;
+  // Android → Google Play listing; everyone else → iOS App Store.
+  const appHref = isAndroid ? PLAY_URL : IOS_URL;
   const appLabelHero = isAndroid ? CTA_ANDROID[lang] : t.hero.ctaApp;
   const appLabelCta2 = isAndroid ? CTA_ANDROID[lang] : t.cta2.ctaApp;
 
@@ -664,9 +664,7 @@ export default function LandingPage() {
           </p>
 
           <SignInButtons ctaApp={appLabelHero} href={appHref} android={isAndroid} />
-          {!isAndroid && (
-            <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
-          )}
+          <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
         </div>
 
         <div className="relative max-w-5xl mx-auto mt-20 md:mt-28">
