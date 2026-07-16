@@ -46,6 +46,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Smart "Go to app" redirect (route handler at app/open/route.ts). Must
+  // resolve as-is on every host — no /landing rewrite, no locale prefix, no
+  // session refresh. On iOS it's also a Universal Link (see the AASA route).
+  if (pathname === "/open") {
+    return NextResponse.next();
+  }
+
   // Landing domain — rewrite everything else to /landing/*. APIs and a
   // small allowlist of canonical-URL routes pass through:
   //   /api/*   — backend endpoints

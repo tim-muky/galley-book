@@ -4,7 +4,9 @@ import { useState, useEffect, ReactElement } from "react";
 import Image from "next/image";
 import { ConsentBanner } from "./consent-banner";
 
-const APP_URL = "https://app.galleybook.com/auth/login";
+// Smart "Go to app" redirect (app/open/route.ts on the app host): opens the
+// installed app, else falls back to the App Store / Play / a store-choice page.
+const OPEN_URL = "https://app.galleybook.com/open";
 const IOS_URL = "https://apps.apple.com/app/id6764606059";
 const PLAY_URL = "https://play.google.com/store/apps/details?id=com.galleyworks.galleybook";
 
@@ -613,10 +615,10 @@ export default function LandingPage() {
           </span>
         </a>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Returning users → web app sign-in. NOT the app store — the store
-              install CTAs live in the hero + closing sections. */}
+          {/* "Go to app" → smart redirect: opens the installed app, else the
+              right store (mobile) or a store-choice page (desktop). */}
           <a
-            href={APP_URL}
+            href={OPEN_URL}
             className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70 border-anthracite text-anthracite whitespace-nowrap"
           >
             {t.nav.goToApp}
