@@ -66,10 +66,10 @@ const copy = {
       trial: "3-day free trial",
       features: [
         "All features, no limits",
-        "Family Sharing for up to 6 people",
+        "Shared Galleys for the whole family",
         "Cancel anytime",
       ],
-      note: "Available via the iOS App Store. Family Sharing supported.",
+      note: "Available on the App Store and Google Play.",
     },
     cta2: {
       heading: "Your recipes deserve\na better home.",
@@ -128,10 +128,10 @@ const copy = {
       trial: "3 Tage kostenlos testen",
       features: [
         "Alle Funktionen, ohne Limits",
-        "Familienfreigabe für bis zu 6 Personen",
+        "Geteilte Galleys für die ganze Familie",
         "Jederzeit kündbar",
       ],
-      note: "Verfügbar im iOS App Store. Mit Familienfreigabe.",
+      note: "Verfügbar im App Store und bei Google Play.",
     },
     cta2: {
       heading: "Deine Rezepte verdienen\nein besseres Zuhause.",
@@ -189,10 +189,10 @@ const copy = {
       trial: "Essai gratuit de 3 jours",
       features: [
         "Toutes les fonctionnalités, sans limite",
-        "Partage familial jusqu'à 6 personnes",
+        "Galleys partagées pour toute la famille",
         "Annulez à tout moment",
       ],
-      note: "Disponible sur l'App Store iOS. Partage familial pris en charge.",
+      note: "Disponible sur l'App Store et Google Play.",
     },
     cta2: {
       heading: "Vos recettes méritent\nune meilleure maison.",
@@ -251,10 +251,10 @@ const copy = {
       trial: "Prueba gratuita de 3 días",
       features: [
         "Todas las funciones, sin límites",
-        "En Familia para hasta 6 personas",
+        "Galleys compartidas para toda la familia",
         "Cancela cuando quieras",
       ],
-      note: "Disponible en la App Store de iOS. Compatible con En Familia.",
+      note: "Disponible en la App Store y en Google Play.",
     },
     cta2: {
       heading: "Tus recetas merecen\nun mejor hogar.",
@@ -313,10 +313,10 @@ const copy = {
       trial: "3 giorni di prova gratuita",
       features: [
         "Tutte le funzioni, senza limiti",
-        "In famiglia per un massimo di 6 persone",
+        "Galley condivise per tutta la famiglia",
         "Disdici quando vuoi",
       ],
-      note: "Disponibile sull'App Store iOS. Supporta In famiglia.",
+      note: "Disponibile su App Store e Google Play.",
     },
     cta2: {
       heading: "Le tue ricette meritano\nuna casa migliore.",
@@ -375,10 +375,10 @@ const copy = {
       trial: "3 dni za darmo",
       features: [
         "Wszystkie funkcje, bez limitów",
-        "Chmura rodzinna do 6 osób",
+        "Wspólne Galleys dla całej rodziny",
         "Anuluj w każdej chwili",
       ],
-      note: "Dostępne w iOS App Store. Z Chmurą rodzinną.",
+      note: "Dostępne w App Store i Google Play.",
     },
     cta2: {
       heading: "Twoje przepisy zasługują\nna lepszy dom.",
