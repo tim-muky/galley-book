@@ -29,14 +29,18 @@ type Status = "active" | "expired" | "in_billing_retry" | "cancelled" | "revoked
 
 function mapNotificationToStatus(
   notificationType: string | undefined,
-  renewal: { isInBillingRetryPeriod?: boolean } | null,
 ): Status | null {
   switch (notificationType) {
     case "SUBSCRIBED":
     case "DID_RENEW":
       return "active";
     case "DID_FAIL_TO_RENEW":
-      return renewal?.isInBillingRetryPeriod ? "in_billing_retry" : "expired";
+      // GAL-488: a failed renewal enters Apple's billing-retry / grace window.
+      // The subscriber keeps access until the sub actually EXPIRES (a separate
+      // EXPIRED / GRACE_PERIOD_EXPIRED notification finalises it). Never mark
+      // 'expired' here — doing so revoked access from users who were still in
+      // their grace period, and entitlement is decided downstream by expires_at.
+      return "in_billing_retry";
     case "GRACE_PERIOD_EXPIRED":
     case "EXPIRED":
       return "expired";
@@ -93,7 +97,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
-    const status = mapNotificationToStatus(notificationType, renewal);
+    const status = mapNotificationToStatus(notificationType);
     const expiresAt = txn?.expiresDate ? new Date(txn.expiresDate).toISOString() : null;
     const revokedAt = txn?.revocationDate ? new Date(txn.revocationDate).toISOString() : null;
 

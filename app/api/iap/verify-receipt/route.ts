@@ -109,7 +109,7 @@ export async function POST(request: Request) {
   const isOfferCode = payload.offerType === 3 && Boolean(payload.offerIdentifier);
 
   const service = createServiceClient();
-  const { error: insertErr } = await service.from("iap_subscriptions").insert({
+  const appleRow = {
     user_id: user.id,
     galley_id: galleyId,
     product_id: productId,
@@ -122,35 +122,35 @@ export async function POST(request: Request) {
     starts_at: new Date().toISOString(),
     expires_at: expiresAt,
     raw_payload: payload as unknown as Record<string, unknown>,
-  });
+  };
+  const { error: insertErr } = await service.from("iap_subscriptions").insert(appleRow);
   if (insertErr) {
     if (insertErr.code === "23505") {
-      // GAL-321 — Restore re-sends a JWS whose transaction_id is already on
-      // file. Two cases hit this branch:
-      //   1. Same user restores their own sub → row exists for this user but
-      //      expires_at / status may be stale (esp. sandbox accelerated
-      //      trials).
-      //   2. Different Supabase user logs in with the same Apple ID
-      //      (account deletion + re-create, or sandbox testers hopping
-      //      between test accounts). The row is currently attached to the
-      //      previous user — Apple's "one Apple ID = one subscription"
-      //      model says the latest authenticated user owns it.
-      // Either way we update the row in place: refresh expiry/status, and
-      // re-point user_id/galley_id at whoever just verified the JWS.
+      // A 23505 here can come from EITHER of two unique constraints:
+      //   (a) transaction_id UNIQUE — the same receipt replayed (Restore, a
+      //       cold-start redelivery, or a different Supabase user re-verifying
+      //       the same Apple transaction after account deletion + re-create).
+      //   (b) the partial unique iap_subscriptions_one_active_per_user_galley —
+      //       a NEW renewal / re-subscribe transaction arriving while a
+      //       DIFFERENT active row already exists for this (user, galley).
       //
-      // First, expire any STALE "active" rows for this (user, galley) so
-      // the partial unique index iap_subscriptions_one_active_per_user_galley
-      // is free for the about-to-be-active row. These are typically previous
-      // trials where the sandbox accelerated expiry but no notification
-      // landed to flip status → expired.
-      //
-      // GAL-343: scope the sweep to Apple-sourced rows. Comp entitlements
-      // (granted by staff for testing, support, etc.) MUST NOT be expired
-      // by an Apple restore — that turned every restore on a comp'd account
-      // into "lose your comp" and trapped the user behind the paywall again.
-      // Google rows live in their own (user, galley) lane in practice
-      // because the constraint is partial on status='active', but be
-      // defensive and only sweep the source we're actively replacing.
+      // GAL-488: the old code assumed (a) and only ran UPDATE ... WHERE
+      // transaction_id = effectiveTransactionId. Under (b) that WHERE matches
+      // ZERO rows, so the stale-purge below expired the good active row while
+      // the renewal was never written — leaving the lineage with NO active row
+      // and trapping a fully-paid user behind the paywall. Look the transaction
+      // up to tell the two cases apart and handle each.
+      const { data: existingByTxn } = await service
+        .from("iap_subscriptions")
+        .select("id")
+        .eq("transaction_id", effectiveTransactionId)
+        .maybeSingle();
+
+      // Free the partial unique: expire any OTHER active Apple rows for this
+      // (user, galley). GAL-343: scope the sweep to Apple sources — comp
+      // entitlements (staff-granted) MUST NOT be expired by an Apple verify,
+      // which used to turn every restore on a comp'd account into "lose your
+      // comp". Google rows sit in their own lane and are left untouched.
       const { error: stalePurgeErr } = await service
         .from("iap_subscriptions")
         .update({ status: "expired" })
@@ -168,33 +168,53 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: stalePurgeErr.message }, { status: 500 });
       }
 
-      const { error: updateErr } = await service
-        .from("iap_subscriptions")
-        .update({
-          user_id: user.id,
-          galley_id: galleyId,
-          status: "active",
-          expires_at: expiresAt,
-          raw_payload: payload as unknown as Record<string, unknown>,
-          original_transaction_id: originalTransactionId,
-          original_purchase_token: originalTransactionId,
-          offer_identifier: payload.offerIdentifier ?? null,
-        })
-        .eq("transaction_id", effectiveTransactionId);
-      if (updateErr) {
-        logger.error("iap.verify_receipt.dedup_update_failed", {
-          userId: user.id,
-          galleyId,
-          transactionId: effectiveTransactionId,
-          message: updateErr.message,
-        });
-        return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      if (existingByTxn) {
+        // (a) Replay — refresh the row already on file in place, re-pointing
+        // user_id/galley_id at whoever just verified the JWS.
+        const { error: updateErr } = await service
+          .from("iap_subscriptions")
+          .update({
+            user_id: user.id,
+            galley_id: galleyId,
+            status: "active",
+            expires_at: expiresAt,
+            raw_payload: payload as unknown as Record<string, unknown>,
+            original_transaction_id: originalTransactionId,
+            original_purchase_token: originalTransactionId,
+            offer_identifier: payload.offerIdentifier ?? null,
+          })
+          .eq("transaction_id", effectiveTransactionId);
+        if (updateErr) {
+          logger.error("iap.verify_receipt.dedup_update_failed", {
+            userId: user.id,
+            galleyId,
+            transactionId: effectiveTransactionId,
+            message: updateErr.message,
+          });
+          return NextResponse.json({ error: updateErr.message }, { status: 500 });
+        }
+      } else {
+        // (b) New renewal / re-subscribe — the conflicting active row is now
+        // expired, so the fresh transaction can finally be written.
+        const { error: reinsertErr } = await service
+          .from("iap_subscriptions")
+          .insert(appleRow);
+        if (reinsertErr) {
+          logger.error("iap.verify_receipt.dedup_reinsert_failed", {
+            userId: user.id,
+            galleyId,
+            transactionId: effectiveTransactionId,
+            message: reinsertErr.message,
+          });
+          return NextResponse.json({ error: reinsertErr.message }, { status: 500 });
+        }
       }
       logger.info("iap.verify_receipt.dedup_refreshed", {
         userId: user.id,
         galleyId,
         transactionId: effectiveTransactionId,
         expiresAt,
+        mode: existingByTxn ? "replay" : "renewal",
       });
       // GAL-341: include the authoritative entitlement so the client doesn't
       // need a follow-up /api/iap/status round-trip (which can hit a stale
