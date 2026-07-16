@@ -525,35 +525,47 @@ function IconCheck() {
   );
 }
 
-function SignInButtons({
-  ctaApp,
-  href = IOS_URL,
-  android = false,
+function StoreButtons({
+  iosLabel,
+  androidLabel,
+  isAndroid,
   dark = false,
 }: {
-  ctaApp: string;
-  href?: string;
-  android?: boolean;
+  iosLabel: string;
+  androidLabel: string;
+  isAndroid: boolean;
   dark?: boolean;
 }) {
-  // The landing page promotes a single install CTA per platform. The web app
-  // still exists (existing users sign in via the nav link), it's just no longer
-  // an acquisition path that splits the funnel. On Android the CTA points to the
-  // Google Play listing instead of the App Store.
-  const primary = dark
+  // Both stores are shown so the Android app is discoverable on every device.
+  // The visitor's own platform is the filled/primary button; the other store is
+  // a ghost button. iOS → App Store, Android → Google Play. The web app is
+  // reached separately via the "Go to app" nav link.
+  const filled = dark
     ? { backgroundColor: "#fff", color: "#252729", borderColor: "#fff" }
     : { backgroundColor: "#252729", color: "#fff", borderColor: "#252729" };
+  const ghost = dark
+    ? { backgroundColor: "transparent", color: "#fff", borderColor: "#fff" }
+    : { backgroundColor: "transparent", color: "#252729", borderColor: "#252729" };
+
+  const cls =
+    "flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap w-full sm:w-auto";
+
+  const ios = (
+    <a key="ios" href={IOS_URL} className={cls} style={isAndroid ? ghost : filled}>
+      <IconApple />
+      {iosLabel}
+    </a>
+  );
+  const android = (
+    <a key="android" href={PLAY_URL} className={cls} style={isAndroid ? filled : ghost}>
+      <IconAndroid />
+      {androidLabel}
+    </a>
+  );
 
   return (
-    <div className="flex w-full max-w-md">
-      <a
-        href={href}
-        className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-sm font-light border transition-opacity hover:opacity-80 whitespace-nowrap w-full sm:w-auto"
-        style={primary}
-      >
-        {android ? <IconAndroid /> : <IconApple />}
-        {ctaApp}
-      </a>
+    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto max-w-md sm:max-w-none">
+      {isAndroid ? [android, ios] : [ios, android]}
     </div>
   );
 }
@@ -574,11 +586,6 @@ export default function LandingPage() {
   useEffect(() => {
     if (/android/i.test(navigator.userAgent)) setIsAndroid(true);
   }, []);
-
-  // Android → Google Play listing; everyone else → iOS App Store.
-  const appHref = isAndroid ? PLAY_URL : IOS_URL;
-  const appLabelHero = isAndroid ? CTA_ANDROID[lang] : t.hero.ctaApp;
-  const appLabelCta2 = isAndroid ? CTA_ANDROID[lang] : t.cta2.ctaApp;
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans overflow-x-hidden relative">
@@ -606,8 +613,10 @@ export default function LandingPage() {
           </span>
         </a>
         <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Returning users → web app sign-in. NOT the app store — the store
+              install CTAs live in the hero + closing sections. */}
           <a
-            href={appHref}
+            href={APP_URL}
             className="px-4 py-2 rounded-full text-sm font-light border transition-opacity hover:opacity-70 border-anthracite text-anthracite whitespace-nowrap"
           >
             {t.nav.goToApp}
@@ -663,7 +672,7 @@ export default function LandingPage() {
             {t.hero.sub}
           </p>
 
-          <SignInButtons ctaApp={appLabelHero} href={appHref} android={isAndroid} />
+          <StoreButtons iosLabel={t.hero.ctaApp} androidLabel={CTA_ANDROID[lang]} isAndroid={isAndroid} />
           <p className="mt-3 text-xs font-light text-anthracite/40">{t.hero.ctaNote}</p>
         </div>
 
@@ -830,7 +839,7 @@ export default function LandingPage() {
             <p className="text-base font-light text-white/60 mb-8 leading-relaxed">
               {t.cta2.sub}
             </p>
-            <SignInButtons ctaApp={appLabelCta2} href={appHref} android={isAndroid} dark />
+            <StoreButtons iosLabel={t.cta2.ctaApp} androidLabel={CTA_ANDROID[lang]} isAndroid={isAndroid} dark />
           </div>
         </div>
       </section>
