@@ -25,7 +25,10 @@ export async function GET() {
         {
           appID,
           appIDs: teamId ? [appID] : undefined,
-          paths: ["/join/*", "/share/*", "/r/*"],
+          // /open is the smart "Go to app" Universal Link (app/open/route.ts).
+          // Server-side only — adding it here opens the app for /open with no
+          // native rebuild; the app's InviteHandler no-ops on it and lands home.
+          paths: ["/join/*", "/share/*", "/r/*", "/open"],
         },
       ],
     },
