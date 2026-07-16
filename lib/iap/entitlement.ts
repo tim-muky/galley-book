@@ -80,31 +80,47 @@ export async function computeEntitlement(
   const subs = [
     ...(galleyResult.data ?? []),
     ...(userResult.data ?? []),
-  ].filter((row) => {
-    const key = `${row.user_id}:${row.galley_id}:${row.starts_at}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  ]
+    .filter((row) => {
+      const key = `${row.user_id}:${row.galley_id}:${row.starts_at}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort(
+      (a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
+    );
 
   const now = Date.now();
-  const activeSub = subs.find(
-    (s) =>
-      s.status === "active" &&
-      (!s.expires_at || new Date(s.expires_at).getTime() > now),
-  );
-  const retryingSub = subs.find((s) => s.status === "in_billing_retry");
-  const sub = activeSub ?? retryingSub ?? null;
 
-  // GAL-335: if there's a real active sub it wins (longer window, real
-  // entitlement). Otherwise check the 3-day trial. Free is the last resort.
-  if (sub && sub.status === "active") {
+  // GAL-488: entitlement is decided by the paid-through window, NOT by the
+  // `status` column being exactly 'active'. A subscription grants premium for
+  // as long as its current paid period is still open and it wasn't revoked or
+  // refunded. Turning off auto-renew (Apple leaves the row 'active' but a
+  // stale/out-of-order notification could mark it 'expired'; Play marks it
+  // 'cancelled'), or an in-flight billing retry during the grace window, must
+  // NOT revoke access before expires_at actually passes. `status` is advisory;
+  // expires_at is the source of truth. Before this, any sub whose status drifted
+  // off 'active' (very common — every cancel-but-keep-the-month) was denied
+  // premium and bounced back to the paywall despite being fully paid up.
+  const isWithinPaidWindow = (s: {
+    status: string;
+    expires_at: string | null;
+  }): boolean => {
+    if (s.status === "revoked") return false; // refund / chargeback → no access
+    return s.expires_at
+      ? new Date(s.expires_at).getTime() > now
+      : s.status === "active"; // null expiry = comp / forever grant
+  };
+
+  const entitledSub = subs.find(isWithinPaidWindow) ?? null;
+  if (entitledSub) {
     return {
       premium: true,
-      status: sub.status,
-      expiresAt: sub.expires_at,
-      isShared: sub.user_id !== userId,
-      source: sub.source as EntitlementResult["source"],
+      status: entitledSub.status,
+      expiresAt: entitledSub.expires_at,
+      isShared: entitledSub.user_id !== userId,
+      source: entitledSub.source as EntitlementResult["source"],
     };
   }
 
@@ -114,11 +130,8 @@ export async function computeEntitlement(
     const { data: inviterSubs } = await supabase
       .from("iap_subscriptions")
       .select("status, expires_at")
-      .eq("user_id", inviterId)
-      .eq("status", "active");
-    const liveInviterSub = inviterSubs?.find(
-      (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-    );
+      .eq("user_id", inviterId);
+    const liveInviterSub = inviterSubs?.find(isWithinPaidWindow);
     if (liveInviterSub) {
       return {
         premium: true,
@@ -133,14 +146,16 @@ export async function computeEntitlement(
   const trial = trialEntitlement(userCreatedAt);
   if (trial) return trial;
 
-  if (sub) {
-    // Retrying sub but past trial — still surface the status.
+  // Not premium — surface the most recent sub's status (if any) so the UI can
+  // distinguish "expired subscriber" from "never subscribed".
+  const latestSub = subs[0] ?? null;
+  if (latestSub) {
     return {
       premium: false,
-      status: sub.status,
-      expiresAt: sub.expires_at,
-      isShared: sub.user_id !== userId,
-      source: sub.source as EntitlementResult["source"],
+      status: latestSub.status,
+      expiresAt: latestSub.expires_at,
+      isShared: latestSub.user_id !== userId,
+      source: latestSub.source as EntitlementResult["source"],
     };
   }
 
