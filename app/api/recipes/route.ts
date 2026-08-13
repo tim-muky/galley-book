@@ -220,6 +220,19 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = RecipeCreateSchema.safeParse(body);
   if (!parsed.success) {
+    // A rejection here used to leave no server-side trace at all, while an RPC
+    // failure a few lines down logged recipe_create_rpc_failed. That asymmetry
+    // is why a 400 on this route (servings out of range) took a database
+    // forensics session to identify: the client only saw a generic error, and
+    // the server remembered nothing. Field names only — no recipe content.
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    logger.warn("recipe_create_validation_failed", {
+      userId: user.id,
+      fields: Object.keys(fieldErrors),
+      issues: Object.entries(fieldErrors)
+        .map(([field, msgs]) => `${field}: ${(msgs ?? []).join("; ")}`)
+        .join(" | "),
+    });
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
   const { name, description, servings, prep_time, season, type, cuisine, main_ingredients, tags, source_url, image_url, image_temp_path, ingredients, steps, galleyId: explicitGalleyId } = parsed.data;
