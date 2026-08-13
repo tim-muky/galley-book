@@ -247,9 +247,15 @@ export async function POST(
       const { data: deviceRows } = await service
         .from("user_devices")
         .select("user_id");
+      // Everyone with a registered device, publisher included. The publishing
+      // admin used to be filtered out here as a self-notify guard, but Campaign
+      // Studio is published by one person, so that guard made the only account
+      // able to trigger the push the one account that could never receive it —
+      // leaving tap-routing and copy unverifiable on a real device. Opt-outs and
+      // dead-token pruning still apply inside sendPushToUsers.
       const userIds = Array.from(
         new Set((deviceRows ?? []).map((d) => d.user_id)),
-      ).filter((uid) => uid !== adminUser.id);
+      );
 
       if (userIds.length > 0) {
         const { data: userRows } = await service
