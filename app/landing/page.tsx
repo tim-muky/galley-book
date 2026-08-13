@@ -17,11 +17,12 @@ const TAGLINE = "… for the love of cooking";
 // real testimonials are added.
 const TESTIMONIALS: { quote: string; name: string }[] = [];
 
+// Only live channels belong here. facebook / tiktok / x had placeholder "#"
+// hrefs shipped on the public landing page — the page paid ASA and Meta traffic
+// lands on — so every one of those icons was a dead click. Add a channel back
+// only once it has a real account, together with its <a> in the footer.
 const SOCIALS = {
-  instagram: "#", // TODO
-  facebook: "#",  // TODO
-  tiktok: "#",    // TODO
-  x: "#",         // TODO
+  instagram: "https://www.instagram.com/galleybook/",
 };
 
 const copy = {
@@ -467,21 +468,10 @@ function IconTikTok() {
   );
 }
 
-function IconFacebook() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.89h-2.33v6.99A10 10 0 0 0 22 12z" />
-    </svg>
-  );
-}
-
-function IconX() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
+// IconFacebook / IconX removed with their footer links — no live accounts yet.
+// IconTikTok deliberately kept: it is still used in the "import from" list
+// above, which is about pulling recipes out of TikTok, not about us having a
+// TikTok account.
 
 function IconGlobe() {
   return (
@@ -855,17 +845,18 @@ export default function LandingPage() {
             <span className="text-xs font-semibold uppercase tracking-widest text-anthracite/40">
               {t.socials.label}
             </span>
-            <a href={SOCIALS.instagram} aria-label="Instagram" className="text-anthracite/60 hover:text-anthracite transition-colors">
+            {/* Only channels we actually run are shown. Facebook, TikTok and X
+                stay hidden until they have real accounts — a dead icon costs
+                more trust than a missing one. Restore by adding the URL to
+                SOCIALS and an <a> here. */}
+            <a
+              href={SOCIALS.instagram}
+              aria-label="Instagram"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-anthracite/60 hover:text-anthracite transition-colors"
+            >
               <IconInstagram />
-            </a>
-            <a href={SOCIALS.facebook} aria-label="Facebook" className="text-anthracite/60 hover:text-anthracite transition-colors">
-              <IconFacebook />
-            </a>
-            <a href={SOCIALS.tiktok} aria-label="TikTok" className="text-anthracite/60 hover:text-anthracite transition-colors">
-              <IconTikTok />
-            </a>
-            <a href={SOCIALS.x} aria-label="X" className="text-anthracite/60 hover:text-anthracite transition-colors">
-              <IconX />
             </a>
           </div>
 
