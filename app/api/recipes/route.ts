@@ -24,11 +24,30 @@ const TagSchema = z.object({
   value: z.string().min(1).max(120),
 });
 
+/**
+ * Out-of-range numerics become null instead of failing the whole request.
+ *
+ * The parser reads a recipe's *yield* as `servings`, so a sauce that makes
+ * "250 ml" arrives as servings: 250. Rejecting that lost the entire import —
+ * and because the 400 carried no usable cause, the iOS Share Extension mapped
+ * it to its catch-all and told the user "we couldn't read this link", blaming a
+ * link that had parsed perfectly.
+ *
+ * A number we can't believe is not a reason to drop a good recipe, and clamping
+ * to the bound would invent a fact (100 servings) the source never stated.
+ * Null is the honest answer: servings unknown.
+ */
+const nullIfOutOfRange = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : null),
+    z.number().int().nullable()
+  );
+
 const RecipeCreateSchema = z.object({
   name: z.string().min(1).max(300),
   description: z.string().max(2000).optional().nullable(),
-  servings: z.number().int().min(1).max(100).optional().nullable(),
-  prep_time: z.number().int().min(0).max(10080).optional().nullable(),
+  servings: nullIfOutOfRange(1, 100).optional().nullable(),
+  prep_time: nullIfOutOfRange(0, 10080).optional().nullable(),
   season: z.enum(["spring", "summer", "autumn", "winter", "all_year"]).optional(),
   type: z.enum(["starter", "main", "dessert", "breakfast", "snack", "drink", "side"]).optional().nullable(),
   cuisine: z.string().max(120).optional().nullable(),
