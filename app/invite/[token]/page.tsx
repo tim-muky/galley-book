@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isWithinPaidWindow } from "@/lib/iap/entitlement";
 import { logger } from "@/lib/logger";
 import { redirect } from "next/navigation";
 import Image from "next/image";
@@ -74,11 +75,8 @@ export default async function InvitePage({
   const { data: inviterSubs } = await service
     .from("iap_subscriptions")
     .select("status, expires_at")
-    .eq("user_id", invite.inviter_user_id)
-    .eq("status", "active");
-  const inviterActive = inviterSubs?.some(
-    (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-  );
+    .eq("user_id", invite.inviter_user_id);
+  const inviterActive = inviterSubs?.some(isWithinPaidWindow);
   if (!inviterActive) {
     return (
       <InviteError message="The inviter's subscription is no longer active." />
@@ -98,11 +96,8 @@ export default async function InvitePage({
     const { data: ownSubs } = await actionService
       .from("iap_subscriptions")
       .select("status, expires_at")
-      .eq("user_id", actionUser.id)
-      .eq("status", "active");
-    const hasOwnSub = ownSubs?.some(
-      (s) => !s.expires_at || new Date(s.expires_at).getTime() > Date.now(),
-    );
+      .eq("user_id", actionUser.id);
+    const hasOwnSub = ownSubs?.some(isWithinPaidWindow);
     if (hasOwnSub) {
       redirect("https://app.galleybook.com/library?invite=already_premium");
     }

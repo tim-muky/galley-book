@@ -31,6 +31,13 @@ const InputSchema = z.object({
   transactionId: z.string().min(1).max(200).nullable(),
   galleyId: z.string().uuid(),
   provider: z.enum(["apple", "google"]).default("apple"),
+  // GAL-544: why this receipt is being verified. Launch-time drains re-send
+  // every historical StoreKit receipt, so they must never re-point a row that
+  // belongs to a different user — otherwise two accounts sharing one Apple ID
+  // (or Apple Family) steal the sub from each other on every cold start.
+  // Only a deliberate user action (purchase, Restore tap) may claim a row.
+  // Defaults to "drain" so pre-GAL-544 clients get the safe behavior.
+  intent: z.enum(["purchase", "restore", "drain"]).default("drain"),
 });
 
 export async function POST(request: Request) {
@@ -42,7 +49,7 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: body.error.message }, { status: 400 });
   }
-  const { receipt, productId, transactionId, galleyId, provider } = body.data;
+  const { receipt, productId, transactionId, galleyId, provider, intent } = body.data;
 
   if (!KNOWN_PREMIUM_PRODUCT_IDS.has(productId)) {
     logger.warn("iap.verify_receipt.unknown_product", { productId, userId: user.id });
@@ -65,6 +72,8 @@ export async function POST(request: Request) {
       galleyId,
       productId,
       token: receipt,
+      intent,
+      userCreatedAt: user.created_at,
     });
   }
 
@@ -108,13 +117,21 @@ export async function POST(request: Request) {
   const effectiveTransactionId = payload.transactionId ?? transactionId;
   const isOfferCode = payload.offerType === 3 && Boolean(payload.offerIdentifier);
 
+  // GAL-545: restores/drains replay the user's ENTIRE StoreKit history, old
+  // dead receipts included. Status must reflect what the receipt actually says
+  // — recording a June receipt as 'active' in September corrupts every reader
+  // still keyed on status (and used to flip the genuinely live row to
+  // 'expired' via the stale-purge below).
+  const receiptIsLive = !expiresAt || new Date(expiresAt).getTime() > Date.now();
+  const derivedStatus = receiptIsLive ? "active" : "expired";
+
   const service = createServiceClient();
   const appleRow = {
     user_id: user.id,
     galley_id: galleyId,
     product_id: productId,
     source: isOfferCode ? "apple_offer_code" : "apple_iap",
-    status: "active",
+    status: derivedStatus,
     transaction_id: effectiveTransactionId,
     original_transaction_id: originalTransactionId,
     original_purchase_token: originalTransactionId,
@@ -142,41 +159,68 @@ export async function POST(request: Request) {
       // up to tell the two cases apart and handle each.
       const { data: existingByTxn } = await service
         .from("iap_subscriptions")
-        .select("id")
+        .select("id, user_id")
         .eq("transaction_id", effectiveTransactionId)
         .maybeSingle();
+
+      // GAL-544: a launch-time drain must never claim a row that belongs to a
+      // different (still existing) user. Re-pointing here is what made two
+      // accounts on one Apple ID / Apple Family steal the sub from each other
+      // on every cold start, bouncing the losing account to the paywall. Only
+      // a deliberate user action (purchase, Restore tap) may re-point.
+      if (existingByTxn && existingByTxn.user_id !== user.id && intent === "drain") {
+        logger.info("iap.verify_receipt.drain_skipped_foreign_row", {
+          userId: user.id,
+          galleyId,
+          transactionId: effectiveTransactionId,
+        });
+        const entitlement = await computeEntitlement(
+          service,
+          user.id,
+          galleyId,
+          user.created_at,
+        );
+        return NextResponse.json({ ok: true, deduped: true, skipped: true, entitlement });
+      }
 
       // Free the partial unique: expire any OTHER active Apple rows for this
       // (user, galley). GAL-343: scope the sweep to Apple sources — comp
       // entitlements (staff-granted) MUST NOT be expired by an Apple verify,
       // which used to turn every restore on a comp'd account into "lose your
       // comp". Google rows sit in their own lane and are left untouched.
-      const { error: stalePurgeErr } = await service
-        .from("iap_subscriptions")
-        .update({ status: "expired" })
-        .eq("user_id", user.id)
-        .eq("galley_id", galleyId)
-        .eq("status", "active")
-        .neq("transaction_id", effectiveTransactionId)
-        .in("source", ["apple_iap", "apple_offer_code"]);
-      if (stalePurgeErr) {
-        logger.error("iap.verify_receipt.dedup_stale_purge_failed", {
-          userId: user.id,
-          galleyId,
-          message: stalePurgeErr.message,
-        });
-        return NextResponse.json({ error: stalePurgeErr.message }, { status: 500 });
+      // GAL-545: only a LIVE incoming receipt may purge — an old dead receipt
+      // replayed by a restore must not expire the genuinely active row. (A
+      // dead receipt can only conflict on transaction_id, never on the
+      // active-rows partial unique, so skipping the purge is always safe.)
+      if (receiptIsLive) {
+        const { error: stalePurgeErr } = await service
+          .from("iap_subscriptions")
+          .update({ status: "expired" })
+          .eq("user_id", user.id)
+          .eq("galley_id", galleyId)
+          .eq("status", "active")
+          .neq("transaction_id", effectiveTransactionId)
+          .in("source", ["apple_iap", "apple_offer_code"]);
+        if (stalePurgeErr) {
+          logger.error("iap.verify_receipt.dedup_stale_purge_failed", {
+            userId: user.id,
+            galleyId,
+            message: stalePurgeErr.message,
+          });
+          return NextResponse.json({ error: stalePurgeErr.message }, { status: 500 });
+        }
       }
 
       if (existingByTxn) {
         // (a) Replay — refresh the row already on file in place, re-pointing
-        // user_id/galley_id at whoever just verified the JWS.
+        // user_id/galley_id at whoever just verified the JWS (deliberate
+        // purchase/restore only — the drain case returned above).
         const { error: updateErr } = await service
           .from("iap_subscriptions")
           .update({
             user_id: user.id,
             galley_id: galleyId,
-            status: "active",
+            status: derivedStatus,
             expires_at: expiresAt,
             raw_payload: payload as unknown as Record<string, unknown>,
             original_transaction_id: originalTransactionId,
@@ -266,8 +310,10 @@ async function verifyGoogle(args: {
   galleyId: string;
   productId: string;
   token: string;
+  intent: "purchase" | "restore" | "drain";
+  userCreatedAt?: string | null;
 }): Promise<Response> {
-  const { userId, galleyId, productId, token } = args;
+  const { userId, galleyId, productId, token, intent, userCreatedAt } = args;
 
   let purchase;
   try {
@@ -340,6 +386,24 @@ async function verifyGoogle(args: {
       // Apple path does so the partial unique stays free. Defensive source
       // filter mirrors the Apple branch (GAL-343) — never sweep comp/trial
       // entitlements just because the user happens to have a Google row.
+      //
+      // GAL-544: mirror the Apple ownership guard — an automatic replay must
+      // not claim a row that belongs to a different user (shared Play account
+      // across two galleybook logins). Deliberate purchase/restore may.
+      const { data: existingByToken } = await service
+        .from("iap_subscriptions")
+        .select("id, user_id")
+        .eq("original_purchase_token", token)
+        .maybeSingle();
+      if (existingByToken && existingByToken.user_id !== userId && intent === "drain") {
+        logger.info("iap.verify_receipt.google.drain_skipped_foreign_row", {
+          userId,
+          galleyId,
+        });
+        const entitlement = await computeEntitlement(service, userId, galleyId, userCreatedAt);
+        return NextResponse.json({ ok: true, deduped: true, skipped: true, entitlement });
+      }
+
       const { error: stalePurgeErr } = await service
         .from("iap_subscriptions")
         .update({ status: "expired" })
@@ -383,7 +447,10 @@ async function verifyGoogle(args: {
         productId,
         expiresAt: purchase.expiresAt,
       });
-      return NextResponse.json({ ok: true, deduped: true, refreshed: true });
+      // GAL-341 parity with the Apple path: return the authoritative
+      // entitlement so the client skips the racy /api/iap/status follow-up.
+      const entitlement = await computeEntitlement(service, userId, galleyId, userCreatedAt);
+      return NextResponse.json({ ok: true, deduped: true, refreshed: true, entitlement });
     }
     logger.error("iap.verify_receipt.google.insert_failed", {
       userId,
@@ -402,5 +469,6 @@ async function verifyGoogle(args: {
     expiresAt: purchase.expiresAt,
     state: purchase.subscriptionState,
   });
-  return NextResponse.json({ ok: true });
+  const entitlement = await computeEntitlement(service, userId, galleyId, userCreatedAt);
+  return NextResponse.json({ ok: true, entitlement });
 }

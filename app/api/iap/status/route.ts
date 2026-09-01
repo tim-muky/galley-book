@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { logger } from "@/lib/logger";
 import { computeEntitlement } from "@/lib/iap/entitlement";
 import { NextResponse } from "next/server";
@@ -40,8 +41,15 @@ export async function GET(request: Request) {
   }
 
   try {
+    // GAL-546: resolve with the service client, exactly like verify-receipt
+    // does. The RLS policy only exposes iap_subscriptions rows on galleys the
+    // REQUESTER belongs to, which silently hid (1) the inviter's sub in the
+    // premium-invite branch (invitees aren't in the inviter's galley — invite
+    // premium never resolved here) and (2) the user's own subs recorded on a
+    // galley they since left. Membership was already verified above, so this
+    // widens visibility for the resolver only, not for the caller.
     const entitlement = await computeEntitlement(
-      supabase,
+      createServiceClient(),
       user.id,
       galleyId,
       user.created_at,

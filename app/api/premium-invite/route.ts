@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isWithinPaidWindow } from "@/lib/iap/entitlement";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
@@ -26,22 +27,23 @@ export async function POST() {
   }
 
   const now = Date.now();
-  const { data: subs } = await supabase
+  // GAL-545: gate on the paid-through window (GAL-488 rule), not
+  // status='active' — restores can leave a fully-paid sub at status
+  // 'expired'/'cancelled' while its window is still open, and that must not
+  // block invite creation. Service client: the RLS policy hides the user's
+  // own rows on galleys they left (GAL-546).
+  const service = createServiceClient();
+  const { data: subs } = await service
     .from("iap_subscriptions")
     .select("status, expires_at")
-    .eq("user_id", user.id)
-    .eq("status", "active");
-  const hasActiveSub = subs?.some(
-    (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-  );
+    .eq("user_id", user.id);
+  const hasActiveSub = subs?.some(isWithinPaidWindow);
   if (!hasActiveSub) {
     return NextResponse.json(
       { error: "Active premium subscription required" },
       { status: 403 },
     );
   }
-
-  const service = createServiceClient();
   const token = randomBytes(24).toString("base64url");
   const expiresAt = new Date(
     now + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,

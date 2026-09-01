@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isWithinPaidWindow } from "@/lib/iap/entitlement";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -57,11 +58,8 @@ export async function POST(
   const { data: ownSubs } = await service
     .from("iap_subscriptions")
     .select("status, expires_at")
-    .eq("user_id", user.id)
-    .eq("status", "active");
-  const hasOwnSub = ownSubs?.some(
-    (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-  );
+    .eq("user_id", user.id);
+  const hasOwnSub = ownSubs?.some(isWithinPaidWindow);
   if (hasOwnSub) {
     return NextResponse.json(
       { error: "You already have an active subscription" },
@@ -85,11 +83,8 @@ export async function POST(
   const { data: inviterSubs } = await service
     .from("iap_subscriptions")
     .select("status, expires_at")
-    .eq("user_id", invite.inviter_user_id)
-    .eq("status", "active");
-  const inviterActive = inviterSubs?.some(
-    (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-  );
+    .eq("user_id", invite.inviter_user_id);
+  const inviterActive = inviterSubs?.some(isWithinPaidWindow);
   if (!inviterActive) {
     return NextResponse.json(
       { error: "The inviter's subscription is no longer active" },
