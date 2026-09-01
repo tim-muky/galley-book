@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { isWithinPaidWindow } from "@/lib/iap/entitlement";
 import { NextResponse } from "next/server";
 
 // GAL-351: Public lookup of an invite by token. Used by the claim landing
@@ -42,11 +43,8 @@ export async function GET(
   const inviterSubs = await service
     .from("iap_subscriptions")
     .select("status, expires_at")
-    .eq("user_id", invite.inviter_user_id)
-    .eq("status", "active");
-  const inviterHasActiveSub = inviterSubs.data?.some(
-    (s) => !s.expires_at || new Date(s.expires_at).getTime() > now,
-  ) ?? false;
+    .eq("user_id", invite.inviter_user_id);
+  const inviterHasActiveSub = inviterSubs.data?.some(isWithinPaidWindow) ?? false;
 
   return NextResponse.json({
     status: expired && invite.status === "pending" ? "expired" : invite.status,

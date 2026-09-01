@@ -25,6 +25,28 @@ export type EntitlementResult = {
 // regular subscription gate takes over.
 const TRIAL_LENGTH_MS = 3 * 24 * 60 * 60 * 1000;
 
+// GAL-488: entitlement is decided by the paid-through window, NOT by the
+// `status` column being exactly 'active'. A subscription grants premium for
+// as long as its current paid period is still open and it wasn't revoked or
+// refunded. Turning off auto-renew (Apple leaves the row 'active' but a
+// stale/out-of-order notification could mark it 'expired'; Play marks it
+// 'cancelled'), or an in-flight billing retry during the grace window, must
+// NOT revoke access before expires_at actually passes. `status` is advisory;
+// expires_at is the source of truth. Before this, any sub whose status drifted
+// off 'active' (very common — every cancel-but-keep-the-month) was denied
+// premium and bounced back to the paywall despite being fully paid up.
+// Exported (GAL-545) so every gate that asks "does this user hold a live sub"
+// applies the same rule — never re-gate on status === 'active'.
+export function isWithinPaidWindow(s: {
+  status: string;
+  expires_at: string | null;
+}): boolean {
+  if (s.status === "revoked") return false; // refund / chargeback → no access
+  return s.expires_at
+    ? new Date(s.expires_at).getTime() > Date.now()
+    : s.status === "active"; // null expiry = comp / forever grant
+}
+
 function trialEntitlement(userCreatedAt: string | null | undefined): EntitlementResult | null {
   if (!userCreatedAt) return null;
   const start = new Date(userCreatedAt).getTime();
@@ -90,28 +112,6 @@ export async function computeEntitlement(
     .sort(
       (a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
     );
-
-  const now = Date.now();
-
-  // GAL-488: entitlement is decided by the paid-through window, NOT by the
-  // `status` column being exactly 'active'. A subscription grants premium for
-  // as long as its current paid period is still open and it wasn't revoked or
-  // refunded. Turning off auto-renew (Apple leaves the row 'active' but a
-  // stale/out-of-order notification could mark it 'expired'; Play marks it
-  // 'cancelled'), or an in-flight billing retry during the grace window, must
-  // NOT revoke access before expires_at actually passes. `status` is advisory;
-  // expires_at is the source of truth. Before this, any sub whose status drifted
-  // off 'active' (very common — every cancel-but-keep-the-month) was denied
-  // premium and bounced back to the paywall despite being fully paid up.
-  const isWithinPaidWindow = (s: {
-    status: string;
-    expires_at: string | null;
-  }): boolean => {
-    if (s.status === "revoked") return false; // refund / chargeback → no access
-    return s.expires_at
-      ? new Date(s.expires_at).getTime() > now
-      : s.status === "active"; // null expiry = comp / forever grant
-  };
 
   const entitledSub = subs.find(isWithinPaidWindow) ?? null;
   if (entitledSub) {
