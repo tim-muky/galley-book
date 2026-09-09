@@ -38,7 +38,9 @@ export async function GET(request: Request) {
     if (!isCron) return;
     try {
       const res = await runTrialNudges({
-        enabled: process.env.TRIAL_NUDGES_ENABLED === "true",
+        // trim(): the stored value carried a trailing newline for 75 days and
+        // silently dry-ran every send — never gate on an untrimmed env var.
+        enabled: (process.env.TRIAL_NUDGES_ENABLED ?? "").trim() === "true",
       });
       logger.info("trial_nudges.piggyback", { enabled: res.enabled, plan: res.plan });
     } catch (e) {

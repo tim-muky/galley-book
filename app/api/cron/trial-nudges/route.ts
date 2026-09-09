@@ -28,7 +28,9 @@ export async function GET(request: Request) {
 
   try {
     const result = await runTrialNudges({
-      enabled: process.env.TRIAL_NUDGES_ENABLED === "true",
+      // trim(): keep in lockstep with the growth-daily-report gate — an
+      // untrimmed value dry-ran every send for 75 days.
+      enabled: (process.env.TRIAL_NUDGES_ENABLED ?? "").trim() === "true",
     });
     return NextResponse.json(result);
   } catch (err) {
