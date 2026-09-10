@@ -1,9 +1,9 @@
 /**
  * Trial-nudge sequence — core run logic.
  *
- * Every new signup gets 3 days of full premium (lib/iap/entitlement.ts). This
+ * Every new signup gets 7 days of full premium (lib/iap/entitlement.ts). This
  * fans out a short lifecycle sequence to convert trial → paid before the window
- * closes. Targets users still inside the 3-day window who have NOT started any
+ * closes. Targets users still inside the 7-day window who have NOT started any
  * subscription (no iap_subscriptions row). Idempotent via trial_nudge_log (one
  * row per user per nudge_key), so re-running never double-sends.
  *
@@ -14,8 +14,8 @@
  * jitter — always catches the user once:
  *   - "early"  (18–54h) — activation push (or a reinforce push if they already
  *                         saved a recipe)
- *   - "ending" (48–76h) — urgency push + email ("trial ending soon")
- * In the 48–54h overlap the ending touch wins. Copy is localized DE/EN.
+ *   - "ending" (132–163h, day 5.5–6.8) — urgency push + email ("trial ending soon")
+ * If the windows ever overlap, the ending touch wins. Copy is localized DE/EN.
  *
  * Gated by the caller's `enabled` flag (TRIAL_NUDGES_ENABLED): when false this
  * computes and returns the plan WITHOUT sending or logging (dry run), so
@@ -30,9 +30,12 @@ import { logger } from "@/lib/logger";
 
 const HOUR = 60 * 60 * 1000;
 // Windows in ms-since-signup. Each spans >24h (+ jitter slack) so a single
-// daily run always lands inside it once.
+// daily run always lands inside it once. Aligned to the 7-day trial
+// (lib/iap/entitlement.ts, was 3 days until 2026-09-10): early stays a day-1/2
+// activation touch; ending lands on day 5.5–6.8, before the trial expires at
+// 168h.
 const EARLY = { from: 18 * HOUR, to: 54 * HOUR };
-const ENDING = { from: 48 * HOUR, to: 76 * HOUR };
+const ENDING = { from: 132 * HOUR, to: 163 * HOUR };
 
 type Lang = "de" | "en";
 type Touch = "early_activate" | "early_reinforce" | "ending";
@@ -148,8 +151,9 @@ export async function runTrialNudges({
   const alreadySent = new Set((sent ?? []).map((r) => `${r.user_id}:${r.nudge_key}`));
   const activated = new Set((recipes ?? []).map((r) => r.created_by).filter(Boolean));
 
-  // Bucket each eligible candidate into at most one touch this run. The ending
-  // touch wins in the 48–54h overlap.
+  // Bucket each eligible candidate into at most one touch this run. The
+  // windows are disjoint under the 7-day trial; ending wins if they ever
+  // overlap again.
   const groups: Record<Touch, Candidate[]> = {
     early_activate: [],
     early_reinforce: [],

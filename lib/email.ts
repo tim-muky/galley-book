@@ -45,7 +45,7 @@ export async function sendGalleyInvite({
   });
 }
 
-// ---- Trial-ending nudge (day 3 of the 3-day premium trial) ------------------
+// ---- Trial-ending nudge (final days of the 7-day premium trial) -------------
 
 const APP_STORE_URL = "https://apps.apple.com/app/id6764606059";
 

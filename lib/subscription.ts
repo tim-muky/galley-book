@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 // GAL-191 + GAL-261 + GAL-262 + GAL-321 + GAL-335 — entitlement resolution.
 // Delegates to computeEntitlement, which is the single source of truth used
 // by /api/iap/status, /api/iap/verify-receipt, and now every paywalled
-// route handler. This means trial users (3-day window post-sign-up) and
+// route handler. This means trial users (7-day window post-sign-up) and
 // comp entitlements are honored everywhere identically.
 //
 // Reads are user-session-scoped — RLS keeps results restricted to galleys
@@ -20,7 +20,7 @@ export type Plan = "free" | "premium";
  * When set to N > 0, a non-premium user gets N successful AI imports per
  * calendar month before the upgrade gate. Counted from ai_usage_logs parse
  * operations via the service client (works regardless of RLS). Note: counts all
- * parses in the month, including any made during the 3-day trial. Fails closed.
+ * parses in the month, including any made during the 7-day trial. Fails closed.
  */
 export async function freeImportAllowed(userId: string): Promise<boolean> {
   const quota = Number(process.env.FREE_IMPORT_QUOTA ?? 0);

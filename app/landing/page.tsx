@@ -37,7 +37,7 @@ const copy = {
       sub: "galleybook imports any recipe from Instagram, YouTube, TikTok, or any website in seconds — and keeps your whole collection beautifully organised, always with you.",
       ctaWeb: "Use on the web",
       ctaApp: "Get the iOS app",
-      ctaNote: "Sign in with Google. 3-day free trial.",
+      ctaNote: "Sign in with Google. 7-day free trial.",
     },
     features: {
       label: "What you get",
@@ -64,7 +64,7 @@ const copy = {
       heading: "Simple, honest pricing.",
       price: "€1.99",
       period: "/ month",
-      trial: "3-day free trial",
+      trial: "7-day free trial",
       features: [
         "All features, no limits",
         "Shared Galleys for the whole family",
@@ -99,7 +99,7 @@ const copy = {
       sub: "galleybook importiert jedes Rezept von Instagram, YouTube, TikTok oder jeder Website in Sekunden — und hält deine gesamte Sammlung wunderschön organisiert, immer mit dir.",
       ctaWeb: "Im Web nutzen",
       ctaApp: "iOS-App holen",
-      ctaNote: "Mit Google anmelden. 3 Tage kostenlos testen.",
+      ctaNote: "Mit Google anmelden. 7 Tage kostenlos testen.",
     },
     features: {
       label: "Was du bekommst",
@@ -126,7 +126,7 @@ const copy = {
       heading: "Einfache, ehrliche Preise.",
       price: "1,99 €",
       period: "/ Monat",
-      trial: "3 Tage kostenlos testen",
+      trial: "7 Tage kostenlos testen",
       features: [
         "Alle Funktionen, ohne Limits",
         "Geteilte Galleys für die ganze Familie",

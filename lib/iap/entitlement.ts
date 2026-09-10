@@ -20,10 +20,18 @@ export type EntitlementResult = {
   source: "apple_iap" | "apple_offer_code" | "google_iap" | "comp" | "trial" | "invite" | null;
 };
 
-// GAL-335: every user gets 3 days of full premium starting at sign-up so
-// the first cooking sessions feel unfettered. After the window expires the
-// regular subscription gate takes over.
-const TRIAL_LENGTH_MS = 3 * 24 * 60 * 60 * 1000;
+// GAL-335: every user gets full premium starting at sign-up so the first
+// cooking sessions feel unfettered. After the window expires the regular
+// subscription gate takes over.
+//
+// 7 days (was 3 until 2026-09-10): cooking runs on a weekly cadence — meal
+// plan, shop, cook across the week — so a 3-day trial expired before most
+// users' second natural session. Funnel evidence: 0 of 32 signups ever tapped
+// the paywall CTA, and 0/9 ASA users returned after day 3. The trial must
+// span at least one full week so its end lands inside an active week.
+// Computed from users.created_at at read time, so existing users get the
+// longer window retroactively — harmless at current scale.
+const TRIAL_LENGTH_MS = 7 * 24 * 60 * 60 * 1000;
 
 // GAL-488: entitlement is decided by the paid-through window, NOT by the
 // `status` column being exactly 'active'. A subscription grants premium for
