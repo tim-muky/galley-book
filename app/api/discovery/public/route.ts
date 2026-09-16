@@ -7,7 +7,8 @@ import { NextResponse } from "next/server";
 // Query string: ?q=<term>
 //   - q empty or 1 char  → return ALL public galleys (browse mode), no recipes
 //   - q >= 2 chars       → galleys matching name + recipes matching name
-// Each galley row carries owner avatar + recipe count for the list UI.
+// Each galley row carries owner avatar + recipe count + up to four cover
+// photos (GAL-572 Entdecken mosaic) for the list UI.
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ async function decorateGalleys(
   const ownerIds = Array.from(new Set(galleys.map((g) => g.owner_id)));
   const galleyIds = galleys.map((g) => g.id);
 
-  const [ownersRes, countsRes] = await Promise.all([
+  const [ownersRes, countsRes, photosRes] = await Promise.all([
     supabase
       .from("users")
       .select("id, display_name, avatar_url")
@@ -40,6 +41,16 @@ async function decorateGalleys(
       .select("galley_id")
       .in("galley_id", galleyIds)
       .is("deleted_at", null),
+    // GAL-572 / F39: up to four recent recipe photos per galley for the
+    // Entdecken 2×2 mosaic. One query, newest recipes first; the client
+    // falls back to header_image_path, then an initial.
+    supabase
+      .from("recipes")
+      .select("galley_id, created_at, recipe_photos(storage_path, is_primary, sort_order)")
+      .in("galley_id", galleyIds)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(galleyIds.length * 12),
   ]);
 
   const ownerById = new Map(
@@ -53,11 +64,31 @@ async function decorateGalleys(
     );
   }
 
+  const coverByGalley = new Map<string, string[]>();
+  for (const row of (photosRes.data ?? []) as Array<{
+    galley_id: string;
+    recipe_photos:
+      | Array<{ storage_path: string; is_primary: boolean | null; sort_order: number | null }>
+      | null;
+  }>) {
+    const covers = coverByGalley.get(row.galley_id) ?? [];
+    if (covers.length >= 4) continue;
+    const photos = row.recipe_photos ?? [];
+    const primary =
+      photos.find((p) => p.is_primary) ??
+      [...photos].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+    if (primary?.storage_path) {
+      covers.push(primary.storage_path);
+      coverByGalley.set(row.galley_id, covers);
+    }
+  }
+
   return galleys.map((g) => ({
     ...g,
     owner_display_name: ownerById.get(g.owner_id)?.display_name ?? null,
     owner_avatar_url: ownerById.get(g.owner_id)?.avatar_url ?? null,
     recipe_count: countByGalley.get(g.id) ?? 0,
+    cover_photos: coverByGalley.get(g.id) ?? [],
   }));
 }
 
