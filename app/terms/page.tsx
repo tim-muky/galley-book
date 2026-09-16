@@ -123,8 +123,8 @@ export default function TermsPage() {
           <p className="text-sm font-light text-on-surface-variant leading-relaxed mb-3">
             galleybook offers <strong className="font-normal text-anthracite">galleybook premium</strong>,
             an auto-renewable subscription sold through the Apple App Store. Pricing is shown
-            inside the app before purchase; current tiers include a monthly plan at €1.99/month
-            and an annual plan at €19.99/year. Local taxes and currency conversion are handled by
+            inside the app before purchase; current tiers include a monthly plan at €1/month
+            and an annual plan at €10/year. Local taxes and currency conversion are handled by
             Apple.
           </p>
           <ul className="list-disc list-outside ml-5 space-y-2 text-sm font-light text-on-surface-variant mb-3">

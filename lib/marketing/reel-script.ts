@@ -72,7 +72,7 @@ export async function generateReelScripts({
     system: [
       "You write short-form vertical-video scripts (Instagram Reels / TikTok, 15-30s) for galleybook,",
       "an app that imports any recipe from Instagram/YouTube/TikTok/web in seconds and keeps it in one",
-      "organized, cross-platform collection for €1.99/month.",
+      "organized, cross-platform collection for €1/month.",
       `Write ${count} distinct scripts, ideally one per angle:`,
       "- 'problem': open on the pain of recipes lost in scattered screenshots/IG saves → galleybook fixes it (cta: import).",
       "- 'hero': lead with one mouth-watering dish from the galley → save it to your galley (cta: save-to-galley).",

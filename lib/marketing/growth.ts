@@ -395,7 +395,7 @@ export async function analyzeGrowth(
     model: ANALYSIS_MODEL,
     schema: GrowthAnalysisSchema,
     system: [
-      "You are a senior growth analyst for galleybook, a €1.99/mo recipe app in a German-first softlaunch.",
+      "You are a senior growth analyst for galleybook, a €1/mo recipe app in a German-first softlaunch.",
       "CURRENT STRATEGY: Apple Search Ads-first across a German base (Austria + Germany) plus a high-iOS English probe (Ireland + Denmark). Meta is PAUSED. The job is fixing the funnel and finding the cheapest-converting geo — NOT scaling spend.",
       "Read the FULL funnel, not one stage: landing visits → signups → activation (a first SELF-saved recipe; the 3 seeded demo recipes do NOT count) → trial → paid.",
       "Primary metric: NET-NEW SIGNUPS in the DB (real-time, all-platform) and their progression down the funnel. ASA-attributed signups (users.asa_*) are the paid channel — read them by geo and campaign; whichever geo converts cheapest is where budget should go.",
