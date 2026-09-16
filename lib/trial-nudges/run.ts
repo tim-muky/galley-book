@@ -84,13 +84,13 @@ const PUSH: Record<Touch, Record<Lang, PushPayload>> = {
     en: {
       eventType: "trial_nudge",
       title: "Your free trial is ending soon",
-      body: "Keep every recipe, the meal planner and your shopping list for €1.99/month.",
+      body: "Keep every recipe, the meal planner and your shopping list for €1/month.",
       data: { screen: "library" },
     },
     de: {
       eventType: "trial_nudge",
       title: "Dein Gratis-Test endet bald",
-      body: "Behalte alle Rezepte, den Wochenplan und die Einkaufsliste für 1,99 €/Monat.",
+      body: "Behalte alle Rezepte, den Wochenplan und die Einkaufsliste für 1 €/Monat.",
       data: { screen: "library" },
     },
   },

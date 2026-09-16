@@ -61,7 +61,7 @@ export async function sendTrialEndingEmail({
       ? {
           subject: "Dein galleybook-Test endet bald",
           heading: "Dein Gratis-Test endet bald.",
-          body: `Wir hoffen, galleybook hat sich einen Platz in deiner Küche verdient. Behalte jedes gespeicherte Rezept — plus Wochenplaner und automatische Einkaufsliste — für <strong style="font-weight: 600;">1,99 €/Monat</strong>. Ein Abo für iOS, Android und Web.`,
+          body: `Wir hoffen, galleybook hat sich einen Platz in deiner Küche verdient. Behalte jedes gespeicherte Rezept — plus Wochenplaner und automatische Einkaufsliste — für <strong style="font-weight: 600;">1 €/Monat</strong>. Ein Abo für iOS, Android und Web.`,
           cta: "Premium behalten",
           footer:
             "Es passiert nichts automatisch — deine Rezepte bleiben so oder so gespeichert. Das hält nur die Premium-Funktionen aktiv.",
@@ -69,7 +69,7 @@ export async function sendTrialEndingEmail({
       : {
           subject: "Your galleybook trial ends soon",
           heading: "Your free trial ends soon.",
-          body: `We hope galleybook earned a place in your kitchen. Keep every recipe you've saved — plus the meal planner and your auto shopping list — for <strong style="font-weight: 600;">€1.99/month</strong>. One subscription covers iOS, Android and the web.`,
+          body: `We hope galleybook earned a place in your kitchen. Keep every recipe you've saved — plus the meal planner and your auto shopping list — for <strong style="font-weight: 600;">€1/month</strong>. One subscription covers iOS, Android and the web.`,
           cta: "Keep my premium",
           footer:
             "Nothing happens automatically — your recipes stay saved either way. This just keeps premium features on.",

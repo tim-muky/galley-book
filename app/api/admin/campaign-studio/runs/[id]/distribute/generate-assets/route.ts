@@ -25,8 +25,8 @@ function commentTrigger(locale: "de" | "en"): string {
 /** The DM auto-reply copy the admin pastes into ManyChat / IG auto-reply. */
 function dmReply(locale: "de" | "en", galleyUrl: string): string {
   return locale === "de"
-    ? `Hier ist dein Rezept 👉 ${galleyUrl}\n\nIn galleybook speicherst du jedes Rezept mit einem Tipp – auf iPhone, Android und im Web. 1,99 €/Monat.`
-    : `Here's your recipe 👉 ${galleyUrl}\n\nIn galleybook you save any recipe in one tap – on iPhone, Android and the web. €1.99/month.`;
+    ? `Hier ist dein Rezept 👉 ${galleyUrl}\n\nIn galleybook speicherst du jedes Rezept mit einem Tipp – auf iPhone, Android und im Web. 1 €/Monat.`
+    : `Here's your recipe 👉 ${galleyUrl}\n\nIn galleybook you save any recipe in one tap – on iPhone, Android and the web. €1/month.`;
 }
 
 /** Map the run theme to a content type so hashtags can be tailored per post (GAL-449). */
