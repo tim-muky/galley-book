@@ -32,6 +32,7 @@ const ALLOWED_HOSTS = new Set([
   "tiktok.com",
   "www.tiktok.com",
   "vm.tiktok.com",
+  "vt.tiktok.com",
 ]);
 
 /** Validate a URL line. Returns the trimmed URL or a reason it's invalid.
@@ -56,8 +57,11 @@ function lintUrl(line: string, sourceFile: string): { ok: true; url: string } | 
     return { ok: false, reason: `host ${parsed.hostname} not in allowlist for ${baseName}` };
   }
   // TikTok profile URLs have no /video/ segment — the server rejects them; catch early.
-  const isTikTokHost = ["tiktok.com", "www.tiktok.com", "vm.tiktok.com"].includes(parsed.hostname.toLowerCase());
-  if (isTikTokHost && !/\/video\/\d+/.test(parsed.pathname)) {
+  // Short share links (vm./vt.tiktok.com, /t/) are resolved server-side.
+  const host = parsed.hostname.toLowerCase();
+  const isTikTokShort = host === "vm.tiktok.com" || host === "vt.tiktok.com" || parsed.pathname.startsWith("/t/");
+  const isTikTokHost = ["tiktok.com", "www.tiktok.com"].includes(host);
+  if (isTikTokHost && !isTikTokShort && !/\/video\/\d+/.test(parsed.pathname)) {
     return { ok: false, reason: "TikTok profile URL — share a specific video link instead" };
   }
   return { ok: true, url: line };
