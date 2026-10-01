@@ -197,6 +197,9 @@ export async function POST(request: Request) {
       parsedVia === "youtube_perplexity" ||
       parsedVia === "instagram_perplexity" ||
       parsedVia === "perplexity";
+    // TikTok captions are often just hashtags with the recipe only spoken in
+    // the video — same name-only failure mode, so the same guard applies.
+    const isTikTok = parsedVia === "tiktok";
     // Tightened guard (GAL-139): a Perplexity-route response is "empty" if the
     // recipe name is missing OR both ingredients and steps are empty. Earlier
     // we required all three to be empty, which let thumbnail-only responses
@@ -206,8 +209,14 @@ export async function POST(request: Request) {
       !Array.isArray(parsed.ingredients) || parsed.ingredients.length === 0;
     const stepsEmpty = !Array.isArray(parsed.steps) || parsed.steps.length === 0;
     const hasNoRecipeContent = !parsed.name || (ingredientsEmpty && stepsEmpty);
-    if (isPerplexityRoute && hasNoRecipeContent) {
-      void logParseQuality({ userId: user.id, sourceUrl: url, parsedVia, success: false, errorMessage: "perplexity_no_recipe_content" });
+    if ((isPerplexityRoute || isTikTok) && hasNoRecipeContent) {
+      void logParseQuality({
+        userId: user.id,
+        sourceUrl: url,
+        parsedVia,
+        success: false,
+        errorMessage: isTikTok ? "tiktok_no_recipe_content" : "perplexity_no_recipe_content",
+      });
       await logAIUsage({
         userId: user.id,
         operation: operationLabel,
@@ -222,8 +231,9 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(
         {
-          error:
-            "Could not extract a recipe from this URL. Web search returned only a summary, not the actual recipe. Try pasting it manually.",
+          error: isTikTok
+            ? "This TikTok's caption doesn't include the recipe — it's probably only in the video. Try pasting it manually."
+            : "Could not extract a recipe from this URL. Web search returned only a summary, not the actual recipe. Try pasting it manually.",
           ...(diagnostics ? { _diagnostics: diagnostics } : {}),
         },
         { status: 422 }
